@@ -1,0 +1,5 @@
+slack_sdk
+slack_bolt
+mysql.connector
+datetime
+pandas
