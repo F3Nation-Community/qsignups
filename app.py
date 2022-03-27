@@ -1298,10 +1298,10 @@ def handle_submit_add_single_event_button(ack, body, client, logger, context):
     try:
         with my_connect(team_id) as mydb:
             mycursor = mydb.conn.cursor()
-            event_date_fmt = datetime.strptime(event_date, '%Y-%m-%d').date()
+            event_date_dt = datetime.strptime(event_date, '%Y-%m-%d').date()
             sql_insert = f"""
             INSERT INTO {mydb.db}.schedule_master (ao_channel_id, event_date, event_time, event_day_of_week, event_type, event_recurring)
-            VALUES ("{ao_channel_id}", DATE("{event_date_fmt}"), "{event_time}", "{event_date.strftime('%A')}", "{event_type}", {event_recurring})    
+            VALUES ("{ao_channel_id}", DATE("{event_date}"), "{event_time}", "{event_date_dt.strftime('%A')}", "{event_type}", {event_recurring})    
             """
 
             mycursor.execute(sql_insert)
@@ -1314,7 +1314,7 @@ def handle_submit_add_single_event_button(ack, body, client, logger, context):
 
     # Give status message and return to home
     if success_status:
-        top_message = f"Thanks, I got it! I've added your event to the schedule for {event_date_fmt} at {event_time} at {ao_display_name}."
+        top_message = f"Thanks, I got it! I've added your event to the schedule for {event_date} at {event_time} at {ao_display_name}."
     else:
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
     refresh_home_tab(client, user_id, logger, top_message, team_id)
