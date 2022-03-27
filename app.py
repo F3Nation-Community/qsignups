@@ -504,7 +504,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                 "type": "section",
                 "text": {
                     "type": "mrkdwn",
-                    "text": "Is this a recurring or single event?"
+                    "text": "*Is this a recurring or single event?*"
 			    }
             },
             {
@@ -837,9 +837,9 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
             }  
         }
     ]
-    new_blocks = []
+
     if recurring_select == 'recurring':
-        new_blocks.append([
+        new_blocks = [
             {
                 "type": "input",
                 "block_id": "event_day_of_week_select",
@@ -934,7 +934,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                     }
                 ]
             }
-        ])
+        ]
     else:
         # TODO: have "other" / freeform option
         # TODO: add this to form
@@ -958,7 +958,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
             }
             special_options.append(new_option)
 
-        new_blocks.append([
+        new_blocks[
             {
                 "type": "input",
                 "block_id": "add_event_datepicker",
@@ -1025,7 +1025,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                     }
                 ]
             }
-        ])
+        ]
 
     try:
         for block in new_blocks:
