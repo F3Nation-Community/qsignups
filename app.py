@@ -791,6 +791,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
         },
         {
             "type": "actions",
+            "block_id": "recurring_select_block",
             "elements": [
                 {
                     "type": "radio_buttons",
