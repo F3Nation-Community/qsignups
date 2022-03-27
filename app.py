@@ -733,7 +733,8 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
     print(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    recurring_select = body['view']['state']['values']['recurring_select_block']['add_event_recurring_select_action']['selected_option']['value']
+    recurring_select_option = body['view']['state']['values']['recurring_select_block']['add_event_recurring_select_action']['selected_option']
+    recurring_select = recurring_select_option['value']
 
     logging.info('add an event - switch recurring type')
 
@@ -785,7 +786,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": "Is this a recurring or single event?"
+                "text": "*Is this a recurring or single event?*"
             }
         },
         {
@@ -811,7 +812,8 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                             "value": "single"
                         },
                     ],
-                    "action_id": "add_event_recurring_select_action"
+                    "action_id": "add_event_recurring_select_action",
+                    "initial_option": recurring_select_option
                 }
             ]
         },
@@ -835,9 +837,9 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
             }  
         }
     ]
-    
+    new_blocks = []
     if recurring_select == 'recurring':
-        blocks.append([
+        new_blocks.append([
             {
                 "type": "input",
                 "block_id": "event_day_of_week_select",
@@ -991,7 +993,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                 },
                 "label": {
                     "type": "plain_text",
-                    "text": "Beatdown Start",
+                    "text": "Event Start",
                     "emoji": True
                 }
             }, 
@@ -1026,6 +1028,8 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
         ])
 
     try:
+        for block in new_blocks:
+            blocks.append(block)
         client.views_publish(
             user_id=user_id,
             view={
