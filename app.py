@@ -733,212 +733,309 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
     print(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
+    recurring_select = body['view']['state']['values']['recurring_select_block']['add_event_recurring_select_action']['selected_option']['value']
 
-    # logging.info('add an event - switch recurring type')
+    logging.info('add an event - switch recurring type')
 
-    # # list of AOs for dropdown
-    # try:
-    #     with my_connect(team_id) as mydb:
-    #         sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.aos WHERE qsignups_enabled = 1 ORDER BY REPLACE(ao_display_name, 'The ', '');"
-    #         ao_list = pd.read_sql(sql_ao_list, mydb.conn)
-    #         ao_list = ao_list['ao_display_name'].values.tolist()
-    # except Exception as e:
-    #     logger.error(f"Error pulling AO list: {e}")
+    # list of AOs for dropdown
+    try:
+        with my_connect(team_id) as mydb:
+            sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.aos WHERE qsignups_enabled = 1 ORDER BY REPLACE(ao_display_name, 'The ', '');"
+            ao_list = pd.read_sql(sql_ao_list, mydb.conn)
+            ao_list = ao_list['ao_display_name'].values.tolist()
+    except Exception as e:
+        logger.error(f"Error pulling AO list: {e}")
 
-    # ao_options = []
-    # for option in ao_list:
-    #     new_option = {
-    #         "text": {
-    #             "type": "plain_text",
-    #             "text": option,
-    #             "emoji": True
-    #         },
-    #         "value": option
-    #     }
-    #     ao_options.append(new_option)
+    ao_options = []
+    for option in ao_list:
+        new_option = {
+            "text": {
+                "type": "plain_text",
+                "text": option,
+                "emoji": True
+            },
+            "value": option
+        }
+        ao_options.append(new_option)
 
-    # day_list = [
-    #     'Monday',
-    #     'Tuesday',
-    #     'Wednesday',
-    #     'Thursday',
-    #     'Friday',
-    #     'Saturday',
-    #     'Sunday'
-    # ]
-    # day_options = []
-    # for option in day_list:
-    #     new_option = {
-    #         "text": {
-    #             "type": "plain_text",
-    #             "text": option,
-    #             "emoji": True
-    #         },
-    #         "value": option
-    #     }
-    #     day_options.append(new_option)
+    day_list = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday'
+    ]
+    day_options = []
+    for option in day_list:
+        new_option = {
+            "text": {
+                "type": "plain_text",
+                "text": option,
+                "emoji": True
+            },
+            "value": option
+        }
+        day_options.append(new_option)
 
     
-    # blocks = [
-    #     {
-    #         "type": "section",
-    #         "text": {
-    #             "type": "mrkdwn",
-    #             "text": "Is this a recurring or single event?"
-    #         }
-    #     },
-    #     {
-    #         "type": "actions",
-    #         "elements": [
-    #             {
-    #                 "type": "radio_buttons",
-    #                 "options": [
-    #                     {
-    #                         "text": {
-    #                             "type": "plain_text",
-    #                             "text": "Recurring event / beatdown",
-    #                             "emoji": True
-    #                         },
-    #                         "value": "recurring"
-    #                     },
-    #                     {
-    #                         "text": {
-    #                             "type": "plain_text",
-    #                             "text": "Single event / beatdown",
-    #                             "emoji": True
-    #                         },
-    #                         "value": "single"
-    #                     },
-    #                 ],
-    #                 "action_id": "add_event_recurring_select_action"
-    #             }
-    #         ]
-    #     },
-    #     {
-    #         "type": "input",
-    #         "block_id": "ao_display_name_select",
-    #         "element": {
-    #             "type": "static_select",
-    #             "placeholder": {
-    #                 "type": "plain_text",
-    #                 "text": "Select an AO",
-    #                 "emoji": True   
-    #             },
-    #             "options": ao_options,
-    #             "action_id": "ao_display_name_select_action"
-    #         },
-    #         "label": {
-    #             "type": "plain_text",
-    #             "text": "AO",
-    #             "emoji": True
-    #         }  
-    #     },
-    #     {
-    #         "type": "input",
-    #         "block_id": "event_day_of_week_select",
-    #         "element": {
-    #             "type": "static_select",
-    #             "placeholder": {
-    #                 "type": "plain_text",
-    #                 "text": "Select a day",
-    #                 "emoji": True   
-    #             },
-    #             "options": day_options,
-    #             "action_id": "event_day_of_week_select_action"
-    #         },
-    #         "label": {
-    #             "type": "plain_text",
-    #             "text": "Day of Week",
-    #             "emoji": True
-    #         }  
-    #     },
-    #     {
-    #         "type": "input",
-    #         "block_id": "event_time_select",
-    #         "element": {
-    #             "type": "timepicker",
-    #             "initial_time": "05:30",
-    #             "placeholder": {
-    #                 "type": "plain_text",
-    #                 "text": "Select time",
-    #                 "emoji": True
-    #             },
-    #             "action_id": "event_time_select"
-    #         },
-    #         "label": {
-    #             "type": "plain_text",
-    #             "text": "Beatdown Start",
-    #             "emoji": True
-    #         }
-    #     },
-    #     {
-    #         "type": "input",
-    #         "block_id": "add_event_datepicker",
-    #         "element": {
-    #             "type": "datepicker",
-    #             "initial_date": date.today().strftime('%Y-%m-%d'),
-    #             "placeholder": {
-    #                 "type": "plain_text",
-    #                 "text": "Select date",
-    #                 "emoji": True
-    #             },
-    #             "action_id": "add_event_datepicker"
-    #         },
-    #         "label": {
-    #             "type": "plain_text",
-    #             "text": "Start Date",
-    #             "emoji": True
-    #         }
-    #     },
-    #     {
-    #         "type": "actions",
-    #         "block_id": "submit_cancel_buttons",
-    #         "elements": [
-    #             {
-    #                 "type": "button",
-    #                 "text": {
-    #                     "type": "plain_text",
-    #                     "text": "Submit",
-    #                     "emoji": True
-    #                 },
-    #                 "value": "submit",
-    #                 "action_id": "submit_add_event_button",
-    #                 "style": "primary"
-    #             },
-    #             {
-    #                 "type": "button",
-    #                 "text": {
-    #                     "type": "plain_text",
-    #                     "text": "Cancel",
-    #                     "emoji": True
-    #                 },
-    #                 "value": "cancel",
-    #                 "action_id": "cancel_button_select",
-    #                 "style": "danger"
-    #             }
-    #         ]
-    #     },
-    #     {
-    #     "type": "context",
-    #     "elements": [
-    #             {
-    #                 "type": "mrkdwn",
-    #                 "text": "Please wait after hitting Submit, and do not hit it more than once"
-    #             }
-    #         ]
-    #     }
-    # ]
-    # try:
-    #     client.views_publish(
-    #         user_id=user_id,
-    #         view={
-    #             "type": "home",
-    #             "blocks": blocks
-    #         }
-    #     )
-    # except Exception as e:
-    #     logger.error(f"Error publishing home tab: {e}")
-    #     print(e)
+    blocks = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "Is this a recurring or single event?"
+            }
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "radio_buttons",
+                    "options": [
+                        {
+                            "text": {
+                                "type": "plain_text",
+                                "text": "Recurring event / beatdown",
+                                "emoji": True
+                            },
+                            "value": "recurring"
+                        },
+                        {
+                            "text": {
+                                "type": "plain_text",
+                                "text": "Single event / beatdown",
+                                "emoji": True
+                            },
+                            "value": "single"
+                        },
+                    ],
+                    "action_id": "add_event_recurring_select_action"
+                }
+            ]
+        },
+        {
+            "type": "input",
+            "block_id": "ao_display_name_select",
+            "element": {
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select an AO",
+                    "emoji": True   
+                },
+                "options": ao_options,
+                "action_id": "ao_display_name_select_action"
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "AO",
+                "emoji": True
+            }  
+        }
+    ]
+    
+    if recurring_select == 'recurring':
+        blocks.append([
+            {
+                "type": "input",
+                "block_id": "event_day_of_week_select",
+                "element": {
+                    "type": "static_select",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select a day",
+                        "emoji": True   
+                    },
+                    "options": day_options,
+                    "action_id": "event_day_of_week_select_action"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Day of Week",
+                    "emoji": True
+                }  
+            },
+            {
+                "type": "input",
+                "block_id": "event_time_select",
+                "element": {
+                    "type": "timepicker",
+                    "initial_time": "05:30",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select time",
+                        "emoji": True
+                    },
+                    "action_id": "event_time_select"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Beatdown Start",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "input",
+                "block_id": "add_event_datepicker",
+                "element": {
+                    "type": "datepicker",
+                    "initial_date": date.today().strftime('%Y-%m-%d'),
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select date",
+                        "emoji": True
+                    },
+                    "action_id": "add_event_datepicker"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Start Date",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "actions",
+                "block_id": "submit_cancel_buttons",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Submit",
+                            "emoji": True
+                        },
+                        "value": "submit",
+                        "action_id": "submit_add_event_button",
+                        "style": "primary"
+                    },
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Cancel",
+                            "emoji": True
+                        },
+                        "value": "cancel",
+                        "action_id": "cancel_button_select",
+                        "style": "danger"
+                    }
+                ]
+            },
+            {
+            "type": "context",
+            "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": "Please wait after hitting Submit, and do not hit it more than once"
+                    }
+                ]
+            }
+        ])
+    else:
+        # TODO: have "other" / freeform option
+        # TODO: add this to form
+        special_list = [
+            'None',
+            'The Forge',
+            'VQ',
+            'F3versary',
+            'Birthday Q',
+            'AO Launch'
+        ]
+        special_options = []
+        for option in special_list:
+            new_option = {
+                "text": {
+                    "type": "plain_text",
+                    "text": option,
+                    "emoji": True
+                },
+                "value": option
+            }
+            special_options.append(new_option)
+
+        blocks.append([
+            {
+                "type": "input",
+                "block_id": "add_event_datepicker",
+                "element": {
+                    "type": "datepicker",
+                    "initial_date": date.today().strftime('%Y-%m-%d'),
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select date",
+                        "emoji": True
+                    },
+                    "action_id": "add_event_datepicker"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Event Date",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "input",
+                "block_id": "event_time_select",
+                "element": {
+                    "type": "timepicker",
+                    "initial_time": "05:30",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select time",
+                        "emoji": True
+                    },
+                    "action_id": "event_time_select"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Beatdown Start",
+                    "emoji": True
+                }
+            }, 
+            {
+                "type": "actions",
+                "block_id": "submit_cancel_buttons",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Submit",
+                            "emoji": True
+                        },
+                        "value": "submit",
+                        "action_id": "submit_add_single_event_button",
+                        "style": "primary"
+                    },
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Cancel",
+                            "emoji": True
+                        },
+                        "value": "cancel",
+                        "action_id": "cancel_button_select",
+                        "style": "danger"
+                    }
+                ]
+            }
+        ])
+
+    try:
+        client.views_publish(
+            user_id=user_id,
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
 
 @app.action("edit_event_ao_select")
 def handle_edit_event_ao_select(ack, body, client, logger, context):
@@ -1162,6 +1259,57 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
     # Give status message and return to home
     if success_status:
         top_message = f"Thanks, I got it! I've added {round(schedule_create_length_days/365)} year's worth of {event_type}s to the schedule for {event_day_of_week}s at {event_time} at {ao_display_name}."
+    else:
+        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
+    refresh_home_tab(client, user_id, logger, top_message, team_id)
+
+@app.action("submit_add_single_event_button")
+def handle_submit_add_single_event_button(ack, body, client, logger, context):
+    ack()
+    logger.info(body)  
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+
+    # Gather inputs from form
+    input_data = body['view']['state']['values']
+    ao_display_name = input_data['ao_display_name_select']['ao_display_name_select_action']['selected_option']['value']
+    event_date = input_data['add_event_datepicker']['add_event_datepicker']['selected_date']
+    event_time = input_data['event_time_select']['event_time_select']['selected_time'].replace(':','')
+    event_type = 'Beatdown' # eventually this will be dynamic
+    event_recurring = False
+
+    # Grab channel id
+    try:
+        with my_connect(team_id) as mydb:
+            mycursor = mydb.conn.cursor()
+            mycursor.execute(f'SELECT channel_id FROM {mydb.db}.aos WHERE ao_display_name = "{ao_display_name}";')
+            ao_channel_id = mycursor.fetchone()[0]
+    except Exception as e:
+           logger.error(f"Error pulling from db: {e}")
+
+    # Write to master schedule table
+    logger.info(f"Attempting SQL INSERT into schedule_master")
+    success_status = False
+    try:
+        with my_connect(team_id) as mydb:
+            mycursor = mydb.conn.cursor()
+            event_date_fmt = datetime.strptime(event_date, '%Y-%m-%d').date()
+            sql_insert = f"""
+            INSERT INTO {mydb.db}.schedule_master (ao_channel_id, event_date, event_time, event_day_of_week, event_type, event_recurring)
+            VALUES ("{ao_channel_id}", DATE("{event_date_fmt}"), "{event_time}", "{event_date.strftime('%A')}", "{event_type}", {event_recurring})    
+            """
+
+            mycursor.execute(sql_insert)
+            mycursor.execute("COMMIT;")
+            success_status = True
+
+    except Exception as e:
+           logger.error(f"Error writing to schedule_master: {e}")
+           error_msg = e
+
+    # Give status message and return to home
+    if success_status:
+        top_message = f"Thanks, I got it! I've added your event to the schedule for {event_date_fmt} at {event_time} at {ao_display_name}."
     else:
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
     refresh_home_tab(client, user_id, logger, top_message, team_id)
