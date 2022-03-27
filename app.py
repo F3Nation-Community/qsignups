@@ -958,7 +958,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
             }
             special_options.append(new_option)
 
-        blocks.append([
+        new_blocks.append([
             {
                 "type": "input",
                 "block_id": "add_event_datepicker",
