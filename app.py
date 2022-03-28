@@ -412,6 +412,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                 "block_id": "qsignups_enabled_select",
                 "element": {
                     "type": "radio_buttons",
+                    "action_id": "qsignups_enabled_select",
                     "options": [
                         {
                             "text": {
@@ -775,6 +776,7 @@ def handle_edit_ao_channel_select(ack, body, client, logger, context):
     team_id = context["team_id"]
 
     selected_channel = body['view']['state']['values']['edit_ao_channel_select']['edit_ao_channel_select']['channels_select']
+    selected_channel = 'C037JBBCJGG'
 
     # pull existing info for this channel
     try:
@@ -861,6 +863,7 @@ def handle_edit_ao_channel_select(ack, body, client, logger, context):
             "block_id": "qsignups_enabled_select",
             "element": {
                 "type": "radio_buttons",
+                "action_id": "qsignups_enabled_select",
                 "options": [
                     {
                         "text": {
@@ -1376,11 +1379,20 @@ def handle_submit_add_ao_button(ack, body, client, logger, context):
 
     # Gather inputs from form
     input_data = body['view']['state']['values']
-    ao_channel_id = input_data['ao_channel_id']['ao_channel_id']['selected_channel']
+    ao_channel_id = input_data['edit_ao_channel_select']['edit_ao_channel_select']['selected_channel']
+    ao_channel_id = 'C037JBBCJGG'
     ao_display_name = input_data['ao_display_name']['ao_display_name']['value']
     ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']['value']
+    qsignups_enabled = input_data['qsignups_enabled_select']['qsignups_enabled_select']['selected_option']['value']
 
-    # TODO: test to see if there's a " in the display_name or location - this will make the query below bomb
+    if qsignups_enabled == 'Yes':
+        qsignups_enabled = 1
+    else:
+        qsignups_enabled = 0
+
+    # replace double quotes with single quotes
+    ao_display_name = ao_display_name.replace('"',"'")
+    ao_location_subtitle = ao_location_subtitle.replace('"',"'")
 
     # Write to AO table
     success_status = False
@@ -1389,7 +1401,7 @@ def handle_submit_add_ao_button(ack, body, client, logger, context):
 
             sql_update = f"""
             UPDATE {mydb.db}.aos
-            SET qsignups_enabled = 1,
+            SET qsignups_enabled = {qsignups_enabled},
                 ao_display_name = "{ao_display_name}",
                 ao_location_subtitle = "{ao_location_subtitle}"
             WHERE channel_id = "{ao_channel_id}"
