@@ -305,9 +305,10 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
     ]
 
     button_list = [
-        "Add an AO",
+        "Add / edit an AO",
         "Add an event",
-        "Edit an event"
+        "Edit an event",
+        "Delete an event"
     ]
 
     for button in button_list:
@@ -350,10 +351,23 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
 
-    # 'Add an AO' selected
-    if selected_action == 'Add an AO':
+    # 'Add / edit an AO' selected
+    if selected_action == 'Add / edit an AO':
         logger.info('gather input data')
         blocks = [
+            {
+                "type": "actions",
+                "block_id": "edit_ao_channel_select",
+                "elements": [{
+                    "type": "channels_select",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select the AO",
+                        "emoji": True
+                    },
+                    "action_id": "edit_ao_channel_select"
+                }]
+            },
             {
                 "type": "input",
                 "block_id": "ao_display_name",
@@ -372,24 +386,6 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
             },
             {
                 "type": "input",
-                "block_id": "ao_channel_id",
-                "element": {
-                    "type": "channels_select",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select the AO",
-                        "emoji": True
-                    },
-                    "action_id": "ao_channel_id"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Slack channel",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "input",
                 "block_id": "ao_location_subtitle",
                 "element": {
                     "type": "plain_text_input",
@@ -402,6 +398,46 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                 "label": {
                     "type": "plain_text",
                     "text": "Location (township, park, etc.)"
+                }
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*Enable QSignups?*"
+			    }
+            },
+            {
+                "type": "input",
+                "block_id": "qsignups_enabled_select",
+                "element": {
+                    "type": "radio_buttons",
+                    "options": [
+                        {
+                            "text": {
+                                "type": "plain_text",
+                                "text": "Yes",
+                                "emoji": True
+                            },
+                            "value": "yes"
+                        },
+                        {
+                            "text": {
+                                "type": "plain_text",
+                                "text": "No",
+                                "emoji": True
+                            },
+                            "value": "no"
+                        },
+                    ],
+                    "initial_option": {
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Yes",
+                            "emoji": True
+                        },
+                        "value": "yes"
+                    }
                 }
             }
         ]
@@ -726,11 +762,18 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
             logger.error(f"Error publishing home tab: {e}")
             print(e)
 
+@app.action("edit_ao_channel_select")
+def handle_edit_ao_channel_select(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    print(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+
 @app.action("add_event_recurring_select_action")
 def handle_add_event_recurring_select_action(ack, body, client, logger, context):
     ack()
     logger.info(body)
-    print(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
     recurring_select_option = body['view']['state']['values']['recurring_select_block']['add_event_recurring_select_action']['selected_option']
