@@ -776,7 +776,6 @@ def handle_edit_ao_channel_select(ack, body, client, logger, context):
     team_id = context["team_id"]
 
     selected_channel = body['view']['state']['values']['edit_ao_channel_select']['edit_ao_channel_select']['selected_channel']
-    selected_channel = 'C037JBBCJGG'
 
     # pull existing info for this channel
     try:
@@ -1386,7 +1385,6 @@ def handle_submit_add_ao_button(ack, body, client, logger, context):
     # Gather inputs from form
     input_data = body['view']['state']['values']
     ao_channel_id = input_data['edit_ao_channel_select']['edit_ao_channel_select']['selected_channel']
-    ao_channel_id = 'C037JBBCJGG'
     ao_display_name = input_data['ao_display_name']['ao_display_name']['value']
     ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']['value']
     qsignups_enabled = input_data['qsignups_enabled_select']['qsignups_enabled_select']['selected_option']['value']
