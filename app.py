@@ -401,13 +401,6 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                 }
             },
             {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "*Enable QSignups?*"
-			    }
-            },
-            {
                 "type": "input",
                 "block_id": "qsignups_enabled_select",
                 "element": {
@@ -438,6 +431,10 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                         },
                         "value": "yes"
                     }
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Enable QSignups?"
                 }
             }
         ]
