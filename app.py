@@ -356,6 +356,13 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
         logger.info('gather input data')
         blocks = [
             {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*Select an AO channel:*"
+			    }
+            },
+            {
                 "type": "actions",
                 "block_id": "edit_ao_channel_select",
                 "elements": [{
@@ -412,7 +419,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                                 "text": "Yes",
                                 "emoji": True
                             },
-                            "value": "yes"
+                            "value": "Yes"
                         },
                         {
                             "text": {
@@ -420,7 +427,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                                 "text": "No",
                                 "emoji": True
                             },
-                            "value": "no"
+                            "value": "No"
                         },
                     ],
                     "initial_option": {
@@ -429,7 +436,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                             "text": "Yes",
                             "emoji": True
                         },
-                        "value": "yes"
+                        "value": "Yes"
                     }
                 },
                 "label": {
@@ -767,6 +774,174 @@ def handle_edit_ao_channel_select(ack, body, client, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
 
+    selected_channel = body['view']['state']['values']['edit_ao_channel_select']['edit_ao_channel_select']['channels_select']
+
+    # pull existing info for this channel
+    try:
+        with my_connect(team_id) as mydb:
+            sql_pull = f"""
+            SELECT ao_display_name, ao_location_subtitle, qsignups_enabled
+            FROM {mydb.db}.aos
+            WHERE channel_id = '{selected_channel}';
+            """
+            mycursor = mydb.conn.cursor()
+            mycursor.execute(sql_pull)
+            ao_display_name, ao_location_subtitle, qsignups_enabled = mycursor.fetchone()
+    except Exception as e:
+        logger.error(f"Error pulling AO list: {e}")
+
+    if ao_display_name is None:
+        ao_display_name = ""
+    if ao_location_subtitle is None:
+        ao_location_subtitle = ""
+    if (ao_display_name is not None) & (qsignups_enabled == 0):
+        qsignups_enabled = "No"
+    else:
+        qsignups_enabled = "Yes"
+
+    # rebuild blocks
+    blocks = [
+        {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": "*Select an AO channel:*"
+            }
+        },
+        {
+            "type": "actions",
+            "block_id": "edit_ao_channel_select",
+            "elements": [{
+                "type": "channels_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select the AO",
+                    "emoji": True
+                },
+                "action_id": "edit_ao_channel_select",
+                "initial_channel": selected_channel
+            }]
+        },
+        {
+            "type": "input",
+            "block_id": "ao_display_name",
+            "element": {
+                "type": "plain_text_input",
+                "action_id": "ao_display_name",
+                # "placeholder": {
+                #     "type": "plain_text",
+                #     "text": "Weasel's Ridge"
+                # },
+                "initial_value": ao_display_name
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "AO Title"
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "ao_location_subtitle",
+            "element": {
+                "type": "plain_text_input",
+                "action_id": "ao_location_subtitle",
+                # "placeholder": {
+                #     "type": "plain_text",
+                #     "text": "Oompa Loompa Kingdom"
+                # },
+                "initial_value": ao_location_subtitle
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Location (township, park, etc.)"
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "qsignups_enabled_select",
+            "element": {
+                "type": "radio_buttons",
+                "options": [
+                    {
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Yes",
+                            "emoji": True
+                        },
+                        "value": "Yes"
+                    },
+                    {
+                        "text": {
+                            "type": "plain_text",
+                            "text": "No",
+                            "emoji": True
+                        },
+                        "value": "no"
+                    },
+                ],
+                "initial_option": {
+                    "text": {
+                        "type": "plain_text",
+                        "text": qsignups_enabled,
+                        "emoji": True
+                    },
+                    "value": qsignups_enabled
+                }
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Enable QSignups?"
+            }
+        }
+    ]
+
+    action_button = {
+        "type":"actions",
+        "elements":[
+            {
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":"Submit",
+                    "emoji":True
+                },
+                "action_id":"submit_add_ao_button",
+                "style":"primary",
+                "value":"Submit"
+            }
+        ]    
+    }
+    cancel_button = {
+        "type":"actions",
+        "elements":[
+            {
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":"Cancel",
+                    "emoji":True
+                },
+                "action_id":"cancel_button_select",
+                "style":"danger",
+                "value":"Cancel"
+            }
+        ]    
+    }
+    blocks.append(action_button)
+    blocks.append(cancel_button)
+
+    try:
+        client.views_publish(
+            user_id=user_id,
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
+
 @app.action("add_event_recurring_select_action")
 def handle_add_event_recurring_select_action(ack, body, client, logger, context):
     ack()
@@ -776,7 +951,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
     recurring_select_option = body['view']['state']['values']['recurring_select_block']['add_event_recurring_select_action']['selected_option']
     recurring_select = recurring_select_option['value']
 
-    logging.info('add an event - switch recurring type')
+    logger.info('add an event - switch recurring type')
 
     # list of AOs for dropdown
     try:
