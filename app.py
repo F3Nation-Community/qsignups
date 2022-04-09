@@ -955,7 +955,7 @@ def handle_delete_single_event_ao_select(ack, body, client, logger, context):
         print(e)
 
 @app.action("delete_single_event_button")
-def delete_single_event_button(ack, client, body, logger, context):
+def delete_single_event_button(ack, client, body, context):
     # acknowledge action and log payload
     ack()
     logger.info(body)
@@ -973,6 +973,7 @@ def delete_single_event_button(ack, client, body, logger, context):
     
 
     # attempt delete
+    success_status = False
     try:
         with my_connect(team_id) as mydb:
             sql_delete = f"""
@@ -983,8 +984,18 @@ def delete_single_event_button(ack, client, body, logger, context):
             """
             mycursor = mydb.conn.cursor()
             mycursor.execute(sql_delete)
+            success_status = True
     except Exception as e:
         logger.error(f"Error pulling AO list: {e}")
+        error_msg = e
+
+    # Take the user back home
+    if success_status:
+        top_message = f"Success! Deleted event on {selected_date_db} at {selected_time_db}"
+    else:
+        top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
+    
+    refresh_home_tab(client, user_id, logger, top_message, team_id)
 
 @app.action("edit_ao_channel_select")
 def handle_edit_ao_channel_select(ack, body, client, logger, context):
