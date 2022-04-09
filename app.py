@@ -982,8 +982,10 @@ def delete_single_event_button(ack, client, body, context):
                 AND event_date = DATE('{selected_date_db}')
                 AND event_time = '{selected_time_db}';
             """
+            logger.info(f'Attempting SQL: \n{sql_delete}')
             mycursor = mydb.conn.cursor()
             mycursor.execute(sql_delete)
+            mycursor.execute('COMMIT;')
             success_status = True
     except Exception as e:
         logger.error(f"Error pulling AO list: {e}")
