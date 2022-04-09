@@ -308,7 +308,7 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
         "Add / edit an AO",
         "Add an event",
         "Edit an event",
-        "Delete an event"
+        "Delete a single event"
     ]
 
     for button in button_list:
@@ -766,6 +766,225 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
         except Exception as e:
             logger.error(f"Error publishing home tab: {e}")
             print(e)
+
+
+    elif selected_action == 'Delete a single event':
+        logging.info('Delete an event')
+
+        # list of AOs for dropdown
+        try:
+            with my_connect(team_id) as mydb:
+                sql_ao_list = f"SELECT * FROM {mydb.db}.aos WHERE qsignups_enabled = 1 ORDER BY REPLACE(ao_display_name, 'The ', '');"
+                ao_df = pd.read_sql(sql_ao_list, mydb.conn)
+        except Exception as e:
+            logger.error(f"Error pulling AO list: {e}")
+
+        ao_options = []
+        for index, row in ao_df.iterrows():
+            new_option = {
+                "text": {
+                    "type": "plain_text",
+                    "text": row['ao_display_name'],
+                    "emoji": True
+                },
+                "value": row['channel_id']
+            }
+            ao_options.append(new_option)
+
+        # Build blocks
+        blocks = [
+            {
+                "type": "section",
+                "block_id": "delete_single_event_ao_select",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "Please select an AO to delete an event from:"
+                },
+                "accessory": {
+                    "action_id": "delete_single_event_ao_select",
+                    "type": "static_select",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select an AO"
+                },
+                "options": ao_options
+                }
+            }
+        ]
+
+        # Publish view
+        try:
+            client.views_publish(
+                user_id=user_id,
+                view={
+                    "type": "home",
+                    "blocks": blocks
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error publishing home tab: {e}")
+            print(e)
+
+@app.action("delete_single_event_ao_select")
+def handle_delete_single_event_ao_select(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    ao_display_name = body['actions'][0]['selected_option']['text']['text']
+    ao_channel_id = body['actions'][0]['selected_option']['value']
+
+    # Pull upcoming schedule from db
+    try:
+        with my_connect(team_id) as mydb:
+            # TODO: make this specific to event type
+            sql_pull = f'''
+            SELECT m.*, a.ao_display_name
+            FROM {mydb.db}.schedule_master m
+            INNER JOIN {mydb.db}.aos a
+            ON m.ao_channel_id = a.channel_id
+            WHERE a.ao_channel_id = "{ao_channel_id}"
+                AND m.event_date > DATE("{date.today()}")
+                AND m.event_date <= DATE("{date.today() + timedelta(weeks=12)}");
+            '''
+            logging.info(f'Pulling from db, attempting SQL: {sql_pull}')
+            results_df = pd.read_sql_query(sql_pull, mydb.conn, parse_dates=['event_date'])
+    except Exception as e:
+        logger.error(f"Error pulling from schedule_master: {e}")
+
+    # Construct view
+    # Top of view
+    blocks = [{
+        "type": "section",
+        "text": {"type": "mrkdwn", "text": "Please select a Q slot to delete for:"}
+    },
+    {
+        "type": "section",
+        "text": {"type": "mrkdwn", "text": f"*{ao_display_name}*"}
+    },
+    {
+        "type": "divider"
+    }]
+
+    # Show next x number of events
+    # TODO: future add: make a "show more" button?
+    results_df['event_date_time'] = pd.to_datetime(results_df['event_date'].dt.strftime('%Y-%m-%d') + ' ' + results_df['event_time'], infer_datetime_format=True)
+    for index, row in results_df.iterrows():
+        # Pretty format date
+        date_fmt = row['event_date_time'].strftime("%a, %m-%d @ %H%M")
+        date_fmt_value = row['event_date_time'].strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Build buttons
+        if row['q_pax_id'] is None:
+            date_status = "OPEN!"
+        else: 
+            date_status = row['q_pax_name']
+        
+        action_id = "delete_single_event_button"
+        value = date_fmt_value + '|' + row['ao_channel_id']
+        confirm_obj = {
+            "title": {
+                "type": "plain_text",
+                "text": "Delete this event?"
+            },
+            "text": {
+                "type": "mrkdwn",
+                "text": "Are you sure you want to delete this event? This cannot be undone."
+            },
+            "confirm": {
+                "type": "plain_text",
+                "text": "Yes, delete it"
+            },
+            "deny": {
+                "type": "plain_text",
+                "text": "Cancel"
+            }
+        }
+        
+        # Button template
+        new_button = {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":f"{date_fmt}: {date_status}",
+                        "emoji":True
+                    },
+                    "action_id":action_id,
+                    "value":value,
+                    "confirm":confirm_obj
+                }
+            ]
+        }
+        
+        # Append button to list
+        blocks.append(new_button)
+    
+    # Cancel button
+    new_button = {
+        "type":"actions",
+        "elements":[
+            {
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":"Cancel",
+                    "emoji":True
+                },
+                "action_id":"cancel_button_select",
+                "value":"cancel",
+                "style":"danger"
+            }
+        ]
+    }
+    blocks.append(new_button)
+    
+    # Publish view
+    try:
+        client.views_publish(
+            user_id=user_id,
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
+
+@app.action("delete_single_event_button")
+def delete_single_event_button(ack, client, body, logger, context):
+    # acknowledge action and log payload
+    ack()
+    logger.info(body)
+    user_id = context['user_id']
+    team_id = context['team_id']
+    # user_name = (get_user_names([user_id], logger, client))[0]
+
+    # gather and format selected date and time
+    selected_list = str.split(body['actions'][0]['value'],'|')
+    selected_date = selected_list[0]
+    selected_ao_id = selected_list[1]
+    selected_date_dt = datetime.strptime(selected_date, '%Y-%m-%d %H:%M:%S')
+    selected_date_db = datetime.date(selected_date_dt).strftime('%Y-%m-%d')
+    selected_time_db = datetime.time(selected_date_dt).strftime('%H%M')
+    
+
+    # attempt delete
+    try:
+        with my_connect(team_id) as mydb:
+            sql_delete = f"""
+            DELETE FROM {mydb.db}.schedule_master 
+            WHERE ao_channel_id = '{selected_ao_id}'
+                AND event_date = DATE('{selected_date_db}')
+                AND event_time = '{selected_time_db}';
+            """
+            mycursor = mydb.conn.cursor()
+            mycursor.execute(sql_delete)
+    except Exception as e:
+        logger.error(f"Error pulling AO list: {e}")
 
 @app.action("edit_ao_channel_select")
 def handle_edit_ao_channel_select(ack, body, client, logger, context):
@@ -1826,7 +2045,6 @@ def handle_taken_date_select_button(ack, client, body, logger, context):
     #   block 3: cancel button that takes the user back home
 
 
-# triggered when user hits cancel or some other button that takes them home
 @app.action("edit_single_event_button")
 def handle_edit_single_event_button(ack, client, body, logger, context):
     # acknowledge action and log payload
@@ -2177,7 +2395,9 @@ def cancel_button_select(ack, client, body, logger, context):
 
 
 SlackRequestHandler.clear_all_log_handlers()
-logging.basicConfig(format="%(asctime)s %(message)s", level=logging.DEBUG)
+logger = logging.getLogger()
+logger.setLevel(level=logging.DEBUG)
+# logging.basicConfig(format="%(asctime)s %(message)s", level=logging.DEBUG)
 
 
 def handler(event, context):
@@ -2188,7 +2408,6 @@ def handler(event, context):
     # print(f'Team ID: {team_id}')
     slack_handler = SlackRequestHandler(app=app)
     return slack_handler.handle(event, context)
-
 
 # # -- OAuth flow -- #
 # export SLACK_SIGNING_SECRET=***
