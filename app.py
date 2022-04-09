@@ -843,7 +843,7 @@ def handle_delete_single_event_ao_select(ack, body, client, logger, context):
             FROM {mydb.db}.schedule_master m
             INNER JOIN {mydb.db}.aos a
             ON m.ao_channel_id = a.channel_id
-            WHERE a.ao_channel_id = "{ao_channel_id}"
+            WHERE a.channel_id = "{ao_channel_id}"
                 AND m.event_date > DATE("{date.today()}")
                 AND m.event_date <= DATE("{date.today() + timedelta(weeks=12)}");
             '''
@@ -1502,7 +1502,7 @@ def handle_edit_event_ao_select(ack, body, client, logger, context):
             FROM {mydb.db}.schedule_master m
             INNER JOIN {mydb.db}.aos a
             ON m.ao_channel_id = a.channel_id
-            WHERE a.ao_channel_id = "{ao_channel_id}"
+            WHERE a.channel_id = "{ao_channel_id}"
                 AND m.event_date > DATE("{date.today()}")
                 AND m.event_date <= DATE("{date.today() + timedelta(weeks=12)}");
             '''
