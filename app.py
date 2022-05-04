@@ -334,6 +334,7 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
 
     button_list = [
         "Add / edit an AO",
+        # "Delete an AO",
         "Add an event",
         "Edit an event",
         "Delete a single event"
@@ -434,45 +435,45 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                     "type": "plain_text",
                     "text": "Location (township, park, etc.)"
                 }
-            },
-            {
-                "type": "input",
-                "block_id": "qsignups_enabled_select",
-                "element": {
-                    "type": "radio_buttons",
-                    "action_id": "qsignups_enabled_select",
-                    "options": [
-                        {
-                            "text": {
-                                "type": "plain_text",
-                                "text": "Yes",
-                                "emoji": True
-                            },
-                            "value": "Yes"
-                        },
-                        {
-                            "text": {
-                                "type": "plain_text",
-                                "text": "No",
-                                "emoji": True
-                            },
-                            "value": "No"
-                        },
-                    ],
-                    "initial_option": {
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Yes",
-                            "emoji": True
-                        },
-                        "value": "Yes"
-                    }
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Enable QSignups?"
-                }
-            }
+            }#,
+            # {
+            #     "type": "input",
+            #     "block_id": "qsignups_enabled_select",
+            #     "element": {
+            #         "type": "radio_buttons",
+            #         "action_id": "qsignups_enabled_select",
+            #         "options": [
+            #             {
+            #                 "text": {
+            #                     "type": "plain_text",
+            #                     "text": "Yes",
+            #                     "emoji": True
+            #                 },
+            #                 "value": "Yes"
+            #             },
+            #             {
+            #                 "text": {
+            #                     "type": "plain_text",
+            #                     "text": "No",
+            #                     "emoji": True
+            #                 },
+            #                 "value": "No"
+            #             },
+            #         ],
+            #         "initial_option": {
+            #             "text": {
+            #                 "type": "plain_text",
+            #                 "text": "Yes",
+            #                 "emoji": True
+            #             },
+            #             "value": "Yes"
+            #         }
+            #     },
+            #     "label": {
+            #         "type": "plain_text",
+            #         "text": "Enable QSignups?"
+            #     }
+            # }
         ]
 
         action_button = {
@@ -1065,10 +1066,10 @@ def handle_edit_ao_channel_select(ack, body, client, logger, context):
             ao_display_name = ""
         if ao_location_subtitle is None:
             ao_location_subtitle = ""
-        if (ao_display_name is not None) & (qsignups_enabled == 0):
-            qsignups_enabled = "No"
-        else:
-            qsignups_enabled = "Yes"
+        # if (ao_display_name is not None) & (qsignups_enabled == 0):
+        #     qsignups_enabled = "No"
+        # else:
+        #     qsignups_enabled = "Yes"
 
         # rebuild blocks
         blocks = [
@@ -1126,45 +1127,45 @@ def handle_edit_ao_channel_select(ack, body, client, logger, context):
                     "type": "plain_text",
                     "text": "Location (township, park, etc.)"
                 }
-            },
-            {
-                "type": "input",
-                "block_id": "qsignups_enabled_select",
-                "element": {
-                    "type": "radio_buttons",
-                    "action_id": "qsignups_enabled_select",
-                    "options": [
-                        {
-                            "text": {
-                                "type": "plain_text",
-                                "text": "Yes",
-                                "emoji": True
-                            },
-                            "value": "Yes"
-                        },
-                        {
-                            "text": {
-                                "type": "plain_text",
-                                "text": "No",
-                                "emoji": True
-                            },
-                            "value": "no"
-                        },
-                    ],
-                    "initial_option": {
-                        "text": {
-                            "type": "plain_text",
-                            "text": qsignups_enabled,
-                            "emoji": True
-                        },
-                        "value": qsignups_enabled
-                    }
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Enable QSignups?"
-                }
-            }
+            }#,
+            # {
+            #     "type": "input",
+            #     "block_id": "qsignups_enabled_select",
+            #     "element": {
+            #         "type": "radio_buttons",
+            #         "action_id": "qsignups_enabled_select",
+            #         "options": [
+            #             {
+            #                 "text": {
+            #                     "type": "plain_text",
+            #                     "text": "Yes",
+            #                     "emoji": True
+            #                 },
+            #                 "value": "Yes"
+            #             },
+            #             {
+            #                 "text": {
+            #                     "type": "plain_text",
+            #                     "text": "No",
+            #                     "emoji": True
+            #                 },
+            #                 "value": "no"
+            #             },
+            #         ],
+            #         "initial_option": {
+            #             "text": {
+            #                 "type": "plain_text",
+            #                 "text": qsignups_enabled,
+            #                 "emoji": True
+            #             },
+            #             "value": qsignups_enabled
+            #         }
+            #     },
+            #     "label": {
+            #         "type": "plain_text",
+            #         "text": "Enable QSignups?"
+            #     }
+            # }
         ]
 
         action_button = {
@@ -1653,12 +1654,12 @@ def handle_submit_add_ao_button(ack, body, client, logger, context):
     ao_channel_id = input_data['edit_ao_channel_select']['edit_ao_channel_select']['selected_channel']
     ao_display_name = input_data['ao_display_name']['ao_display_name']['value']
     ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']['value']
-    qsignups_enabled = input_data['qsignups_enabled_select']['qsignups_enabled_select']['selected_option']['value']
+    # qsignups_enabled = input_data['qsignups_enabled_select']['qsignups_enabled_select']['selected_option']['value']
 
-    if qsignups_enabled == 'Yes':
-        qsignups_enabled = 1
-    else:
-        qsignups_enabled = 0
+    # if qsignups_enabled == 'Yes':
+    #     qsignups_enabled = 1
+    # else:
+    #     qsignups_enabled = 0
 
     # replace double quotes with single quotes
     ao_display_name = ao_display_name.replace('"',"'")
@@ -1668,16 +1669,26 @@ def handle_submit_add_ao_button(ack, body, client, logger, context):
     success_status = False
     try:
         with my_connect(team_id) as mydb:
-            # TODO: fix this
-            sql_update = f"""
-            UPDATE {mydb.db}.qsignups_aos
-            SET ao_display_name = "{ao_display_name}",
-                ao_location_subtitle = "{ao_location_subtitle}",
-                team_id = "{team_id}"
-            WHERE ao_channel_id = "{ao_channel_id}"
-            ;
-            """
-            logger.info(f"Attempting SQL UPDATE: {sql_update}")
+            # find out if ao is already on table
+            sql_pull = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' and ao_channel_id = '{ao_channel_id}'"
+            mycursor = mydb.conn.cursor()
+            mycursor.execute(sql_pull)
+            result = mycursor.fetchall()
+            if len(result) == 0:
+                sql_update = f"""
+                INSERT INTO {mydb.db}.qsignups_aos (ao_channel_id, ao_display_name, ao_location_subtitle, team_id)
+                VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}", "{team_id}");
+                """
+            else:
+                # TODO: fix this
+                sql_update = f"""
+                UPDATE {mydb.db}.qsignups_aos
+                SET ao_display_name = "{ao_display_name}",
+                    ao_location_subtitle = "{ao_location_subtitle}"
+                WHERE ao_channel_id = "{ao_channel_id}"
+                ;
+                """
+            logger.info(f"Attempting SQL INSERT / UPDATE: {sql_update}")
             
             mycursor = mydb.conn.cursor()
             mycursor.execute(sql_update)
