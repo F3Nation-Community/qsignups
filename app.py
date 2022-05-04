@@ -873,7 +873,7 @@ def handle_delete_single_event_ao_select(ack, body, client, logger, context):
             INNER JOIN {mydb.db}.qsignups_aos a
             ON m.ao_channel_id = a.ao_channel_id
             WHERE a.team_id = "{team_id}"
-                AND a.channel_id = "{ao_channel_id}"
+                AND a.ao_channel_id = "{ao_channel_id}"
                 AND m.event_date > DATE("{date.today()}")
                 AND m.event_date <= DATE("{date.today() + timedelta(weeks=12)}");
             '''
