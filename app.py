@@ -147,8 +147,8 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id):
                     mycursor.execute(sql_insert)
                     mycursor.execute("COMMIT;")
 
-                    current_week_weinke_url = "None"
-                    next_week_weinke_url = "None"
+                    current_week_weinke_url = None
+                    next_week_weinke_url = None
                 else:
                     current_week_weinke_url = weinkes_list[0]
                     next_week_weinke_url = weinkes_list[1] 
@@ -207,7 +207,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id):
         }
     ]
     
-    if (os.environ['USE_WEINKES']) and (current_week_weinke_url != "None") and (next_week_weinke_url != "None"):
+    if (os.environ['USE_WEINKES']) and (current_week_weinke_url != None) and (next_week_weinke_url != None):
         weinke_blocks = [
             {
                 "type": "image",
