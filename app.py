@@ -101,7 +101,7 @@ def get_user_names(array_of_user_ids, logger, client):
     logger.info('names are {}'.format(names))
     return names
 
-def refresh_home_tab(client, user_id, logger, top_message, team_id):
+def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
 
     upcoming_qs_df = pd.DataFrame()
     try:
@@ -142,7 +142,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id):
                     # team_id not on region table, so we insert it
                     sql_insert = f"""
                     INSERT INTO {mydb.db}.qsignups_regions (team_id, bot_token)
-                    VALUES ("{team_id}", "123");
+                    VALUES ("{team_id}", "{context['bot_token']}");
                     """
                     mycursor.execute(sql_insert)
                     mycursor.execute("COMMIT;")
@@ -302,7 +302,7 @@ def update_home_tab(client, event, logger, context):
     team_id = context["team_id"]
     user_name = (get_user_names([user_id], logger, client))[0]
     top_message = f'Welcome to QSignups, {user_name}!' 
-    refresh_home_tab(client, user_id, logger, top_message, team_id)
+    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
 
 # triggers when user chooses to schedule a q
@@ -1028,7 +1028,7 @@ def delete_single_event_button(ack, client, body, context):
     else:
         top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
     
-    refresh_home_tab(client, user_id, logger, top_message, team_id)
+    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
 @app.action("edit_ao_channel_select")
 # TODO: fix this
@@ -1060,7 +1060,7 @@ def handle_edit_ao_channel_select(ack, body, client, logger, context):
         logger.error(f"Error pulling AO list: {e}")
 
     if results is None:
-        refresh_home_tab(client, user_id, logger, top_message="Selected channel not found - PAXMiner may not have added it to the aos table yet", team_id=team_id)
+        refresh_home_tab(client, user_id, logger, top_message="Selected channel not found - PAXMiner may not have added it to the aos table yet", team_id=team_id, context=context)
     else:
         if ao_display_name is None:
             ao_display_name = ""
@@ -1704,7 +1704,7 @@ def handle_submit_add_ao_button(ack, body, client, logger, context):
     else:
         top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
     
-    refresh_home_tab(client, user_id, logger, top_message, team_id)
+    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
 @app.action("submit_add_event_button")
 def handle_submit_add_event_button(ack, body, client, logger, context):
@@ -1774,7 +1774,7 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
         top_message = f"Thanks, I got it! I've added {round(schedule_create_length_days/365)} year's worth of {event_type}s to the schedule for {event_day_of_week}s at {event_time} at {ao_display_name}."
     else:
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
-    refresh_home_tab(client, user_id, logger, top_message, team_id)
+    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
 @app.action("submit_add_single_event_button")
 def handle_submit_add_single_event_button(ack, body, client, logger, context):
@@ -1825,7 +1825,7 @@ def handle_submit_add_single_event_button(ack, body, client, logger, context):
         top_message = f"Thanks, I got it! I've added your event to the schedule for {event_date} at {event_time} at {ao_display_name}."
     else:
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
-    refresh_home_tab(client, user_id, logger, top_message, team_id)
+    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
 
 # triggered when user makes an ao selection
@@ -2005,7 +2005,7 @@ def handle_date_select_button(ack, client, body, logger, context):
     else:
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
     
-    refresh_home_tab(client, user_id, logger, top_message, team_id)
+    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
 # triggered when user selects an already-taken slot
 @app.action("taken_date_select_button")
@@ -2387,7 +2387,7 @@ def handle_submit_edit_event_button(ack, client, body, logger, context):
     else:
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
     
-    refresh_home_tab(client, user_id, logger, top_message, team_id)
+    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
 # triggered when user hits cancel or some other button that takes them home
 @app.action("clear_slot_button")
@@ -2448,21 +2448,21 @@ def handle_clear_slot_button(ack, client, body, logger, context):
     else:
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
     
-    refresh_home_tab(client, user_id, logger, top_message, team_id)
+    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
 # triggered when user hits cancel or some other button that takes them home
 @app.action("cancel_button_select")
 def cancel_button_select(ack, client, body, logger, context):
     # acknowledge action and log payload
     ack()
-    print('Logging body and context:')
-    logging.info(body)
-    logging.info(context)
+    # print('Logging body and context:')
+    # logging.info(body)
+    # logging.info(context)
     user_id = context['user_id']
     team_id = context['team_id']
     user_name = (get_user_names([user_id], logger, client))[0]
     top_message = f"Welcome to QSignups, {user_name}!"
-    refresh_home_tab(client, user_id, logger, top_message, team_id)
+    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
 
 
