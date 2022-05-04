@@ -2432,7 +2432,8 @@ def handle_clear_slot_button(ack, client, body, logger, context):
 def cancel_button_select(ack, client, body, logger, context):
     # acknowledge action and log payload
     ack()
-    logger.info(body)
+    logging.info(body)
+    logging.info(context)
     user_id = context['user_id']
     team_id = context['team_id']
     user_name = (get_user_names([user_id], logger, client))[0]
