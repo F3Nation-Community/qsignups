@@ -2332,7 +2332,7 @@ def handle_submit_edit_event_button(ack, client, body, logger, context):
 
     # Generate top message and go back home
     if success_status:
-        top_message = f"Got it! I've edited this slot with the following values: {selected_date} @ {selected_time} @ {original_ao_name} - Q: {selected_q_name} - Special: {selected_special}."
+        top_message = f"Got it! I've edited this slot with the following values: {selected_date} @ {selected_time} @ {original_ao_name} - Q: {selected_q_name_fmt} - Special: {selected_special}."
         # TODO: if selected date was in weinke range (current or next week), update local weinke png
     else:
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
