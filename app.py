@@ -758,7 +758,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                     "text": row['ao_display_name'],
                     "emoji": True
                 },
-                "value": row['channel_id']
+                "value": row['ao_channel_id']
             }
             ao_options.append(new_option)
 
@@ -816,7 +816,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                     "text": row['ao_display_name'],
                     "emoji": True
                 },
-                "value": row['channel_id']
+                "value": row['ao_channel_id']
             }
             ao_options.append(new_option)
 
