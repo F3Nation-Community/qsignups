@@ -114,7 +114,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id):
             FROM {mydb.db}.qsignups_master m
             LEFT JOIN {mydb.db}.qsignups_aos a
             ON m.team_id = a.team_id
-                AND m.ao_channel_id = a.channel_id
+                AND m.ao_channel_id = a.ao_channel_id
             WHERE m.team_id = "{team_id}"
                 AND m.q_pax_id = "{user_id}"
                 AND m.event_date > DATE("{date.today()}")
@@ -123,7 +123,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id):
             """
             
             # list of AOs for dropdown
-            sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE qsignups_enabled = 1 AND team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
+            sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
 
             # weinke urls
             # sql_weinkes = f"SELECT current_week_weinke, next_week_weinke FROM paxminer.regions WHERE region_schema = '{mydb.db}';"
@@ -171,7 +171,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id):
                 "type": "plain_text",
                 "text": row['ao_display_name']
             },
-            "value": row['channel_id']
+            "value": row['ao_channel_id']
         }
         options.append(new_option)
     
@@ -517,7 +517,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
         # list of AOs for dropdown
         try:
             with my_connect(team_id) as mydb:
-                sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE qsignups_enabled = 1 AND team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
+                sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
                 ao_list = pd.read_sql(sql_ao_list, mydb.conn)
                 ao_list = ao_list['ao_display_name'].values.tolist()
         except Exception as e:
@@ -733,7 +733,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
         # list of AOs for dropdown
         try:
             with my_connect(team_id) as mydb:
-                sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE qsignups_enabled = 1 AND team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
+                sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
                 ao_df = pd.read_sql(sql_ao_list, mydb.conn)
         except Exception as e:
             logger.error(f"Error pulling AO list: {e}")
@@ -791,7 +791,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
         # list of AOs for dropdown
         try:
             with my_connect(team_id) as mydb:
-                sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE qsignups_enabled = 1 AND team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
+                sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
                 ao_df = pd.read_sql(sql_ao_list, mydb.conn)
         except Exception as e:
             logger.error(f"Error pulling AO list: {e}")
@@ -859,7 +859,7 @@ def handle_delete_single_event_ao_select(ack, body, client, logger, context):
             SELECT m.*, a.ao_display_name
             FROM {mydb.db}.qsignups_master m
             INNER JOIN {mydb.db}.qsignups_aos a
-            ON m.ao_channel_id = a.channel_id
+            ON m.ao_channel_id = a.ao_channel_id
             WHERE a.team_id = "{team_id}"
                 AND a.channel_id = "{ao_channel_id}"
                 AND m.event_date > DATE("{date.today()}")
@@ -1019,6 +1019,7 @@ def delete_single_event_button(ack, client, body, context):
     refresh_home_tab(client, user_id, logger, top_message, team_id)
 
 @app.action("edit_ao_channel_select")
+# TODO: fix this
 def handle_edit_ao_channel_select(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -1032,17 +1033,17 @@ def handle_edit_ao_channel_select(ack, body, client, logger, context):
     try:
         with my_connect(team_id) as mydb:
             sql_pull = f"""
-            SELECT ao_display_name, ao_location_subtitle, qsignups_enabled
+            SELECT ao_display_name, ao_location_subtitle
             FROM {mydb.db}.qsignups_aos
             WHERE team_id = '{team_id}'
-                AND channel_id = '{selected_channel}';
+                AND ao_channel_id = '{selected_channel}';
             """
             mycursor = mydb.conn.cursor()
             mycursor.execute(sql_pull)
             results = mycursor.fetchone()
             if results is None:
-                results = (None, None, None)
-            ao_display_name, ao_location_subtitle, qsignups_enabled = results
+                results = (None, None)
+            ao_display_name, ao_location_subtitle = results
     except Exception as e:
         logger.error(f"Error pulling AO list: {e}")
 
@@ -1216,7 +1217,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
     # list of AOs for dropdown
     try:
         with my_connect(team_id) as mydb:
-            sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE qsignups_enabled = 1 and team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
+            sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
             ao_list = pd.read_sql(sql_ao_list, mydb.conn)
             ao_list = ao_list['ao_display_name'].values.tolist()
     except Exception as e:
@@ -1535,9 +1536,9 @@ def handle_edit_event_ao_select(ack, body, client, logger, context):
             FROM {mydb.db}.qsignups_master m
             INNER JOIN {mydb.db}.qsignups_aos a
             ON m.team_id = a.team_id
-                AND m.ao_channel_id = a.channel_id
+                AND m.ao_channel_id = a.ao_channel_id
             WHERE a.team_id = "{team_id}"
-                AND a.channel_id = "{ao_channel_id}"
+                AND a.ao_channel_id = "{ao_channel_id}"
                 AND m.event_date > DATE("{date.today()}")
                 AND m.event_date <= DATE("{date.today() + timedelta(weeks=12)}");
             '''
@@ -1659,10 +1660,10 @@ def handle_submit_add_ao_button(ack, body, client, logger, context):
             # TODO: fix this
             sql_update = f"""
             UPDATE {mydb.db}.qsignups_aos
-            SET qsignups_enabled = {qsignups_enabled},
-                ao_display_name = "{ao_display_name}",
-                ao_location_subtitle = "{ao_location_subtitle}"
-            WHERE channel_id = "{ao_channel_id}"
+            SET ao_display_name = "{ao_display_name}",
+                ao_location_subtitle = "{ao_location_subtitle}",
+                team_id = "{team_id}"
+            WHERE ao_channel_id = "{ao_channel_id}"
             ;
             """
             logger.info(f"Attempting SQL UPDATE: {sql_update}")
@@ -1703,7 +1704,7 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
     try:
         with my_connect(team_id) as mydb:
             mycursor = mydb.conn.cursor()
-            mycursor.execute(f'SELECT channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id} AND ao_display_name = "{ao_display_name}";')
+            mycursor.execute(f'SELECT ao_channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id}" AND ao_display_name = "{ao_display_name}";')
             ao_channel_id = mycursor.fetchone()[0]
     except Exception as e:
            logger.error(f"Error pulling from db: {e}")
@@ -1772,7 +1773,7 @@ def handle_submit_add_single_event_button(ack, body, client, logger, context):
     try:
         with my_connect(team_id) as mydb:
             mycursor = mydb.conn.cursor()
-            mycursor.execute(f'SELECT channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id}" AND ao_display_name = "{ao_display_name}";')
+            mycursor.execute(f'SELECT ao_channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id}" AND ao_display_name = "{ao_display_name}";')
             ao_channel_id = mycursor.fetchone()[0]
     except Exception as e:
            logger.error(f"Error pulling from db: {e}")
@@ -1945,7 +1946,7 @@ def handle_date_select_button(ack, client, body, logger, context):
     
     try:
         with my_connect(team_id) as mydb:
-            sql_channel_pull = f'SELECT channel_id FROM {mydb.db}.qsignups_aos WHERE ao_display_name = "{ao_display_name}";'
+            sql_channel_pull = f'SELECT ao_channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id}" and ao_display_name = "{ao_display_name}";'
             ao_channel_id = pd.read_sql_query(sql_channel_pull, mydb.conn).iloc[0,0]
     except Exception as e:
         logger.error(f"Error pulling channel id: {e}")
@@ -2108,7 +2109,7 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
             FROM {mydb.db}.qsignups_master m
             INNER JOIN {mydb.db}.qsignups_aos a
             ON m.team_id = a.team_id
-                AND m.ao_channel_id = a.channel_id
+                AND m.ao_channel_id = a.ao_channel_id
             WHERE a.team_id = "{team_id}"
                 AND a.ao_display_name = "{ao_display_name}"
                 AND m.event_date = DATE("{selected_date_db}")
@@ -2388,7 +2389,7 @@ def handle_clear_slot_button(ack, client, body, logger, context):
     
     try:
         with my_connect(team_id) as mydb:
-            sql_channel_pull = f'SELECT channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id}" AND ao_display_name = "{ao_display_name}";'
+            sql_channel_pull = f'SELECT ao_channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id}" AND ao_display_name = "{ao_display_name}";'
             ao_channel_id = pd.read_sql_query(sql_channel_pull, mydb.conn).iloc[0,0]
     except Exception as e:
         logger.error(f"Error pulling channel id: {e}")
@@ -2432,6 +2433,7 @@ def handle_clear_slot_button(ack, client, body, logger, context):
 def cancel_button_select(ack, client, body, logger, context):
     # acknowledge action and log payload
     ack()
+    print('Logging body and context:')
     logging.info(body)
     logging.info(context)
     user_id = context['user_id']
