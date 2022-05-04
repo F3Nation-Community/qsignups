@@ -2287,13 +2287,16 @@ def handle_submit_edit_event_button(ack, client, body, logger, context):
     selected_time = results['edit_event_timepicker']['edit_event_timepicker']['selected_time'].replace(':','')
     selected_q_id_list = results['edit_event_q_select']['edit_event_q_select']['selected_users']
     if len(selected_q_id_list) == 0:
-        selected_q_id = 'NULL'
-        selected_q_name = 'NULL'
+        selected_q_id_fmt = 'NULL'
+        selected_q_name_fmt = 'NULL'
     else:
         selected_q_id = selected_q_id_list[0]
         user_info_dict = client.users_info(user=selected_q_id)
         selected_q_name = safeget(user_info_dict, 'user', 'profile', 'display_name') or safeget(
             user_info_dict, 'user', 'profile', 'real_name') or None
+        
+        selected_q_id_fmt = f'"{selected_q_id}"'
+        selected_q_name_fmt = f'"{selected_q_name}"'
     selected_special = results['edit_event_special_select']['edit_event_special_select']['selected_option']['text']['text']
     if selected_special == 'None':
         selected_special_fmt = 'NULL'
@@ -2307,8 +2310,8 @@ def handle_submit_edit_event_button(ack, client, body, logger, context):
             sql_update = \
             f'''
             UPDATE {mydb.db}.schedule_master 
-            SET q_pax_id = "{selected_q_id}"
-                , q_pax_name = "{selected_q_name}"
+            SET q_pax_id = {selected_q_id_fmt}
+                , q_pax_name = {selected_q_name_fmt}
                 , event_date = DATE("{selected_date}")
                 , event_time = "{selected_time}"
                 , event_special = {selected_special_fmt}
