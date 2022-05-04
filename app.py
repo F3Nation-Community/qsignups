@@ -188,7 +188,18 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id):
         {
             "type": "divider"
         },
-        {
+    ]
+    if len(options) == 0:
+        new_block = {
+            "type": "section",
+            "block_id": "ao_select_block",
+            "text": {
+                "type": "mrkdwn",
+                "text": "Please use the button below to add some AOs!"
+            }
+        }
+    else: 
+        new_block = {
             "type": "section",
             "block_id": "ao_select_block",
             "text": {
@@ -205,7 +216,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id):
             "options": options
             }
         }
-    ]
+    blocks.append(new_block)
     
     if (os.environ['USE_WEINKES']) and (current_week_weinke_url != None) and (next_week_weinke_url != None):
         weinke_blocks = [
