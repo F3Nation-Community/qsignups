@@ -2285,15 +2285,20 @@ def handle_submit_edit_event_button(ack, client, body, logger, context):
     results = body['view']['state']['values']
     selected_date = results['edit_event_datepicker']['edit_event_datepicker']['selected_date']
     selected_time = results['edit_event_timepicker']['edit_event_timepicker']['selected_time'].replace(':','')
-    selected_q_id = results['edit_event_q_select']['edit_event_q_select']['selected_users'][0]
+    selected_q_id_list = results['edit_event_q_select']['edit_event_q_select']['selected_users']
+    if len(selected_q_id_list) == 0:
+        selected_q_id = 'NULL'
+        selected_q_name = 'NULL'
+    else:
+        selected_q_id = selected_q_id_list[0]
+        user_info_dict = client.users_info(user=selected_q_id)
+        selected_q_name = safeget(user_info_dict, 'user', 'profile', 'display_name') or safeget(
+            user_info_dict, 'user', 'profile', 'real_name') or None
     selected_special = results['edit_event_special_select']['edit_event_special_select']['selected_option']['text']['text']
     if selected_special == 'None':
         selected_special_fmt = 'NULL'
     else:
         selected_special_fmt = f'"{selected_special}"'
-    user_info_dict = client.users_info(user=selected_q_id)
-    selected_q_name = safeget(user_info_dict, 'user', 'profile', 'display_name') or safeget(
-            user_info_dict, 'user', 'profile', 'real_name') or None
 
     # Attempt db update
     success_status = False
