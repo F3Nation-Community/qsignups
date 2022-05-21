@@ -241,6 +241,15 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
                 "alt_text": "Next week's schedule"
             },
             {
+                "type": "context",
+                "elements": [
+                    {
+                        "type": "mrkdwn",
+                        "text": "Weekly schedules updated hourly, and may not reflect the latest changes"
+                    }
+                ]
+            },
+            {
                 "type": "divider"
             }
         ]
