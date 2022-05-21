@@ -102,7 +102,7 @@ def get_user_names(array_of_user_ids, logger, client):
     return names
 
 def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
-
+    print(context)
     upcoming_qs_df = pd.DataFrame()
     try:
         with my_connect(team_id) as mydb:
