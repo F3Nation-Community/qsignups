@@ -15,6 +15,10 @@ Welcome to QSignups! This is a Slack App hosted in AWS Lambda to manage the Q si
 
 Further instructions coming for administrators.
 
+## AWS Architecture
+
+![Alt text](/screens/QSignups_Design_2022_06.PNG?raw=true "QSignups Design")
+
 ## Project Status
 
 I consider the app to be functional, but I also have a lot more planned! I welcome all beta testers and co-developers! Hit me up if you'd like to help out [@Moneyball (F3 St. Charles)] on the Nation space, or feel free to submit pull requests.
