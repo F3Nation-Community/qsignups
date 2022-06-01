@@ -6,11 +6,14 @@ Welcome to QSignups! This is a Slack App hosted in AWS Lambda to manage the Q si
 
 ## Installation Instructions
 
-1. Use this link to install (preferably from desktop)
-2. You may get an error message 
-3. Finally this
+1. Use [this link](https://slack.com/oauth/v2/authorize?client_id=3135457248691.3137775183364&scope=app_mentions:read,channels:history,chat:write,commands,im:history,users:read&user_scope=) to install (preferably from desktop)
+2. You will probably get an error message - just hit the "try again from here" link
 
 ## Usage Instructions
+
+@HelpDesk from F3 Alliance has put together [a great guide to share with your PAX](https://docs.google.com/document/d/1TE63l7dOKy635kbbyRi9TbbeCSx2SISkmBwZIXoqLzk/edit) on how to find and use QSignups.
+
+Further instructions coming for administrators.
 
 ## Project Status
 
@@ -33,11 +36,12 @@ If you find bugs, you can reach out on Slack or (even better) add the issue to m
 ### Feature Requests / Roadmap
 * More calendar management UI functionality:
   * Delete recurring events
-* Support for other event types (most notably QSource)
+  * Delete AOs and associated future events
+* Support for other event types (QSource, Ruck Beatdowns, etc)
 * Creation of monthly AO-specific weinkes, to be posted to AO channels at specified intervals and / or accessed via secondary menu
 * "Other" option for special event qualifiers with a free text input
   * Addition of programmable region-specific list for commonly used selections?
-* Posting of weekly Weinke / schedule to other mediums (email, etc.)
+* Posting of weekly Weinke / schedule to specified channel or other mediums (email, etc.)
 * Support for events at the same time on the same date at the same AO
 * Integration of slackblast
 * Q resources menu (links to Q101, exicon, helpful tips)
