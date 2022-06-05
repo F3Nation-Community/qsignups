@@ -415,7 +415,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                     "action_id": "add_ao_channel_select"
                 },
                 "label": {
-                    "type": "mrkdwn",
+                    "type": "plain_text",
                     "text": "Channel associated with AO",
                     "emoji": True
                 }
