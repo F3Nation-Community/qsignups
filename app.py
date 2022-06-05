@@ -491,6 +491,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
         blocks.append(cancel_button)
 
         try:
+            print(blocks)
             client.views_publish(
                 user_id=user_id,
                 view={
@@ -618,6 +619,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
         blocks.append(cancel_button)
 
         try:
+            print(blocks)
             client.views_publish(
                 user_id=user_id,
                 view={
