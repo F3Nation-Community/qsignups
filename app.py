@@ -343,7 +343,8 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
     ]
 
     button_list = [
-        "Add / edit an AO",
+        "Add an AO",
+        "Edit an AO",
         # "Delete an AO",
         "Add an event",
         "Edit an event",
@@ -390,8 +391,8 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
 
-    # 'Add / edit an AO' selected
-    if selected_action == 'Add / edit an AO':
+    # 'Add an AO' selected
+    if selected_action == 'Add an AO':
         logger.info('gather input data')
         blocks = [
             {
@@ -402,17 +403,22 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
 			    }
             },
             {
-                "type": "actions",
-                "block_id": "edit_ao_channel_select",
-                "elements": [{
+                "type": "input",
+                "block_id": "add_ao_channel_select",
+                "element": {
                     "type": "channels_select",
                     "placeholder": {
                         "type": "plain_text",
-                        "text": "Select the AO",
+                        "text": "Select a channel",
                         "emoji": True
                     },
-                    "action_id": "edit_ao_channel_select"
-                }]
+                    "action_id": "add_ao_channel_select"
+                },
+                "label": {
+                    "type": "mrkdwn",
+                    "text": "Channel associated with AO",
+                    "emoji": True
+                }
             },
             {
                 "type": "input",
@@ -426,7 +432,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                     }
                 },
                 "label": {
-                    "type": "plain_text",
+                    "type": "mrkdwn",
                     "text": "AO Title"
                 }
             },
@@ -435,6 +441,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                 "block_id": "ao_location_subtitle",
                 "element": {
                     "type": "plain_text_input",
+                    "multiline": True,
                     "action_id": "ao_location_subtitle",
                     "placeholder": {
                         "type": "plain_text",
@@ -442,48 +449,10 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                     }
                 },
                 "label": {
-                    "type": "plain_text",
+                    "type": "mrkdwn",
                     "text": "Location (township, park, etc.)"
                 }
-            }#,
-            # {
-            #     "type": "input",
-            #     "block_id": "qsignups_enabled_select",
-            #     "element": {
-            #         "type": "radio_buttons",
-            #         "action_id": "qsignups_enabled_select",
-            #         "options": [
-            #             {
-            #                 "text": {
-            #                     "type": "plain_text",
-            #                     "text": "Yes",
-            #                     "emoji": True
-            #                 },
-            #                 "value": "Yes"
-            #             },
-            #             {
-            #                 "text": {
-            #                     "type": "plain_text",
-            #                     "text": "No",
-            #                     "emoji": True
-            #                 },
-            #                 "value": "No"
-            #             },
-            #         ],
-            #         "initial_option": {
-            #             "text": {
-            #                 "type": "plain_text",
-            #                 "text": "Yes",
-            #                 "emoji": True
-            #             },
-            #             "value": "Yes"
-            #         }
-            #     },
-            #     "label": {
-            #         "type": "plain_text",
-            #         "text": "Enable QSignups?"
-            #     }
-            # }
+            }
         ]
 
         action_button = {
@@ -532,6 +501,134 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
         except Exception as e:
             logger.error(f"Error publishing home tab: {e}")
             print(e)
+    # 'Add an AO' selected
+    elif selected_action == 'Edit an AO':
+        logger.info('edit an ao')
+        # list of AOs for dropdown
+        try:
+            with my_connect(team_id) as mydb:
+                sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
+                ao_list = pd.read_sql(sql_ao_list, mydb.conn)
+                ao_list = ao_list['ao_display_name'].values.tolist()
+        except Exception as e:
+            logger.error(f"Error pulling AO list: {e}")
+
+        ao_options = []
+        for option in ao_list:
+            new_option = {
+                "text": {
+                    "type": "plain_text",
+                    "text": option,
+                    "emoji": True
+                },
+                "value": option
+            }
+            ao_options.append(new_option)
+
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*Select an AO channel:*"
+			    }
+            },
+            {
+                "type": "actions",
+                "block_id": "edit_ao_select",
+                "elements": [{
+                    "type": "static_select",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select an AO to edit",
+                        "emoji": True
+                    },
+                    "options": ao_options,
+                    "action_id": "edit_ao_select"
+                }]
+            },
+            {
+                "type": "input",
+                "block_id": "ao_display_name",
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "ao_display_name",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Weasel's Ridge"
+                    }
+                },
+                "label": {
+                    "type": "mrkdwn",
+                    "text": "AO Title"
+                }
+            },
+            {
+                "type": "input",
+                "block_id": "ao_location_subtitle",
+                "element": {
+                    "type": "plain_text_input",
+                    "multiline": True,
+                    "action_id": "ao_location_subtitle",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Oompa Loompa Kingdom"
+                    }
+                },
+                "label": {
+                    "type": "mrkdwn",
+                    "text": "Location (township, park, etc.)"
+                }
+            }
+        ]
+
+        action_button = {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":"Submit",
+                        "emoji":True
+                    },
+                    "action_id":"submit_edit_ao_button",
+                    "style":"primary",
+                    "value":"Submit"
+                }
+            ]    
+        }
+        cancel_button = {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":"Cancel",
+                        "emoji":True
+                    },
+                    "action_id":"cancel_button_select",
+                    "style":"danger",
+                    "value":"Cancel"
+                }
+            ]    
+        }
+        blocks.append(action_button)
+        blocks.append(cancel_button)
+
+        try:
+            client.views_publish(
+                user_id=user_id,
+                view={
+                    "type": "home",
+                    "blocks": blocks
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error publishing home tab: {e}")
+            print(e)
+
     # Add an event
     elif selected_action == 'Add an event':
         logging.info('add an event')
@@ -1040,190 +1137,152 @@ def delete_single_event_button(ack, client, body, context):
     
     refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
-@app.action("edit_ao_channel_select")
-# TODO: fix this
-def handle_edit_ao_channel_select(ack, body, client, logger, context):
+@app.action("edit_ao_select")
+def handle_edit_ao_select(ack, body, client, logger, context):
     ack()
     logger.info(body)
     print(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
 
-    selected_channel = body['view']['state']['values']['edit_ao_channel_select']['edit_ao_channel_select']['selected_channel']
+    # TODO: need selected channel
+    # selected_channel = body['view']['state']['values']['edit_ao_channel_select']['edit_ao_channel_select']['selected_channel']
 
     # pull existing info for this channel
-    try:
-        with my_connect(team_id) as mydb:
-            sql_pull = f"""
-            SELECT ao_display_name, ao_location_subtitle
-            FROM {mydb.db}.qsignups_aos
-            WHERE team_id = '{team_id}'
-                AND ao_channel_id = '{selected_channel}';
-            """
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_pull)
-            results = mycursor.fetchone()
-            if results is None:
-                results = (None, None)
-            ao_display_name, ao_location_subtitle = results
-    except Exception as e:
-        logger.error(f"Error pulling AO list: {e}")
+    # try:
+    #     with my_connect(team_id) as mydb:
+    #         sql_pull = f"""
+    #         SELECT ao_display_name, ao_location_subtitle
+    #         FROM {mydb.db}.qsignups_aos
+    #         WHERE team_id = '{team_id}'
+    #             AND ao_channel_id = '{selected_channel}';
+    #         """
+    #         mycursor = mydb.conn.cursor()
+    #         mycursor.execute(sql_pull)
+    #         results = mycursor.fetchone()
+    #         if results is None:
+    #             results = (None, None)
+    #         ao_display_name, ao_location_subtitle = results
+    # except Exception as e:
+    #     logger.error(f"Error pulling AO list: {e}")
 
-    if results is None:
-        refresh_home_tab(client, user_id, logger, top_message="Selected channel not found - PAXMiner may not have added it to the aos table yet", team_id=team_id, context=context)
-    else:
-        if ao_display_name is None:
-            ao_display_name = ""
-        if ao_location_subtitle is None:
-            ao_location_subtitle = ""
-        # if (ao_display_name is not None) & (qsignups_enabled == 0):
-        #     qsignups_enabled = "No"
-        # else:
-        #     qsignups_enabled = "Yes"
+    # if results is None:
+    #     refresh_home_tab(client, user_id, logger, top_message="Selected channel not found - PAXMiner may not have added it to the aos table yet", team_id=team_id, context=context)
+    # else:
+    #     if ao_display_name is None:
+    #         ao_display_name = ""
+    #     if ao_location_subtitle is None:
+    #         ao_location_subtitle = ""
+    #     # if (ao_display_name is not None) & (qsignups_enabled == 0):
+    #     #     qsignups_enabled = "No"
+    #     # else:
+    #     #     qsignups_enabled = "Yes"
 
-        # rebuild blocks
-        blocks = [
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "*Select an AO channel:*"
-                }
-            },
-            {
-                "type": "actions",
-                "block_id": "edit_ao_channel_select",
-                "elements": [{
-                    "type": "channels_select",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select the AO",
-                        "emoji": True
-                    },
-                    "action_id": "edit_ao_channel_select",
-                    "initial_channel": selected_channel
-                }]
-            },
-            {
-                "type": "input",
-                "block_id": "ao_display_name",
-                "element": {
-                    "type": "plain_text_input",
-                    "action_id": "ao_display_name",
-                    # "placeholder": {
-                    #     "type": "plain_text",
-                    #     "text": "Weasel's Ridge"
-                    # },
-                    "initial_value": ao_display_name
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "AO Title"
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "ao_location_subtitle",
-                "element": {
-                    "type": "plain_text_input",
-                    "action_id": "ao_location_subtitle",
-                    # "placeholder": {
-                    #     "type": "plain_text",
-                    #     "text": "Oompa Loompa Kingdom"
-                    # },
-                    "initial_value": ao_location_subtitle
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Location (township, park, etc.)"
-                }
-            }#,
-            # {
-            #     "type": "input",
-            #     "block_id": "qsignups_enabled_select",
-            #     "element": {
-            #         "type": "radio_buttons",
-            #         "action_id": "qsignups_enabled_select",
-            #         "options": [
-            #             {
-            #                 "text": {
-            #                     "type": "plain_text",
-            #                     "text": "Yes",
-            #                     "emoji": True
-            #                 },
-            #                 "value": "Yes"
-            #             },
-            #             {
-            #                 "text": {
-            #                     "type": "plain_text",
-            #                     "text": "No",
-            #                     "emoji": True
-            #                 },
-            #                 "value": "no"
-            #             },
-            #         ],
-            #         "initial_option": {
-            #             "text": {
-            #                 "type": "plain_text",
-            #                 "text": qsignups_enabled,
-            #                 "emoji": True
-            #             },
-            #             "value": qsignups_enabled
-            #         }
-            #     },
-            #     "label": {
-            #         "type": "plain_text",
-            #         "text": "Enable QSignups?"
-            #     }
-            # }
-        ]
+    #     # rebuild blocks
+    #     blocks = [
+    #         {
+    #             "type": "section",
+    #             "text": {
+    #                 "type": "mrkdwn",
+    #                 "text": "*Select an AO channel:*"
+    #             }
+    #         },
+    #         {
+    #             "type": "actions",
+    #             "block_id": "edit_ao_channel_select",
+    #             "elements": [{
+    #                 "type": "channels_select",
+    #                 "placeholder": {
+    #                     "type": "plain_text",
+    #                     "text": "Select the AO",
+    #                     "emoji": True
+    #                 },
+    #                 "action_id": "edit_ao_channel_select",
+    #                 "initial_channel": selected_channel
+    #             }]
+    #         },
+    #         {
+    #             "type": "input",
+    #             "block_id": "ao_display_name",
+    #             "element": {
+    #                 "type": "plain_text_input",
+    #                 "action_id": "ao_display_name",
+    #                 # "placeholder": {
+    #                 #     "type": "plain_text",
+    #                 #     "text": "Weasel's Ridge"
+    #                 # },
+    #                 "initial_value": ao_display_name
+    #             },
+    #             "label": {
+    #                 "type": "plain_text",
+    #                 "text": "AO Title"
+    #             }
+    #         },
+    #         {
+    #             "type": "input",
+    #             "block_id": "ao_location_subtitle",
+    #             "element": {
+    #                 "type": "plain_text_input",
+    #                 "action_id": "ao_location_subtitle",
+    #                 # "placeholder": {
+    #                 #     "type": "plain_text",
+    #                 #     "text": "Oompa Loompa Kingdom"
+    #                 # },
+    #                 "initial_value": ao_location_subtitle
+    #             },
+    #             "label": {
+    #                 "type": "plain_text",
+    #                 "text": "Location (township, park, etc.)"
+    #             }
+    #         }
+    #     ]
 
-        action_button = {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":"Submit",
-                        "emoji":True
-                    },
-                    "action_id":"submit_add_ao_button",
-                    "style":"primary",
-                    "value":"Submit"
-                }
-            ]    
-        }
-        cancel_button = {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":"Cancel",
-                        "emoji":True
-                    },
-                    "action_id":"cancel_button_select",
-                    "style":"danger",
-                    "value":"Cancel"
-                }
-            ]    
-        }
-        blocks.append(action_button)
-        blocks.append(cancel_button)
+    #     action_button = {
+    #         "type":"actions",
+    #         "elements":[
+    #             {
+    #                 "type":"button",
+    #                 "text":{
+    #                     "type":"plain_text",
+    #                     "text":"Submit",
+    #                     "emoji":True
+    #                 },
+    #                 "action_id":"submit_add_ao_button",
+    #                 "style":"primary",
+    #                 "value":"Submit"
+    #             }
+    #         ]    
+    #     }
+    #     cancel_button = {
+    #         "type":"actions",
+    #         "elements":[
+    #             {
+    #                 "type":"button",
+    #                 "text":{
+    #                     "type":"plain_text",
+    #                     "text":"Cancel",
+    #                     "emoji":True
+    #                 },
+    #                 "action_id":"cancel_button_select",
+    #                 "style":"danger",
+    #                 "value":"Cancel"
+    #             }
+    #         ]    
+    #     }
+    #     blocks.append(action_button)
+    #     blocks.append(cancel_button)
 
-        try:
-            client.views_publish(
-                user_id=user_id,
-                view={
-                    "type": "home",
-                    "blocks": blocks
-                }
-            )
-        except Exception as e:
-            logger.error(f"Error publishing home tab: {e}")
-            print(e)
+    #     try:
+    #         client.views_publish(
+    #             user_id=user_id,
+    #             view={
+    #                 "type": "home",
+    #                 "blocks": blocks
+    #             }
+    #         )
+    #     except Exception as e:
+    #         logger.error(f"Error publishing home tab: {e}")
+    #         print(e)
 
 @app.action("add_event_recurring_select_action")
 def handle_add_event_recurring_select_action(ack, body, client, logger, context):
@@ -1656,65 +1715,66 @@ def handle_edit_event_ao_select(ack, body, client, logger, context):
 def handle_submit_add_ao_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
+    print(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
 
-    # Gather inputs from form
-    input_data = body['view']['state']['values']
-    ao_channel_id = input_data['edit_ao_channel_select']['edit_ao_channel_select']['selected_channel']
-    ao_display_name = input_data['ao_display_name']['ao_display_name']['value']
-    ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']['value']
-    # qsignups_enabled = input_data['qsignups_enabled_select']['qsignups_enabled_select']['selected_option']['value']
+    # # Gather inputs from form
+    # input_data = body['view']['state']['values']
+    # ao_channel_id = input_data['edit_ao_channel_select']['edit_ao_channel_select']['selected_channel']
+    # ao_display_name = input_data['ao_display_name']['ao_display_name']['value']
+    # ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']['value']
+    # # qsignups_enabled = input_data['qsignups_enabled_select']['qsignups_enabled_select']['selected_option']['value']
 
-    # if qsignups_enabled == 'Yes':
-    #     qsignups_enabled = 1
-    # else:
-    #     qsignups_enabled = 0
+    # # if qsignups_enabled == 'Yes':
+    # #     qsignups_enabled = 1
+    # # else:
+    # #     qsignups_enabled = 0
 
-    # replace double quotes with single quotes
-    ao_display_name = ao_display_name.replace('"',"'")
-    ao_location_subtitle = ao_location_subtitle.replace('"',"'")
+    # # replace double quotes with single quotes
+    # ao_display_name = ao_display_name.replace('"',"'")
+    # ao_location_subtitle = ao_location_subtitle.replace('"',"'")
 
-    # Write to AO table
-    success_status = False
-    try:
-        with my_connect(team_id) as mydb:
-            # find out if ao is already on table
-            sql_pull = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' and ao_channel_id = '{ao_channel_id}'"
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_pull)
-            result = mycursor.fetchall()
-            if len(result) == 0:
-                sql_update = f"""
-                INSERT INTO {mydb.db}.qsignups_aos (ao_channel_id, ao_display_name, ao_location_subtitle, team_id)
-                VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}", "{team_id}");
-                """
-            else:
-                # TODO: fix this
-                sql_update = f"""
-                UPDATE {mydb.db}.qsignups_aos
-                SET ao_display_name = "{ao_display_name}",
-                    ao_location_subtitle = "{ao_location_subtitle}"
-                WHERE ao_channel_id = "{ao_channel_id}"
-                ;
-                """
-            logger.info(f"Attempting SQL INSERT / UPDATE: {sql_update}")
+    # # Write to AO table
+    # success_status = False
+    # try:
+    #     with my_connect(team_id) as mydb:
+    #         # find out if ao is already on table
+    #         sql_pull = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' and ao_channel_id = '{ao_channel_id}'"
+    #         mycursor = mydb.conn.cursor()
+    #         mycursor.execute(sql_pull)
+    #         result = mycursor.fetchall()
+    #         if len(result) == 0:
+    #             sql_update = f"""
+    #             INSERT INTO {mydb.db}.qsignups_aos (ao_channel_id, ao_display_name, ao_location_subtitle, team_id)
+    #             VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}", "{team_id}");
+    #             """
+    #         else:
+    #             # TODO: fix this
+    #             sql_update = f"""
+    #             UPDATE {mydb.db}.qsignups_aos
+    #             SET ao_display_name = "{ao_display_name}",
+    #                 ao_location_subtitle = "{ao_location_subtitle}"
+    #             WHERE ao_channel_id = "{ao_channel_id}"
+    #             ;
+    #             """
+    #         logger.info(f"Attempting SQL INSERT / UPDATE: {sql_update}")
             
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_update)
-            mycursor.execute("COMMIT;")
-            success_status = True
-    except Exception as e:
-        logger.error(f"Error writing to db: {e}")
-        error_msg = e
+    #         mycursor = mydb.conn.cursor()
+    #         mycursor.execute(sql_update)
+    #         mycursor.execute("COMMIT;")
+    #         success_status = True
+    # except Exception as e:
+    #     logger.error(f"Error writing to db: {e}")
+    #     error_msg = e
 
-    # Take the user back home
-    if success_status:
-        top_message = f"Success! Added {ao_display_name} to the list of AOs on the schedule"
-    else:
-        top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
+    # # Take the user back home
+    # if success_status:
+    #     top_message = f"Success! Added {ao_display_name} to the list of AOs on the schedule"
+    # else:
+    #     top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
     
-    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+    # refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
 @app.action("submit_add_event_button")
 def handle_submit_add_event_button(ack, body, client, logger, context):
