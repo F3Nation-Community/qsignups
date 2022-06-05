@@ -1165,7 +1165,7 @@ def handle_edit_ao_select(ack, body, client, logger, context):
                 results = (None, None)
             ao_display_name, ao_location_subtitle = results
 
-            sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
+            sql_ao_list = f"SELECT ao_display_name, ao_channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
             ao_list = pd.read_sql(sql_ao_list, mydb.conn)
     except Exception as e:
         logger.error(f"Error pulling AO list: {e}")
