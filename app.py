@@ -505,17 +505,17 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
     # 'Add an AO' selected
     elif selected_action == 'Edit an AO':
         logger.info('edit an ao')
+
         # list of AOs for dropdown
         try:
             with my_connect(team_id) as mydb:
-                sql_ao_list = f"SELECT ao_display_name, ao_channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-                ao_list = pd.read_sql(sql_ao_list, mydb.conn)
-                # ao_list = ao_list['ao_display_name'].values.tolist()
+                sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
+                ao_df = pd.read_sql(sql_ao_list, mydb.conn)
         except Exception as e:
             logger.error(f"Error pulling AO list: {e}")
 
         ao_options = []
-        for index, row in ao_list.iterrows():
+        for index, row in ao_df.iterrows():
             new_option = {
                 "text": {
                     "type": "plain_text",
@@ -526,100 +526,29 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
             }
             ao_options.append(new_option)
 
+        # Build blocks
         blocks = [
             {
                 "type": "section",
+                "block_id": "edit_ao_select",
                 "text": {
                     "type": "mrkdwn",
-                    "text": "*Select an AO channel:*"
-			    }
-            },
-            {
-                "type": "actions",
-                "block_id": "edit_ao_select",
-                "elements": [{
+                    "text": "Please select an AO to edit:"
+                },
+                "accessory": {
+                    "action_id": "edit_ao_select",
                     "type": "static_select",
                     "placeholder": {
                         "type": "plain_text",
-                        "text": "Select an AO to edit",
-                        "emoji": True
-                    },
-                    "options": ao_options,
-                    "action_id": "edit_ao_select"
-                }]
-            },
-            {
-                "type": "input",
-                "block_id": "ao_display_name",
-                "element": {
-                    "type": "plain_text_input",
-                    "action_id": "ao_display_name",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Weasel's Ridge"
-                    }
+                        "text": "Select an AO"
                 },
-                "label": {
-                    "type": "plain_text",
-                    "text": "AO Title"
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "ao_location_subtitle",
-                "element": {
-                    "type": "plain_text_input",
-                    "multiline": True,
-                    "action_id": "ao_location_subtitle",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Oompa Loompa Kingdom"
-                    }
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Location (township, park, etc.)"
+                "options": ao_options
                 }
             }
         ]
 
-        action_button = {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":"Submit",
-                        "emoji":True
-                    },
-                    "action_id":"submit_edit_ao_button",
-                    "style":"primary",
-                    "value":"Submit"
-                }
-            ]    
-        }
-        cancel_button = {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":"Cancel",
-                        "emoji":True
-                    },
-                    "action_id":"cancel_button_select",
-                    "style":"danger",
-                    "value":"Cancel"
-                }
-            ]    
-        }
-        blocks.append(action_button)
-        blocks.append(cancel_button)
-
+        # Publish view
         try:
-            print(blocks)
             client.views_publish(
                 user_id=user_id,
                 view={
@@ -630,6 +559,132 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
         except Exception as e:
             logger.error(f"Error publishing home tab: {e}")
             print(e)
+
+        # # list of AOs for dropdown
+        # try:
+        #     with my_connect(team_id) as mydb:
+        #         sql_ao_list = f"SELECT ao_display_name, ao_channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
+        #         ao_list = pd.read_sql(sql_ao_list, mydb.conn)
+        #         # ao_list = ao_list['ao_display_name'].values.tolist()
+        # except Exception as e:
+        #     logger.error(f"Error pulling AO list: {e}")
+
+        # ao_options = []
+        # for index, row in ao_list.iterrows():
+        #     new_option = {
+        #         "text": {
+        #             "type": "plain_text",
+        #             "text": row['ao_display_name'],
+        #             "emoji": True
+        #         },
+        #         "value": row['ao_channel_id']
+        #     }
+        #     ao_options.append(new_option)
+
+        # blocks = [
+        #     {
+        #         "type": "section",
+        #         "text": {
+        #             "type": "mrkdwn",
+        #             "text": "*Select an AO channel:*"
+		# 	    }
+        #     },
+        #     {
+        #         "type": "actions",
+        #         "block_id": "edit_ao_select",
+        #         "elements": [{
+        #             "type": "static_select",
+        #             "placeholder": {
+        #                 "type": "plain_text",
+        #                 "text": "Select an AO to edit",
+        #                 "emoji": True
+        #             },
+        #             "options": ao_options,
+        #             "action_id": "edit_ao_select"
+        #         }]
+        #     },
+        #     {
+        #         "type": "input",
+        #         "block_id": "ao_display_name",
+        #         "element": {
+        #             "type": "plain_text_input",
+        #             "action_id": "ao_display_name",
+        #             "placeholder": {
+        #                 "type": "plain_text",
+        #                 "text": "Weasel's Ridge"
+        #             }
+        #         },
+        #         "label": {
+        #             "type": "plain_text",
+        #             "text": "AO Title"
+        #         }
+        #     },
+        #     {
+        #         "type": "input",
+        #         "block_id": "ao_location_subtitle",
+        #         "element": {
+        #             "type": "plain_text_input",
+        #             "multiline": True,
+        #             "action_id": "ao_location_subtitle",
+        #             "placeholder": {
+        #                 "type": "plain_text",
+        #                 "text": "Oompa Loompa Kingdom"
+        #             }
+        #         },
+        #         "label": {
+        #             "type": "plain_text",
+        #             "text": "Location (township, park, etc.)"
+        #         }
+        #     }
+        # ]
+
+        # action_button = {
+        #     "type":"actions",
+        #     "elements":[
+        #         {
+        #             "type":"button",
+        #             "text":{
+        #                 "type":"plain_text",
+        #                 "text":"Submit",
+        #                 "emoji":True
+        #             },
+        #             "action_id":"submit_edit_ao_button",
+        #             "style":"primary",
+        #             "value":"Submit"
+        #         }
+        #     ]    
+        # }
+        # cancel_button = {
+        #     "type":"actions",
+        #     "elements":[
+        #         {
+        #             "type":"button",
+        #             "text":{
+        #                 "type":"plain_text",
+        #                 "text":"Cancel",
+        #                 "emoji":True
+        #             },
+        #             "action_id":"cancel_button_select",
+        #             "style":"danger",
+        #             "value":"Cancel"
+        #         }
+        #     ]    
+        # }
+        # blocks.append(action_button)
+        # blocks.append(cancel_button)
+
+        # try:
+        #     print(blocks)
+        #     client.views_publish(
+        #         user_id=user_id,
+        #         view={
+        #             "type": "home",
+        #             "blocks": blocks
+        #         }
+        #     )
+        # except Exception as e:
+        #     logger.error(f"Error publishing home tab: {e}")
+        #     print(e)
 
     # Add an event
     elif selected_action == 'Add an event':
@@ -1148,6 +1203,7 @@ def handle_edit_ao_select(ack, body, client, logger, context):
     team_id = context["team_id"]
 
     selected_channel = body['view']['state']['values']['edit_ao_select']['edit_ao_select']['selected_option']['value']
+    selected_channel_name = body['view']['state']['values']['edit_ao_select']['edit_ao_select']['selected_option']['text']['text']
 
     # pull existing info for this channel
     try:
@@ -1190,26 +1246,15 @@ def handle_edit_ao_select(ack, body, client, logger, context):
                 "value": row['ao_channel_id']
             }
             ao_options.append(new_option)
-            if row['ao_channel_id'] == selected_channel:
-                selected_option = new_option
 
         blocks = [
             {
                 "type": "section",
+                "block_id": "page_label",
                 "text": {
                     "type": "mrkdwn",
-                    "text": "*Select an AO channel:*"
+                    "text": f"*Edit AO:\n{selected_channel_name}\n{selected_channel}*"
 			    }
-            },
-            {
-                "type": "actions",
-                "block_id": "edit_ao_select",
-                "elements": [{
-                    "type": "static_select",
-                    "options": ao_options,
-                    "initial_option": selected_option,
-                    "action_id": "edit_ao_select"
-                }]
             },
             {
                 "type": "input",
@@ -1239,63 +1284,6 @@ def handle_edit_ao_select(ack, body, client, logger, context):
                 }
             }
         ]
-        # blocks = [
-        #     {
-        #         "type": "section",
-        #         "text": {
-        #             "type": "mrkdwn",
-        #             "text": "*Select an AO channel:*"
-        #         }
-        #     },
-        #     {
-        #         "type": "actions",
-        #         "block_id": "edit_ao_channel_select",
-        #         "elements": [{
-        #             "type": "channels_select",
-        #             "placeholder": {
-        #                 "type": "plain_text",
-        #                 "text": "Select the AO",
-        #                 "emoji": True
-        #             },
-        #             "action_id": "edit_ao_channel_select",
-        #             "initial_channel": selected_channel
-        #         }]
-        #     },
-        #     {
-        #         "type": "input",
-        #         "block_id": "ao_display_name",
-        #         "element": {
-        #             "type": "plain_text_input",
-        #             "action_id": "ao_display_name",
-        #             # "placeholder": {
-        #             #     "type": "plain_text",
-        #             #     "text": "Weasel's Ridge"
-        #             # },
-        #             "initial_value": ao_display_name
-        #         },
-        #         "label": {
-        #             "type": "plain_text",
-        #             "text": "AO Title"
-        #         }
-        #     },
-        #     {
-        #         "type": "input",
-        #         "block_id": "ao_location_subtitle",
-        #         "element": {
-        #             "type": "plain_text_input",
-        #             "action_id": "ao_location_subtitle",
-        #             # "placeholder": {
-        #             #     "type": "plain_text",
-        #             #     "text": "Oompa Loompa Kingdom"
-        #             # },
-        #             "initial_value": ao_location_subtitle
-        #         },
-        #         "label": {
-        #             "type": "plain_text",
-        #             "text": "Location (township, park, etc.)"
-        #         }
-        #     }
-        # ]
 
         action_button = {
             "type":"actions",
@@ -1779,8 +1767,10 @@ def submit_edit_ao_button(ack, body, client, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
 
+    page_label = body['view']['blocks'][0]
+    label, ao_display_name, ao_channel_id = page_label.replace('*','').split('\n')
+
     input_data = body['view']['state']['values']
-    ao_channel_id = input_data['edit_ao_select']['edit_ao_select']['selected_option']['value']
     ao_display_name = input_data['ao_display_name']['ao_display_name']['value']
     ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']['value']
 
