@@ -508,21 +508,21 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
         # list of AOs for dropdown
         try:
             with my_connect(team_id) as mydb:
-                sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
+                sql_ao_list = f"SELECT ao_display_name, ao_channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
                 ao_list = pd.read_sql(sql_ao_list, mydb.conn)
-                ao_list = ao_list['ao_display_name'].values.tolist()
+                # ao_list = ao_list['ao_display_name'].values.tolist()
         except Exception as e:
             logger.error(f"Error pulling AO list: {e}")
 
         ao_options = []
-        for option in ao_list:
+        for index, row in ao_list.iterrows():
             new_option = {
                 "text": {
                     "type": "plain_text",
-                    "text": option,
+                    "text": row['ao_display_name'],
                     "emoji": True
                 },
-                "value": option
+                "value": row['ao_channel_id']
             }
             ao_options.append(new_option)
 
@@ -1148,7 +1148,7 @@ def handle_edit_ao_select(ack, body, client, logger, context):
     team_id = context["team_id"]
 
     # TODO: need selected channel
-    # selected_channel = body['view']['state']['values']['edit_ao_channel_select']['edit_ao_channel_select']['selected_channel']
+    # selected_channel = body['view']['state']['values']['edit_ao_select']['edit_ao_select']['selected_option']['value']
 
     # pull existing info for this channel
     # try:
@@ -1721,62 +1721,66 @@ def handle_submit_add_ao_button(ack, body, client, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
 
-    # # Gather inputs from form
-    # input_data = body['view']['state']['values']
-    # ao_channel_id = input_data['edit_ao_channel_select']['edit_ao_channel_select']['selected_channel']
-    # ao_display_name = input_data['ao_display_name']['ao_display_name']['value']
-    # ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']['value']
-    # # qsignups_enabled = input_data['qsignups_enabled_select']['qsignups_enabled_select']['selected_option']['value']
+    # Gather inputs from form
+    input_data = body['view']['state']['values']
+    ao_channel_id = input_data['add_ao_channel_select']['add_ao_channel_select']['selected_channel']
+    ao_display_name = input_data['ao_display_name']['ao_display_name']['value']
+    ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']['value']
+    # qsignups_enabled = input_data['qsignups_enabled_select']['qsignups_enabled_select']['selected_option']['value']
 
-    # # if qsignups_enabled == 'Yes':
-    # #     qsignups_enabled = 1
-    # # else:
-    # #     qsignups_enabled = 0
-
-    # # replace double quotes with single quotes
-    # ao_display_name = ao_display_name.replace('"',"'")
-    # ao_location_subtitle = ao_location_subtitle.replace('"',"'")
-
-    # # Write to AO table
-    # success_status = False
-    # try:
-    #     with my_connect(team_id) as mydb:
-    #         # find out if ao is already on table
-    #         sql_pull = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' and ao_channel_id = '{ao_channel_id}'"
-    #         mycursor = mydb.conn.cursor()
-    #         mycursor.execute(sql_pull)
-    #         result = mycursor.fetchall()
-    #         if len(result) == 0:
-    #             sql_update = f"""
-    #             INSERT INTO {mydb.db}.qsignups_aos (ao_channel_id, ao_display_name, ao_location_subtitle, team_id)
-    #             VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}", "{team_id}");
-    #             """
-    #         else:
-    #             # TODO: fix this
-    #             sql_update = f"""
-    #             UPDATE {mydb.db}.qsignups_aos
-    #             SET ao_display_name = "{ao_display_name}",
-    #                 ao_location_subtitle = "{ao_location_subtitle}"
-    #             WHERE ao_channel_id = "{ao_channel_id}"
-    #             ;
-    #             """
-    #         logger.info(f"Attempting SQL INSERT / UPDATE: {sql_update}")
-            
-    #         mycursor = mydb.conn.cursor()
-    #         mycursor.execute(sql_update)
-    #         mycursor.execute("COMMIT;")
-    #         success_status = True
-    # except Exception as e:
-    #     logger.error(f"Error writing to db: {e}")
-    #     error_msg = e
-
-    # # Take the user back home
-    # if success_status:
-    #     top_message = f"Success! Added {ao_display_name} to the list of AOs on the schedule"
+    # if qsignups_enabled == 'Yes':
+    #     qsignups_enabled = 1
     # else:
-    #     top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
+    #     qsignups_enabled = 0
+
+    # replace double quotes with single quotes
+    ao_display_name = ao_display_name.replace('"',"'")
+    ao_location_subtitle = ao_location_subtitle.replace('"',"'")
+
+    # Write to AO table
+    success_status = False
+    try:
+        with my_connect(team_id) as mydb:
+            # find out if ao is already on table
+            sql_pull = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' and ao_channel_id = '{ao_channel_id}'"
+            mycursor = mydb.conn.cursor()
+            mycursor.execute(sql_pull)
+            result = mycursor.fetchall()
+            sql_update = f"""
+                INSERT INTO {mydb.db}.qsignups_aos (ao_channel_id, ao_display_name, ao_location_subtitle, team_id)
+                VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}", "{team_id}");
+                """
+            # if len(result) == 0:
+            #     sql_update = f"""
+            #     INSERT INTO {mydb.db}.qsignups_aos (ao_channel_id, ao_display_name, ao_location_subtitle, team_id)
+            #     VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}", "{team_id}");
+            #     """
+            # else:
+            #     # TODO: fix this
+            #     sql_update = f"""
+            #     UPDATE {mydb.db}.qsignups_aos
+            #     SET ao_display_name = "{ao_display_name}",
+            #         ao_location_subtitle = "{ao_location_subtitle}"
+            #     WHERE ao_channel_id = "{ao_channel_id}"
+            #     ;
+            #     """
+            logger.info(f"Attempting SQL INSERT / UPDATE: {sql_update}")
+            
+            mycursor = mydb.conn.cursor()
+            mycursor.execute(sql_update)
+            mycursor.execute("COMMIT;")
+            success_status = True
+    except Exception as e:
+        logger.error(f"Error writing to db: {e}")
+        error_msg = e
+
+    # Take the user back home
+    if success_status:
+        top_message = f"Success! Added {ao_display_name} to the list of AOs on the schedule"
+    else:
+        top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
     
-    # refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
 @app.action("submit_add_event_button")
 def handle_submit_add_event_button(ack, body, client, logger, context):
