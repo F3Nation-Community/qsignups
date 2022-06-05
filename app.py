@@ -432,7 +432,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                     }
                 },
                 "label": {
-                    "type": "mrkdwn",
+                    "type": "plain_text",
                     "text": "AO Title"
                 }
             },
@@ -449,7 +449,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                     }
                 },
                 "label": {
-                    "type": "mrkdwn",
+                    "type": "plain_text",
                     "text": "Location (township, park, etc.)"
                 }
             }
@@ -560,7 +560,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                     }
                 },
                 "label": {
-                    "type": "mrkdwn",
+                    "type": "plain_text",
                     "text": "AO Title"
                 }
             },
@@ -577,7 +577,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                     }
                 },
                 "label": {
-                    "type": "mrkdwn",
+                    "type": "plain_text",
                     "text": "Location (township, park, etc.)"
                 }
             }
