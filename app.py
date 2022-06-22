@@ -129,7 +129,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
             # weinke urls
             # sql_weinkes = f"SELECT current_week_weinke, next_week_weinke FROM paxminer.regions WHERE region_schema = '{mydb.db}';"
             # TODO: fix this
-            sql_weinkes = f"SELECT current_week_weinke, next_week_weinke FROM {mydb.db}.qsignups_regions WHERE team_id = '{team_id}';"
+            sql_weinkes = f"SELECT current_week_weinke, next_week_weinke, bot_token FROM {mydb.db}.qsignups_regions WHERE team_id = '{team_id}';"
             
             # Make pulls
             upcoming_qs_df = pd.read_sql(sql_upcoming_qs, mydb.conn, parse_dates=['event_date'])
@@ -153,6 +153,11 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
                 else:
                     current_week_weinke_url = weinkes_list[0]
                     next_week_weinke_url = weinkes_list[1] 
+            
+                if weinkes_list[2] != context['bot_token']:
+                    sql_update = f"UPDATE {mydb.db}.qsignups_regions SET bot_token = '{context['bot_token']}' WHERE team_id = '{team_id}';"
+                    mycursor.execute(sql_update)
+                    mycursor.execute("COMMIT;")
 
     except Exception as e:
         logger.error(f"Error pulling user db info: {e}")
@@ -1253,7 +1258,7 @@ def handle_edit_ao_select(ack, body, client, logger, context):
                 "block_id": "page_label",
                 "text": {
                     "type": "mrkdwn",
-                    "text": f"*Edit AO:\n{selected_channel_name}\n{selected_channel}*"
+                    "text": f"*Edit AO:*\n*{selected_channel_name}*\n{selected_channel}"
 			    }
             },
             {
@@ -1262,6 +1267,10 @@ def handle_edit_ao_select(ack, body, client, logger, context):
                 "element": {
                     "type": "plain_text_input",
                     "action_id": "ao_display_name",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Weasel's Ridge"
+                    },
                     "initial_value": ao_display_name
                 },
                 "label": {
@@ -1276,6 +1285,10 @@ def handle_edit_ao_select(ack, body, client, logger, context):
                     "type": "plain_text_input",
                     "multiline": True,
                     "action_id": "ao_location_subtitle",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Oompa Loompa Kingdom"
+                    },
                     "initial_value": ao_location_subtitle
                 },
                 "label": {
@@ -1767,7 +1780,7 @@ def submit_edit_ao_button(ack, body, client, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
 
-    page_label = body['view']['blocks'][0]
+    page_label = body['view']['blocks'][0]['text']['text']
     label, ao_display_name, ao_channel_id = page_label.replace('*','').split('\n')
 
     input_data = body['view']['state']['values']
