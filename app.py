@@ -804,6 +804,19 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                 "value": option
             }
             day_options.append(new_option)
+        
+        event_type_list = ['Beatdown', 'QSource', 'Custom']
+        event_type_options = []
+        for option in event_type_list:
+            new_option = {
+                "text": {
+                    "type": "plain_text",
+                    "text": option,
+                    "emoji": True
+                },
+                "value": option
+            }
+            event_type_options.append(new_option)
 
         
         blocks = [
@@ -849,6 +862,44 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                         }
                     }
                 ]
+            },
+            {
+                "type": "input",
+                "block_id": "event_type_select",
+                "element": {
+                    "type": "static_select",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select an event type",
+                        "emoji": True   
+                    },
+                    "options": event_type_options,
+                    "action_id": "event_type_select_action",
+                    "initial_option": event_type_options[0]
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Event Type",
+                    "emoji": True
+                }                  
+            },
+            {
+                "type": "input",
+                "block_id": "event_type_custom",
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "event_type_custom",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Custom Event Name"
+                    },
+                    "initial_value": "CustomEventType"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "If Custom selected, please specify"
+                },
+                "optional": True
             },
             {
                 "type": "input",
@@ -1466,7 +1517,19 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
         }
         day_options.append(new_option)
 
-    
+    event_type_list = ['Beatdown', 'QSource', 'Custom']
+    event_type_options = []
+    for option in event_type_list:
+        new_option = {
+            "text": {
+                "type": "plain_text",
+                "text": option,
+                "emoji": True
+            },
+            "value": option
+        }
+        event_type_options.append(new_option)
+
     blocks = [
         {
             "type": "section",
@@ -1503,6 +1566,44 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                     "initial_option": recurring_select_option
                 }
             ]
+        },
+        {
+            "type": "input",
+            "block_id": "event_type_select",
+            "element": {
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select an event type",
+                    "emoji": True   
+                },
+                "options": event_type_options,
+                "action_id": "event_type_select_action",
+                "initial_option": event_type_options[0]
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Event Type",
+                "emoji": True
+            }                  
+        },
+        {
+            "type": "input",
+            "block_id": "event_type_custom",
+            "element": {
+                "type": "plain_text_input",
+                "action_id": "event_type_custom",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Custom Event Name"
+                },
+                "initial_value": "CustomEventType"
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "If Custom selected, please specify"
+            },
+            "optional": True
         },
         {
             "type": "input",
@@ -1967,8 +2068,14 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
     event_day_of_week = input_data['event_day_of_week_select']['event_day_of_week_select_action']['selected_option']['value']
     starting_date = input_data['add_event_datepicker']['add_event_datepicker']['selected_date']
     event_time = input_data['event_time_select']['event_time_select']['selected_time'].replace(':','')
-    event_type = 'Beatdown' # eventually this will be dynamic
-    event_recurring = True # this would be false for one-time events
+    
+    # Logic for custom events
+    if input_data['event_type_select']['event_type_select']['selected_option']['value'] == 'Custom':
+        event_type = input_data['event_type_custom']['event_type_custom']['value']
+    else:
+        event_type = input_data['event_type_select']['event_type_select']['selected_option']['value']
+
+    event_recurring = True
 
     # Grab channel id
     try:
@@ -2036,7 +2143,13 @@ def handle_submit_add_single_event_button(ack, body, client, logger, context):
     ao_display_name = input_data['ao_display_name_select']['ao_display_name_select_action']['selected_option']['value']
     event_date = input_data['add_event_datepicker']['add_event_datepicker']['selected_date']
     event_time = input_data['event_time_select']['event_time_select']['selected_time'].replace(':','')
-    event_type = 'Beatdown' # eventually this will be dynamic
+    
+    # Logic for custom events
+    if input_data['event_type_select']['event_type_select']['selected_option']['value'] == 'Custom':
+        event_type = input_data['event_type_custom']['event_type_custom']['value']
+    else:
+        event_type = input_data['event_type_select']['event_type_select']['selected_option']['value']
+        
     event_recurring = False
 
     # Grab channel id
