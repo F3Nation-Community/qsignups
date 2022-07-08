@@ -149,7 +149,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
             # Make pulls
             upcoming_qs_df = pd.read_sql(sql_upcoming_qs, mydb.conn, parse_dates=['event_date'])
             ao_list = pd.read_sql(sql_ao_list, mydb.conn)
-            upcoming_events_df = pd.read_sql(sql_upcoming_events, conn, parse_dates=['event_date'])
+            upcoming_events_df = pd.read_sql(sql_upcoming_events, mydb.conn, parse_dates=['event_date'])
             
             if os.environ['USE_WEINKES']:
                 mycursor.execute(sql_weinkes)
@@ -189,7 +189,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
                     q_name = '@' + row['q_pax_name']
 
                 location = row['ao_location_subtitle'].split('\n')[0]
-                sMsg += f"\n{row['ao_display_name']} - {q_name}"
+                sMsg += f"\n{row['ao_display_name']} {row['event_time']} - {q_name}"
 
     except Exception as e:
         logger.error(f"Error pulling user db info: {e}")
