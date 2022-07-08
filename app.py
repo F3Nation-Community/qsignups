@@ -1,6 +1,7 @@
 import logging
 import json
 import os
+from time import strftime, strptime
 import mysql.connector
 from contextlib import ContextDecorator
 from datetime import datetime, timezone, timedelta, date
@@ -123,6 +124,20 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
             LIMIT 5; 
             """
             
+            # list of all upcoming events for the region
+            sql_upcoming_events = f"""
+            SELECT m.*, a.ao_display_name, a.ao_location_subtitle
+            FROM qsignups_master m
+            LEFT JOIN qsignups_aos a
+            ON m.team_id = a.team_id
+                AND m.ao_channel_id = a.ao_channel_id
+            WHERE m.team_id = "{team_id}"
+                AND m.event_date > DATE("{date.today()}")
+                AND m.event_date <= DATE("{date.today()+timedelta(days=7)}")
+            ORDER BY m.event_date, m.event_time
+            ; 
+            """
+            
             # list of AOs for dropdown
             sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
 
@@ -134,6 +149,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
             # Make pulls
             upcoming_qs_df = pd.read_sql(sql_upcoming_qs, mydb.conn, parse_dates=['event_date'])
             ao_list = pd.read_sql(sql_ao_list, mydb.conn)
+            upcoming_events_df = pd.read_sql(sql_upcoming_events, conn, parse_dates=['event_date'])
             
             if os.environ['USE_WEINKES']:
                 mycursor.execute(sql_weinkes)
@@ -158,6 +174,22 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
                     sql_update = f"UPDATE {mydb.db}.qsignups_regions SET bot_token = '{context['bot_token']}' WHERE team_id = '{team_id}';"
                     mycursor.execute(sql_update)
                     mycursor.execute("COMMIT;")
+
+            # Create upcoming schedule message
+            sMsg = '*Upcoming Schedule:*'
+            iterate_date = ''
+            for index, row in upcoming_events_df.iterrows():
+                if row['event_date'] != iterate_date:
+                    sMsg += f"\n\n*{row['event_date'].strftime('%A %m/%d/%y')}*"
+                    iterate_date = row['event_date']
+                
+                if row['q_pax_name'] is None:
+                    q_name = '*OPEN!*'
+                else:
+                    q_name = '@' + row['q_pax_name']
+
+                location = row['ao_location_subtitle'].split('\n')[0]
+                sMsg += f"\n{row['ao_display_name']} - {q_name}"
 
     except Exception as e:
         logger.error(f"Error pulling user db info: {e}")
@@ -262,6 +294,33 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
 
         for block in weinke_blocks:
             blocks.append(block)
+    
+    # add upcoming schedule text block
+    upcoming_schedule_block = {
+        "type": "section",
+        "text": {
+            "type": "mrkdwn",
+            "text": sMsg
+        }
+    }
+    blocks.append(upcoming_schedule_block)
+
+    # add page refresh button
+    refresh_button = {
+        "type":"actions",
+        "elements":[
+            {
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":"Refresh Schedule",
+                    "emoji":True
+                },
+                "action_id":"refresh_home"
+            }
+        ]
+    }
+    blocks.append(refresh_button)
 
     # Optionally add admin button
     user_info_dict = client.users_info(
@@ -298,6 +357,15 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
         logger.error(f"Error publishing home tab: {e}")
         print(e)
 
+@app.action("refresh_home")
+def handle_refresh_home_button(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    user_name = (get_user_names([user_id], logger, client))[0]
+    top_message = f'Welcome to QSignups, {user_name}!' 
+    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
 @app.event("app_mention")
 def handle_app_mentions(body, say, logger):
