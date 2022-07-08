@@ -837,7 +837,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                             {
                                 "text": {
                                     "type": "plain_text",
-                                    "text": "Recurring event / beatdown",
+                                    "text": "Recurring event",
                                     "emoji": True
                                 },
                                 "value": "recurring"
@@ -845,7 +845,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                             {
                                 "text": {
                                     "type": "plain_text",
-                                    "text": "Single event / beatdown",
+                                    "text": "Single event",
                                     "emoji": True
                                 },
                                 "value": "single"
@@ -855,7 +855,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                         "initial_option": {
                             "text": {
                                 "type": "plain_text",
-                                "text": "Recurring event / beatdown",
+                                "text": "Recurring event",
                                 "emoji": True
                             },
                             "value": "recurring"
@@ -954,7 +954,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                 },
                 "label": {
                     "type": "plain_text",
-                    "text": "Beatdown Start",
+                    "text": "Event Start",
                     "emoji": True
                 }
 		    },
@@ -1548,7 +1548,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                         {
                             "text": {
                                 "type": "plain_text",
-                                "text": "Recurring event / beatdown",
+                                "text": "Recurring event",
                                 "emoji": True
                             },
                             "value": "recurring"
@@ -1556,7 +1556,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                         {
                             "text": {
                                 "type": "plain_text",
-                                "text": "Single event / beatdown",
+                                "text": "Single event",
                                 "emoji": True
                             },
                             "value": "single"
@@ -1662,7 +1662,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                 },
                 "label": {
                     "type": "plain_text",
-                    "text": "Beatdown Start",
+                    "text": "Event Start",
                     "emoji": True
                 }
             },
@@ -2145,11 +2145,11 @@ def handle_submit_add_single_event_button(ack, body, client, logger, context):
     event_time = input_data['event_time_select']['event_time_select']['selected_time'].replace(':','')
     
     # Logic for custom events
-    if input_data['event_type_select']['event_type_select']['selected_option']['value'] == 'Custom':
+    if input_data['event_type_select']['event_type_select_action']['selected_option']['value'] == 'Custom':
         event_type = input_data['event_type_custom']['event_type_custom']['value']
     else:
-        event_type = input_data['event_type_select']['event_type_select']['selected_option']['value']
-        
+        event_type = input_data['event_type_select']['event_type_select_action']['selected_option']['value']
+
     event_recurring = False
 
     # Grab channel id
