@@ -2244,34 +2244,61 @@ def ao_select_slot(ack, client, body, logger, context):
             date_style = "primary"
             action_id = "date_select_button"
             value = str(row['event_date_time'])
+            button_text = "Take slot"
         # Otherwise default (grey) button, listing Qs name
         else:
             date_status = row['q_pax_name']
             date_style = "default"
             action_id = "taken_date_select_button" 
             value = str(row['event_date_time']) + '|' + row['q_pax_name']
+            button_text = "Edit Slot"
         
         # Button template
-        new_button = {
-            "type":"actions",
-            "elements":[
+        new_section = {
+            "type":"section",
+            "text":{
+                "type":"mrkdwn",
+                "text":f"{row['event_type']} {date_fmt}: {date_status}"
+            },
+            "accessory":{
                 {
                     "type":"button",
                     "text":{
                         "type":"plain_text",
-                        "text":f"{row['event_type']} {date_fmt}: {date_status}",
+                        "text":button_text,
                         "emoji":True
                     },
                     "action_id":action_id,
                     "value":value
                 }
-            ]
+            }
         }
         if date_style == "primary":
-            new_button['elements'][0]["style"] = "primary"
-        
+            new_section["accessory"]["style"] = "primary"
+
         # Append button to list
-        blocks.append(new_button)
+        blocks.append(new_section)
+
+        # new_button = {
+        #     "type":"actions",
+        #     "elements":[
+        #         {
+        #             "type":"button",
+        #             "text":{
+        #                 "type":"plain_text",
+        #                 "text":f"{row['event_type']} {date_fmt}: {date_status}",
+        #                 "emoji":True
+        #             },
+        #             "action_id":action_id,
+        #             "value":value
+        #         }
+        #     ]
+        # }
+        # if date_style == "primary":
+        #     new_button['elements'][0]["style"] = "primary"
+        
+        # # Append button to list
+        # blocks.append(new_button)
     
     # Cancel button
     new_button = {
@@ -2311,6 +2338,7 @@ def handle_date_select_button(ack, client, body, logger, context):
     # acknowledge action and log payload
     ack()
     logger.info(body)
+    logging.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
     user_name = (get_user_names([user_id], logger, client))[0]
