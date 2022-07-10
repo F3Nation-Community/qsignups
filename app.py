@@ -1873,7 +1873,6 @@ def handle_edit_event_ao_select(ack, body, client, logger, context):
     }]
 
     # Show next x number of events
-    # TODO: future add: make a "show more" button?
     results_df['event_date_time'] = pd.to_datetime(results_df['event_date'].dt.strftime('%Y-%m-%d') + ' ' + results_df['event_time'], infer_datetime_format=True)
     for index, row in results_df.iterrows():
         # Pretty format date
@@ -1897,7 +1896,7 @@ def handle_edit_event_ao_select(ack, body, client, logger, context):
                     "type":"button",
                     "text":{
                         "type":"plain_text",
-                        "text":f"{date_fmt}: {date_status}",
+                        "text":f"{row['event_type']} {date_fmt}: {date_status}",
                         "emoji":True
                     },
                     "action_id":action_id,
@@ -2070,10 +2069,10 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
     event_time = input_data['event_time_select']['event_time_select']['selected_time'].replace(':','')
     
     # Logic for custom events
-    if input_data['event_type_select']['event_type_select']['selected_option']['value'] == 'Custom':
+    if input_data['event_type_select']['event_type_select_action']['selected_option']['value'] == 'Custom':
         event_type = input_data['event_type_custom']['event_type_custom']['value']
     else:
-        event_type = input_data['event_type_select']['event_type_select']['selected_option']['value']
+        event_type = input_data['event_type_select']['event_type_select_action']['selected_option']['value']
 
     event_recurring = True
 
@@ -2234,7 +2233,6 @@ def ao_select_slot(ack, client, body, logger, context):
     }]
 
     # Show next x number of events
-    # TODO: future add: make a "show more" button?
     results_df['event_date_time'] = pd.to_datetime(results_df['event_date'].dt.strftime('%Y-%m-%d') + ' ' + results_df['event_time'], infer_datetime_format=True)
     for index, row in results_df.iterrows():
         # Pretty format date
@@ -2253,7 +2251,6 @@ def ao_select_slot(ack, client, body, logger, context):
             action_id = "taken_date_select_button" 
             value = str(row['event_date_time']) + '|' + row['q_pax_name']
         
-        # TODO: add functionality to take self off schedule by clicking your already taken slot?
         # Button template
         new_button = {
             "type":"actions",
@@ -2262,7 +2259,7 @@ def ao_select_slot(ack, client, body, logger, context):
                     "type":"button",
                     "text":{
                         "type":"plain_text",
-                        "text":f"{date_fmt}: {date_status}",
+                        "text":f"{row['event_type']} {date_fmt}: {date_status}",
                         "emoji":True
                     },
                     "action_id":action_id,
