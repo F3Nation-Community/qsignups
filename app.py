@@ -2261,16 +2261,14 @@ def ao_select_slot(ack, client, body, logger, context):
                 "text":f"{row['event_type']} {date_fmt}: {date_status}"
             },
             "accessory":{
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":button_text,
-                        "emoji":True
-                    },
-                    "action_id":action_id,
-                    "value":value
-                }
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":button_text,
+                    "emoji":True
+                },
+                "action_id":action_id,
+                "value":value
             }
         }
         if date_style == "primary":
