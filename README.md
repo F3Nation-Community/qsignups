@@ -37,7 +37,7 @@ If you find bugs, you can reach out on Slack or (even better) add the issue to m
 * Reminder messages to users about upcoming Qs
 * Conditional formatting of Weinke to highlight open slots, VQs, etc.
 
-### Feature Requests / Roadmap
+### Feature Requests / Roadmap (link: [Issues](https://github.com/evanpetzoldt/qsignups-lambda/issues))
 * More calendar management UI functionality:
   * Delete recurring events
   * Delete AOs and associated future events
@@ -55,4 +55,4 @@ If you find bugs, you can reach out on Slack or (even better) add the issue to m
 * Upcoming Qs on home screen - add an Edit button to each
 * Site Q - have a way to store these in the table (even support for multiple Site Qs per AO?)
 
-Any other ideas you have would be greatly appreciated! For organization purposes, I plan to use github's Issues to track them. Feel free to add an Issue with the tag 'enhancement'.
+Any other ideas you have would be greatly appreciated! Feel free to add an Issue with the tag 'enhancement'.
