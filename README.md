@@ -41,14 +41,18 @@ If you find bugs, you can reach out on Slack or (even better) add the issue to m
 * More calendar management UI functionality:
   * Delete recurring events
   * Delete AOs and associated future events
-* Support for other event types (QSource, Ruck Beatdowns, etc)
+* Support for other event types (QSource, Ruck Beatdowns, etc) - In progress
+* Switching to weinke images being posted to specific channel (created by QSignups), just a text-based schedule in QSignups
 * Creation of monthly AO-specific weinkes, to be posted to AO channels at specified intervals and / or accessed via secondary menu
 * "Other" option for special event qualifiers with a free text input
   * Addition of programmable region-specific list for commonly used selections?
 * Posting of weekly Weinke / schedule to specified channel or other mediums (email, etc.)
 * Support for events at the same time on the same date at the same AO
 * Integration of slackblast
+* Integration of welcomebot
 * Q resources menu (links to Q101, exicon, helpful tips)
   * Also beatdown wheel of fun 
+* Upcoming Qs on home screen - add an Edit button to each
+* Site Q - have a way to store these in the table (even support for multiple Site Qs per AO?)
 
 Any other ideas you have would be greatly appreciated! For organization purposes, I plan to use github's Issues to track them. Feel free to add an Issue with the tag 'enhancement'.
