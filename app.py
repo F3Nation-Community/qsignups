@@ -2148,7 +2148,7 @@ def submit_edit_ao_button(ack, body, client, logger, context):
     refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
 @app.action("submit_general_settings")
-def handle_submit_add_ao_button(ack, body, client, logger, context):
+def handle_submit_general_settings_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
     print(body)
@@ -2158,7 +2158,7 @@ def handle_submit_add_ao_button(ack, body, client, logger, context):
     # Gather inputs from form
     input_data = body['view']['state']['values']
     weinke_channel = input_data['weinke_channel_select']['weinke_channel_select']['selected_channel']
-    q_reminder_enable = input_data['q_reminder_enable']['q_reminder_enable']['value'] == "enable"
+    q_reminder_enable = input_data['q_reminder_enable']['q_reminder_enable']['selected_option']['value'] == "enable"
     ao_reminder_enable = input_data['ao_reminder_enable']['ao_reminder_enable']['selected_option']['value'] == "enable"
 
     # Update db
