@@ -189,7 +189,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
                     q_name = '@' + row['q_pax_name']
 
                 location = row['ao_location_subtitle'].split('\n')[0]
-                sMsg += f"\n{row['ao_display_name']} - {row['event_type'].lower()} @ {row['event_time']} - {q_name}"
+                sMsg += f"\n{row['ao_display_name']} - {row['event_type']} @ {row['event_time']} - {q_name}"
 
     except Exception as e:
         logger.error(f"Error pulling user db info: {e}")
@@ -199,7 +199,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
         top_message += '\n\nYou have some upcoming Qs:'
         for index, row in upcoming_qs_df.iterrows():
             dt_fmt = row['event_date'].strftime("%a %m-%d")
-            top_message += f"\n- {row['event_type'].lower()} on {dt_fmt} @ {row['event_time']} at {row['ao_display_name']}" 
+            top_message += f"\n- {row['event_type']} on {dt_fmt} @ {row['event_time']} at {row['ao_display_name']}" 
 
     # Build AO options list
     options = []
@@ -421,7 +421,8 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
         # "Delete an AO",
         "Add an event",
         "Edit an event",
-        "Delete a single event"
+        "Delete a single event",
+        "General settings"
     ]
 
     for button in button_list:
@@ -1131,6 +1132,167 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
 
         # Publish view
         try:
+            client.views_publish(
+                user_id=user_id,
+                view={
+                    "type": "home",
+                    "blocks": blocks
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error publishing home tab: {e}")
+            print(e)
+        
+    # General settings
+    elif selected_action == 'General settings':
+        logger.info('setting general settings')
+
+        # Pull current settings
+        success_status = False
+        try:
+            with my_connect(team_id) as mydb:
+                sql_pull = f"SELECT * FROM {mydb.db}.qsignups_regions WHERE team_id = '{team_id}';"
+                region_df = pd.read_sql(sql_pull, mydb.conn)
+        except Exception as e:
+            logger.error(f"Error pulling region info: {e}")
+            print(e)
+
+        blocks = [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": "General Region Settings",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "*Select a public channel to post schedule images:*"
+			    }
+            },
+            {
+                "type": "input",
+                "block_id": "weinke_channel_select",
+                "element": {
+                    "type": "channels_select",
+                    # "initial_channel": region_df['weekly_weinke_channel'],
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select a channel",
+                        "emoji": True
+                    },
+                    "action_id": "weinke_channel_select"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Public channel for posting weekly schedules",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "input",
+                "block_id": "q_reminder_enable",
+                "element": {
+                    "type": "radio_buttons",
+                    "options": [
+                        {
+                            "text": {
+                                "type": "plain_text",
+                                "text": "Enable Q reminders",
+                                "emoji": True
+                            },
+                            "value": "enable"
+                        },
+                        {
+                            "text": {
+                                "type": "plain_text",
+                                "text": "Disable Q reminders",
+                                "emoji": True
+                            },
+                            "value": "disable"
+                        },                    
+                    ],
+                    "action_id": "q_reminder_enable"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Enable Q Reminders?",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "input",
+                "block_id": "ao_reminder_enable",
+                "element": {
+                    "type": "radio_buttons",
+                    "options": [
+                        {
+                            "text": {
+                                "type": "plain_text",
+                                "text": "Enable AO reminders",
+                                "emoji": True
+                            },
+                            "value": "enable"
+                        },
+                        {
+                            "text": {
+                                "type": "plain_text",
+                                "text": "Disable AO reminders",
+                                "emoji": True
+                            },
+                            "value": "disable"
+                        },                    
+                    ],
+                    "action_id": "ao_reminder_enable"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Enable AO Reminders?",
+                    "emoji": True
+                }
+            }
+        ]
+
+        action_button = {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":"Submit",
+                        "emoji":True
+                    },
+                    "action_id":"submit_general_settings",
+                    "style":"primary",
+                    "value":"Submit"
+                }
+            ]    
+        }
+        cancel_button = {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":"Cancel",
+                        "emoji":True
+                    },
+                    "action_id":"cancel_button_select",
+                    "style":"danger",
+                    "value":"Cancel"
+                }
+            ]    
+        }
+        blocks.append(action_button)
+        blocks.append(cancel_button)
+
+        try:
+            print(blocks)
             client.views_publish(
                 user_id=user_id,
                 view={
@@ -1984,6 +2146,52 @@ def submit_edit_ao_button(ack, body, client, logger, context):
         top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
     
     refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+
+@app.action("submit_general_settings")
+def handle_submit_add_ao_button(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    print(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+
+    # Gather inputs from form
+    input_data = body['view']['state']['values']
+    weinke_channel = input_data['weinke_channel_select']['weinke_channel_select']['selected_channel']
+    q_reminder_enable = input_data['q_reminder_enable']['q_reminder_enable']['value'] == "enable"
+    ao_reminder_enable = input_data['ao_reminder_enable']['ao_reminder_enable']['selected_option']['value'] == "enable"
+
+    # Update db
+    success_status = False
+    try:
+        with my_connect(team_id) as mydb:
+
+            sql_update = f"""
+            UPDATE {mydb.db}.qsignups_aos
+            SET weekly_weinke_channel = "{weinke_channel}",
+                signup_reminders = {q_reminder_enable},
+                weekly_ao_reminders = {ao_reminder_enable}
+            WHERE team_id = "{team_id}"
+            ;
+            """
+            logger.info(f"Attempting SQL UPDATE: {sql_update}")
+            
+            mycursor = mydb.conn.cursor()
+            mycursor.execute(sql_update)
+            mycursor.execute("COMMIT;")
+            success_status = True
+    except Exception as e:
+        logger.error(f"Error writing to db: {e}")
+        error_msg = e
+    
+    # Take the user back home
+    if success_status:
+        top_message = f"Success! Changed general region settings"
+    else:
+        top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
+    
+    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+
 
 @app.action("submit_add_ao_button")
 def handle_submit_add_ao_button(ack, body, client, logger, context):
