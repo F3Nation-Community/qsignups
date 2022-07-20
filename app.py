@@ -189,7 +189,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
                     q_name = '@' + row['q_pax_name']
 
                 location = row['ao_location_subtitle'].split('\n')[0]
-                sMsg += f"\n{row['ao_display_name']} {row['event_time']} - {q_name}"
+                sMsg += f"\n{row['ao_display_name']} - {row['event_type'].lower()} @ {row['event_time']} - {q_name}"
 
     except Exception as e:
         logger.error(f"Error pulling user db info: {e}")
@@ -199,7 +199,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
         top_message += '\n\nYou have some upcoming Qs:'
         for index, row in upcoming_qs_df.iterrows():
             dt_fmt = row['event_date'].strftime("%a %m-%d")
-            top_message += f"\n- {dt_fmt} @ {row['event_time']} at {row['ao_display_name']}" 
+            top_message += f"\n- {row['event_type'].lower()} on {dt_fmt} @ {row['event_time']} at {row['ao_display_name']}" 
 
     # Build AO options list
     options = []
@@ -370,7 +370,7 @@ def handle_refresh_home_button(ack, body, client, logger, context):
 @app.event("app_mention")
 def handle_app_mentions(body, say, logger):
     logger.info(f'INFO: {body}')
-    say("What's up, world?")
+    say("Looking for me? Click on my icon to go to the app and sign up to Q!")
 
 
 @app.command("/hello-bolt-python-lambda")
@@ -805,7 +805,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
             }
             day_options.append(new_option)
         
-        event_type_list = ['Beatdown', 'QSource', 'Custom']
+        event_type_list = ['Bootcamp', 'QSource', 'Custom']
         event_type_options = []
         for option in event_type_list:
             new_option = {
