@@ -1167,13 +1167,6 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                 }
             },
             {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "*Select a public channel to post schedule images:*"
-			    }
-            },
-            {
                 "type": "input",
                 "block_id": "weinke_channel_select",
                 "element": {
@@ -1188,7 +1181,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                 },
                 "label": {
                     "type": "plain_text",
-                    "text": "Public channel for posting weekly schedules",
+                    "text": "Public channel for posting weekly schedules:",
                     "emoji": True
                 }
             },
@@ -2167,7 +2160,7 @@ def handle_submit_general_settings_button(ack, body, client, logger, context):
         with my_connect(team_id) as mydb:
 
             sql_update = f"""
-            UPDATE {mydb.db}.qsignups_aos
+            UPDATE {mydb.db}.qsignups_regions
             SET weekly_weinke_channel = "{weinke_channel}",
                 signup_reminders = {q_reminder_enable},
                 weekly_ao_reminders = {ao_reminder_enable}
