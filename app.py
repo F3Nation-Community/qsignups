@@ -189,7 +189,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
                     q_name = '@' + row['q_pax_name']
 
                 location = row['ao_location_subtitle'].split('\n')[0]
-                sMsg += f"\n{row['ao_display_name']} {row['event_time']} - {q_name}"
+                sMsg += f"\n{row['ao_display_name']} - {row['event_type']} @ {row['event_time']} - {q_name}"
 
     except Exception as e:
         logger.error(f"Error pulling user db info: {e}")
@@ -198,8 +198,8 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
     if len(upcoming_qs_df) > 0:
         top_message += '\n\nYou have some upcoming Qs:'
         for index, row in upcoming_qs_df.iterrows():
-            dt_fmt = row['event_date'].strftime("%m-%d-%Y")
-            top_message += f"\n- {dt_fmt} @ {row['event_time']} at {row['ao_display_name']}" 
+            dt_fmt = row['event_date'].strftime("%a %m-%d")
+            top_message += f"\n- {row['event_type']} on {dt_fmt} @ {row['event_time']} at {row['ao_display_name']}" 
 
     # Build AO options list
     options = []
@@ -370,7 +370,7 @@ def handle_refresh_home_button(ack, body, client, logger, context):
 @app.event("app_mention")
 def handle_app_mentions(body, say, logger):
     logger.info(f'INFO: {body}')
-    say("What's up, world?")
+    say("Looking for me? Click on my icon to go to the app and sign up to Q!")
 
 
 @app.command("/hello-bolt-python-lambda")
@@ -421,7 +421,8 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
         # "Delete an AO",
         "Add an event",
         "Edit an event",
-        "Delete a single event"
+        "Delete a single event",
+        "General settings"
     ]
 
     for button in button_list:
@@ -804,6 +805,19 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                 "value": option
             }
             day_options.append(new_option)
+        
+        event_type_list = ['Bootcamp', 'QSource', 'Custom']
+        event_type_options = []
+        for option in event_type_list:
+            new_option = {
+                "text": {
+                    "type": "plain_text",
+                    "text": option,
+                    "emoji": True
+                },
+                "value": option
+            }
+            event_type_options.append(new_option)
 
         
         blocks = [
@@ -824,7 +838,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                             {
                                 "text": {
                                     "type": "plain_text",
-                                    "text": "Recurring event / beatdown",
+                                    "text": "Recurring event",
                                     "emoji": True
                                 },
                                 "value": "recurring"
@@ -832,7 +846,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                             {
                                 "text": {
                                     "type": "plain_text",
-                                    "text": "Single event / beatdown",
+                                    "text": "Single event",
                                     "emoji": True
                                 },
                                 "value": "single"
@@ -842,13 +856,51 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                         "initial_option": {
                             "text": {
                                 "type": "plain_text",
-                                "text": "Recurring event / beatdown",
+                                "text": "Recurring event",
                                 "emoji": True
                             },
                             "value": "recurring"
                         }
                     }
                 ]
+            },
+            {
+                "type": "input",
+                "block_id": "event_type_select",
+                "element": {
+                    "type": "static_select",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select an event type",
+                        "emoji": True   
+                    },
+                    "options": event_type_options,
+                    "action_id": "event_type_select_action",
+                    "initial_option": event_type_options[0]
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Event Type",
+                    "emoji": True
+                }                  
+            },
+            {
+                "type": "input",
+                "block_id": "event_type_custom",
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "event_type_custom",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Custom Event Name"
+                    },
+                    "initial_value": "CustomEventType"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "If Custom selected, please specify"
+                },
+                "optional": True
             },
             {
                 "type": "input",
@@ -903,7 +955,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                 },
                 "label": {
                     "type": "plain_text",
-                    "text": "Beatdown Start",
+                    "text": "Event Start",
                     "emoji": True
                 }
 		    },
@@ -1080,6 +1132,160 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
 
         # Publish view
         try:
+            client.views_publish(
+                user_id=user_id,
+                view={
+                    "type": "home",
+                    "blocks": blocks
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error publishing home tab: {e}")
+            print(e)
+        
+    # General settings
+    elif selected_action == 'General settings':
+        logger.info('setting general settings')
+
+        # Pull current settings
+        success_status = False
+        try:
+            with my_connect(team_id) as mydb:
+                sql_pull = f"SELECT * FROM {mydb.db}.qsignups_regions WHERE team_id = '{team_id}';"
+                region_df = pd.read_sql(sql_pull, mydb.conn)
+        except Exception as e:
+            logger.error(f"Error pulling region info: {e}")
+            print(e)
+
+        blocks = [
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": "General Region Settings",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "input",
+                "block_id": "weinke_channel_select",
+                "element": {
+                    "type": "channels_select",
+                    # "initial_channel": region_df['weekly_weinke_channel'],
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Select a channel",
+                        "emoji": True
+                    },
+                    "action_id": "weinke_channel_select"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Public channel for posting weekly schedules:",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "input",
+                "block_id": "q_reminder_enable",
+                "element": {
+                    "type": "radio_buttons",
+                    "options": [
+                        {
+                            "text": {
+                                "type": "plain_text",
+                                "text": "Enable Q reminders",
+                                "emoji": True
+                            },
+                            "value": "enable"
+                        },
+                        {
+                            "text": {
+                                "type": "plain_text",
+                                "text": "Disable Q reminders",
+                                "emoji": True
+                            },
+                            "value": "disable"
+                        },                    
+                    ],
+                    "action_id": "q_reminder_enable"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Enable Q Reminders?",
+                    "emoji": True
+                }
+            },
+            {
+                "type": "input",
+                "block_id": "ao_reminder_enable",
+                "element": {
+                    "type": "radio_buttons",
+                    "options": [
+                        {
+                            "text": {
+                                "type": "plain_text",
+                                "text": "Enable AO reminders",
+                                "emoji": True
+                            },
+                            "value": "enable"
+                        },
+                        {
+                            "text": {
+                                "type": "plain_text",
+                                "text": "Disable AO reminders",
+                                "emoji": True
+                            },
+                            "value": "disable"
+                        },                    
+                    ],
+                    "action_id": "ao_reminder_enable"
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "Enable AO Reminders?",
+                    "emoji": True
+                }
+            }
+        ]
+
+        action_button = {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":"Submit",
+                        "emoji":True
+                    },
+                    "action_id":"submit_general_settings",
+                    "style":"primary",
+                    "value":"Submit"
+                }
+            ]    
+        }
+        cancel_button = {
+            "type":"actions",
+            "elements":[
+                {
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":"Cancel",
+                        "emoji":True
+                    },
+                    "action_id":"cancel_button_select",
+                    "style":"danger",
+                    "value":"Cancel"
+                }
+            ]    
+        }
+        blocks.append(action_button)
+        blocks.append(cancel_button)
+
+        try:
+            print(blocks)
             client.views_publish(
                 user_id=user_id,
                 view={
@@ -1466,7 +1672,19 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
         }
         day_options.append(new_option)
 
-    
+    event_type_list = ['Beatdown', 'QSource', 'Custom']
+    event_type_options = []
+    for option in event_type_list:
+        new_option = {
+            "text": {
+                "type": "plain_text",
+                "text": option,
+                "emoji": True
+            },
+            "value": option
+        }
+        event_type_options.append(new_option)
+
     blocks = [
         {
             "type": "section",
@@ -1485,7 +1703,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                         {
                             "text": {
                                 "type": "plain_text",
-                                "text": "Recurring event / beatdown",
+                                "text": "Recurring event",
                                 "emoji": True
                             },
                             "value": "recurring"
@@ -1493,7 +1711,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                         {
                             "text": {
                                 "type": "plain_text",
-                                "text": "Single event / beatdown",
+                                "text": "Single event",
                                 "emoji": True
                             },
                             "value": "single"
@@ -1503,6 +1721,44 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                     "initial_option": recurring_select_option
                 }
             ]
+        },
+        {
+            "type": "input",
+            "block_id": "event_type_select",
+            "element": {
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select an event type",
+                    "emoji": True   
+                },
+                "options": event_type_options,
+                "action_id": "event_type_select_action",
+                "initial_option": event_type_options[0]
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Event Type",
+                "emoji": True
+            }                  
+        },
+        {
+            "type": "input",
+            "block_id": "event_type_custom",
+            "element": {
+                "type": "plain_text_input",
+                "action_id": "event_type_custom",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Custom Event Name"
+                },
+                "initial_value": "CustomEventType"
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "If Custom selected, please specify"
+            },
+            "optional": True
         },
         {
             "type": "input",
@@ -1561,7 +1817,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                 },
                 "label": {
                     "type": "plain_text",
-                    "text": "Beatdown Start",
+                    "text": "Event Start",
                     "emoji": True
                 }
             },
@@ -1772,7 +2028,6 @@ def handle_edit_event_ao_select(ack, body, client, logger, context):
     }]
 
     # Show next x number of events
-    # TODO: future add: make a "show more" button?
     results_df['event_date_time'] = pd.to_datetime(results_df['event_date'].dt.strftime('%Y-%m-%d') + ' ' + results_df['event_time'], infer_datetime_format=True)
     for index, row in results_df.iterrows():
         # Pretty format date
@@ -1796,7 +2051,7 @@ def handle_edit_event_ao_select(ack, body, client, logger, context):
                     "type":"button",
                     "text":{
                         "type":"plain_text",
-                        "text":f"{date_fmt}: {date_status}",
+                        "text":f"{row['event_type']} {date_fmt}: {date_status}",
                         "emoji":True
                     },
                     "action_id":action_id,
@@ -1885,6 +2140,52 @@ def submit_edit_ao_button(ack, body, client, logger, context):
     
     refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
+@app.action("submit_general_settings")
+def handle_submit_general_settings_button(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    print(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+
+    # Gather inputs from form
+    input_data = body['view']['state']['values']
+    weinke_channel = input_data['weinke_channel_select']['weinke_channel_select']['selected_channel']
+    q_reminder_enable = input_data['q_reminder_enable']['q_reminder_enable']['selected_option']['value'] == "enable"
+    ao_reminder_enable = input_data['ao_reminder_enable']['ao_reminder_enable']['selected_option']['value'] == "enable"
+
+    # Update db
+    success_status = False
+    try:
+        with my_connect(team_id) as mydb:
+
+            sql_update = f"""
+            UPDATE {mydb.db}.qsignups_regions
+            SET weekly_weinke_channel = "{weinke_channel}",
+                signup_reminders = {q_reminder_enable},
+                weekly_ao_reminders = {ao_reminder_enable}
+            WHERE team_id = "{team_id}"
+            ;
+            """
+            logger.info(f"Attempting SQL UPDATE: {sql_update}")
+            
+            mycursor = mydb.conn.cursor()
+            mycursor.execute(sql_update)
+            mycursor.execute("COMMIT;")
+            success_status = True
+    except Exception as e:
+        logger.error(f"Error writing to db: {e}")
+        error_msg = e
+    
+    # Take the user back home
+    if success_status:
+        top_message = f"Success! Changed general region settings"
+    else:
+        top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
+    
+    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+
+
 @app.action("submit_add_ao_button")
 def handle_submit_add_ao_button(ack, body, client, logger, context):
     ack()
@@ -1967,8 +2268,14 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
     event_day_of_week = input_data['event_day_of_week_select']['event_day_of_week_select_action']['selected_option']['value']
     starting_date = input_data['add_event_datepicker']['add_event_datepicker']['selected_date']
     event_time = input_data['event_time_select']['event_time_select']['selected_time'].replace(':','')
-    event_type = 'Beatdown' # eventually this will be dynamic
-    event_recurring = True # this would be false for one-time events
+    
+    # Logic for custom events
+    if input_data['event_type_select']['event_type_select_action']['selected_option']['value'] == 'Custom':
+        event_type = input_data['event_type_custom']['event_type_custom']['value']
+    else:
+        event_type = input_data['event_type_select']['event_type_select_action']['selected_option']['value']
+
+    event_recurring = True
 
     # Grab channel id
     try:
@@ -2036,7 +2343,13 @@ def handle_submit_add_single_event_button(ack, body, client, logger, context):
     ao_display_name = input_data['ao_display_name_select']['ao_display_name_select_action']['selected_option']['value']
     event_date = input_data['add_event_datepicker']['add_event_datepicker']['selected_date']
     event_time = input_data['event_time_select']['event_time_select']['selected_time'].replace(':','')
-    event_type = 'Beatdown' # eventually this will be dynamic
+    
+    # Logic for custom events
+    if input_data['event_type_select']['event_type_select_action']['selected_option']['value'] == 'Custom':
+        event_type = input_data['event_type_custom']['event_type_custom']['value']
+    else:
+        event_type = input_data['event_type_select']['event_type_select_action']['selected_option']['value']
+
     event_recurring = False
 
     # Grab channel id
@@ -2121,7 +2434,6 @@ def ao_select_slot(ack, client, body, logger, context):
     }]
 
     # Show next x number of events
-    # TODO: future add: make a "show more" button?
     results_df['event_date_time'] = pd.to_datetime(results_df['event_date'].dt.strftime('%Y-%m-%d') + ' ' + results_df['event_time'], infer_datetime_format=True)
     for index, row in results_df.iterrows():
         # Pretty format date
@@ -2133,35 +2445,59 @@ def ao_select_slot(ack, client, body, logger, context):
             date_style = "primary"
             action_id = "date_select_button"
             value = str(row['event_date_time'])
+            button_text = "Take slot"
         # Otherwise default (grey) button, listing Qs name
         else:
             date_status = row['q_pax_name']
             date_style = "default"
             action_id = "taken_date_select_button" 
             value = str(row['event_date_time']) + '|' + row['q_pax_name']
+            button_text = "Edit Slot"
         
-        # TODO: add functionality to take self off schedule by clicking your already taken slot?
         # Button template
-        new_button = {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":f"{date_fmt}: {date_status}",
-                        "emoji":True
-                    },
-                    "action_id":action_id,
-                    "value":value
-                }
-            ]
+        new_section = {
+            "type":"section",
+            "text":{
+                "type":"mrkdwn",
+                "text":f"{row['event_type']} {date_fmt}: {date_status}"
+            },
+            "accessory":{
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":button_text,
+                    "emoji":True
+                },
+                "action_id":action_id,
+                "value":value
+            }
         }
         if date_style == "primary":
-            new_button['elements'][0]["style"] = "primary"
-        
+            new_section["accessory"]["style"] = "primary"
+
         # Append button to list
-        blocks.append(new_button)
+        blocks.append(new_section)
+
+        # new_button = {
+        #     "type":"actions",
+        #     "elements":[
+        #         {
+        #             "type":"button",
+        #             "text":{
+        #                 "type":"plain_text",
+        #                 "text":f"{row['event_type']} {date_fmt}: {date_status}",
+        #                 "emoji":True
+        #             },
+        #             "action_id":action_id,
+        #             "value":value
+        #         }
+        #     ]
+        # }
+        # if date_style == "primary":
+        #     new_button['elements'][0]["style"] = "primary"
+        
+        # # Append button to list
+        # blocks.append(new_button)
     
     # Cancel button
     new_button = {
@@ -2201,6 +2537,7 @@ def handle_date_select_button(ack, client, body, logger, context):
     # acknowledge action and log payload
     ack()
     logger.info(body)
+    logging.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
     user_name = (get_user_names([user_id], logger, client))[0]
