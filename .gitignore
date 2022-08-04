@@ -1,3 +1,6 @@
 env/
 dist/
 deploy/env-aws.sh
+gcal_testing/__pycache__
+gcal_testing/credentials.json
+gcal_testing/token.pickle
