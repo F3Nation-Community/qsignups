@@ -180,7 +180,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
             iterate_date = ''
             for index, row in upcoming_events_df.iterrows():
                 if row['event_date'] != iterate_date:
-                    sMsg += f"\n\n*{row['event_date'].strftime('%A %m/%d/%y')}*"
+                    sMsg += f"\n\n:calendar: *{row['event_date'].strftime('%A %m/%d/%y')}*"
                     iterate_date = row['event_date']
                 
                 if row['q_pax_name'] is None:
@@ -2591,6 +2591,100 @@ def handle_date_select_button(ack, client, body, logger, context):
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
     
     refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+
+# triggered when user selects open slot on a message
+@app.action("date_select_button_from_message")
+def handle_date_select_button_from_message(ack, client, body, logger, context):
+    # acknowledge action and log payload
+    ack()
+    logger.info(body)
+    logging.info(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    user_name = (get_user_names([user_id], logger, client))[0]
+
+    # gather and format selected date and time
+    selected_date = body['actions'][0]['value']
+    selected_date_dt = datetime.strptime(selected_date, '%Y-%m-%d %H:%M:%S')
+    selected_date_db = datetime.date(selected_date_dt).strftime('%Y-%m-%d')
+    selected_time_db = datetime.time(selected_date_dt).strftime('%H%M')
+    
+    # gather info needed for message and SQL
+    ao_channel_id = body['message']['id']
+    message_ts = body['message']['ts']
+    message_blocks = body['message']['blocks']
+
+    try:
+        with my_connect(team_id) as mydb:
+            sql_channel_pull = f'SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id}" and ao_channel_id = "{ao_channel_id}";'
+            ao_name = pd.read_sql_query(sql_channel_pull, mydb.conn).iloc[0,0]
+    except Exception as e:
+        logger.error(f"Error pulling channel id: {e}")
+    
+    # Attempt db update
+    success_status = False
+    try:
+        with my_connect(team_id) as mydb:
+            sql_update = \
+            f"""
+            UPDATE {mydb.db}.qsignups_master 
+            SET q_pax_id = '{user_id}'
+                , q_pax_name = '{user_name}'
+            WHERE team_id = '{team_id}'
+                AND ao_channel_id = '{ao_channel_id}'
+                AND event_date = DATE('{selected_date_db}')
+                AND event_time = '{selected_time_db}'
+            ;
+            """
+            logging.info(f'Attempting SQL UPDATE: {sql_update}')
+
+            mycursor = mydb.conn.cursor()
+            mycursor.execute(sql_update)
+            mycursor.execute("COMMIT;")
+            success_status = True
+    except Exception as e:
+        logger.error(f"Error updating schedule: {e}")
+        error_msg = e
+
+    # Update original message
+    open_count = 0
+    if success_status:
+        for counter, block in enumerate(message_blocks):
+            if safeget(block, 'accessory', 'value') == selected_date:
+                block_num = counter
+            else:
+                block_num = -1
+            
+            if safeget(block, 'accessory', 'text', 'text')[-5] == 'OPEN!':
+                open_count += 1
+        
+        if block_num >= 0:
+            message_blocks[block_num]['text']['text'] = message_blocks[block_num]['text']['text'].replace('OPEN!', user_name)
+            message_blocks[block_num]['accessory']['action_id'] = 'ignore_button'
+            message_blocks[block_num]['accessory']['value'] = selected_date + '|' + user_name
+            message_blocks[block_num]['accessory']['text']['text'] = user_name
+            del(message_blocks[block_num]['accessory']['style'])
+
+            # update top message
+            open_count += -1
+            if open_count == 1:
+                open_msg = ' I see there is an open spot - who wants it?'
+            elif open_count > 1:
+                open_msg = ' I see there are some open spots - who wants them?'
+            else:
+                open_msg = ''
+            
+            message_blocks[0]['text']['text'] = f"Hello HIMs of {ao_name}! Here is your Q lineup for the week.{open_msg}"
+
+            # publish update
+            logging.info(f'sending blocks:\n{message_blocks}')
+            client.update_chat(ao_channel_id, message_ts, blocks = message_blocks)
+
+# triggered when user selects closed slot on a message
+@app.action("ignore_button")
+def handle_ignore_button(ack, client, body, logger, context):
+    # acknowledge action and log payload
+    ack()
 
 # triggered when user selects an already-taken slot
 @app.action("taken_date_select_button")
