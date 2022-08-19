@@ -10,7 +10,7 @@ import pandas as pd
 from slack_bolt import App
 from slack_bolt.adapter.aws_lambda import SlackRequestHandler
 from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
-
+# import re
 
 # process_before_response must be True when running on FaaS
 app = App(
@@ -186,7 +186,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
                 if row['q_pax_name'] is None:
                     q_name = '*OPEN!*'
                 else:
-                    q_name = '@' + row['q_pax_name']
+                    q_name = row['q_pax_name']
 
                 location = row['ao_location_subtitle'].split('\n')[0]
                 sMsg += f"\n{row['ao_display_name']} - {row['event_type']} @ {row['event_time']} - {q_name}"
@@ -442,6 +442,25 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
             ]
         }
         blocks.append(new_block)
+    
+    # Cancel button
+    new_button = {
+        "type":"actions",
+        "elements":[
+            {
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":"Cancel",
+                    "emoji":True
+                },
+                "action_id":"cancel_button_select",
+                "value":"cancel",
+                "style":"danger"
+            }
+        ]
+    }
+    blocks.append(new_button)
 
     try:
         client.views_publish(
@@ -2454,6 +2473,12 @@ def ao_select_slot(ack, client, body, logger, context):
             value = str(row['event_date_time']) + '|' + row['q_pax_name']
             button_text = "Edit Slot"
         
+        # try:
+        #     date_status_format = re.sub('\s\(([\s\S]*?\))','',date_status)
+        #     print(f"formatted: {date_status_format}")
+        # except Exception as e:
+        #     print(e)
+
         # Button template
         new_section = {
             "type":"section",
@@ -2610,7 +2635,7 @@ def handle_date_select_button_from_message(ack, client, body, logger, context):
     selected_time_db = datetime.time(selected_date_dt).strftime('%H%M')
     
     # gather info needed for message and SQL
-    ao_channel_id = body['message']['id']
+    ao_channel_id = body['channel']['id']
     message_ts = body['message']['ts']
     message_blocks = body['message']['blocks']
 
@@ -2648,16 +2673,18 @@ def handle_date_select_button_from_message(ack, client, body, logger, context):
 
     # Update original message
     open_count = 0
+    block_num = -1
     if success_status:
         for counter, block in enumerate(message_blocks):
+            print(f"comparing {safeget(block, 'accessory', 'value')} and {selected_date}")
             if safeget(block, 'accessory', 'value') == selected_date:
                 block_num = counter
-            else:
-                block_num = -1
             
-            if safeget(block, 'accessory', 'text', 'text')[-5] == 'OPEN!':
-                open_count += 1
+            if safeget(block, 'accessory', 'text', 'text'):
+                if block['accessory']['text']['text'][-5] == 'OPEN!':
+                    open_count += 1
         
+        print(block_num)
         if block_num >= 0:
             message_blocks[block_num]['text']['text'] = message_blocks[block_num]['text']['text'].replace('OPEN!', user_name)
             message_blocks[block_num]['accessory']['action_id'] = 'ignore_button'
@@ -2678,7 +2705,7 @@ def handle_date_select_button_from_message(ack, client, body, logger, context):
 
             # publish update
             logging.info(f'sending blocks:\n{message_blocks}')
-            client.update_chat(ao_channel_id, message_ts, blocks = message_blocks)
+            client.chat_update(channel=ao_channel_id, ts=message_ts, blocks = message_blocks)
 
 # triggered when user selects closed slot on a message
 @app.action("ignore_button")
