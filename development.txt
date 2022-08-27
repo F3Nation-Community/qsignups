@@ -73,6 +73,11 @@ python app.py
 
 You should see "Bolt app is running! (development server)"
 
+NOTE: bolt does not automatically reload on file changes.  You can manually stop/start the process to pick up
+code changes.  OR, you can consider using the provided reload.py script, which will watch for changes and restart
+
+python reload.py python app.py
+
 8.  Back to Slack.  Verify your redirect URL.  Go back to App Manifest option.  Re-install the Manifest
 or click the "Update" link.  The link should be your ngrok URL, and you should now be able to have Slack verify.
 
