@@ -1,0 +1,53 @@
+_metadata:
+  major_version: 1
+  minor_version: 1
+display_information:
+  name: F3 Q Signup
+  description: Manage your F3 Region Schedule.
+  background_color: "#2200AA"
+settings:
+  socket_mode_enabled: false
+  token_rotation_enabled: false
+  interactivity:
+    is_enabled: true
+    request_url: __HOSTNAME__/slack/actions
+  event_subscriptions:
+    request_url: __HOSTNAME__/slack/events
+    bot_events:
+      - app_home_opened
+      - app_mention
+features:
+  app_home:
+    home_tab_enabled: true
+    messages_tab_enabled: true
+    messages_tab_read_only_enabled: false
+  bot_user:
+    display_name: Q Signup
+  slash_commands:
+    - command: /hello
+      description: Test saying hello
+      usage_hint: /hello open mailbox
+      url: __HOSTNAME__/slack/events
+oauth_config:
+  scopes:
+    bot:
+      - app_mentions:read
+      - channels:history
+      - channels:join
+      - channels:read
+      - chat:write
+      - chat:write.customize
+      - chat:write.public
+      - commands
+      - files:read
+      - files:write
+      - im:history
+      - im:read
+      - im:write
+      - reactions:read
+      - reactions:write
+      - team:read
+      - users:read
+      - users:read.email
+  redirect_urls:
+    - __HOSTNAME__/slack/auth

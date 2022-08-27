@@ -1,0 +1,10 @@
+{
+  "DATABASE_HOST": null,
+  "ADMIN_DATABASE_USER": null,
+  "ADMIN_DATABASE_PASSWORD": null,
+  "ADMIN_DATABASE_SCHEMA": null,
+  "SLACK_SIGNING_SECRET": null,
+  "SLACK_BOT_TOKEN": null,
+  "SLACK_SCOPES": null,
+  "USE_WEINKES": true
+ }
