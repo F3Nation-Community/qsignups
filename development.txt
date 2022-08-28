@@ -14,6 +14,11 @@ You will be creating a Slack application, and installing it in a Slack workspace
 will connect to a locally running python service, which can connect to your MySQL database.  You can then
 make changes to the python code, and invoke those changes from your slack application.
 
+Python Requirements:
+In addition to requirements.txt (listing requirements needed by the lambda), locally you may need a few other dependencies:
+* yaml (for generate.py)
+* mysql-connector-python (for connecting to a local python db)
+
 Steps:
 
 1. Your slack app will need to connect to your local python server.  You can do this in one of two ways:
