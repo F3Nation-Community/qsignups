@@ -49,7 +49,7 @@ class my_connect(ContextDecorator):
         # with self.conn.cursor() as mycursor:
         #     mycursor.execute(sql_select)
         #     db, user, password = mycursor.fetchone()
-        db = 'f3stcharles'
+        db = os.environ['ADMIN_DATABASE_SCHEMA']
 
         self.db = db
         return self
@@ -114,6 +114,8 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
     print("CONTEXT", context)
     print("TEAM", team_id)
     sMsg = ""
+    current_week_weinke_url = None
+    ao_list = None
     upcoming_qs_df = pd.DataFrame()
     try:
         with my_connect(team_id) as mydb:
@@ -160,6 +162,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
             ao_list = pd.read_sql(sql_ao_list, mydb.conn)
             upcoming_events_df = pd.read_sql(sql_upcoming_events, mydb.conn, parse_dates=['event_date'])
 
+            current_week_weinke_url = None
             if os.environ['USE_WEINKES']:
                 mycursor.execute(sql_weinkes)
                 weinkes_list = mycursor.fetchone()
@@ -212,15 +215,16 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
 
     # Build AO options list
     options = []
-    for index, row in ao_list.iterrows():
-        new_option = {
-            "text": {
-                "type": "plain_text",
-                "text": row['ao_display_name']
-            },
-            "value": row['ao_channel_id']
-        }
-        options.append(new_option)
+    if ao_list is not None:
+        for index, row in ao_list.iterrows():
+            new_option = {
+                "text": {
+                    "type": "plain_text",
+                    "text": row['ao_display_name']
+                },
+                "value": row['ao_channel_id']
+            }
+            options.append(new_option)
 
     # Build view blocks
     blocks = [
@@ -305,14 +309,15 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
             blocks.append(block)
 
     # add upcoming schedule text block
-    upcoming_schedule_block = {
-        "type": "section",
-        "text": {
-            "type": "mrkdwn",
-            "text": sMsg
+    if sMsg:
+        upcoming_schedule_block = {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": sMsg
+            }
         }
-    }
-    blocks.append(upcoming_schedule_block)
+        blocks.append(upcoming_schedule_block)
 
     # add page refresh button
     refresh_button = {
@@ -353,6 +358,7 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
         blocks.append(admin_button)
 
     # Attempt to publish view
+    print("BLOCKS", blocks)
     try:
         logger.debug(blocks)
         client.views_publish(
@@ -997,7 +1003,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                         "text": "Select time",
                         "emoji": True
                     },
-                    "action_id": "event_start_time_select"
+                    "action_id": "event_end_time_select"
                 },
                 "label": {
                     "type": "plain_text",
@@ -2352,6 +2358,7 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
     event_day_of_week = input_data['event_day_of_week_select']['event_day_of_week_select_action']['selected_option']['value']
     starting_date = input_data['add_event_datepicker']['add_event_datepicker']['selected_date']
     event_time = input_data['event_start_time_select']['event_start_time_select']['selected_time'].replace(':','')
+    event_end_time = input_data['event_end_time_select']['event_end_time_select']['selected_time'].replace(':','')
 
     # Logic for custom events
     if input_data['event_type_select']['event_type_select_action']['selected_option']['value'] == 'Custom':
@@ -2374,8 +2381,8 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
     try:
         with my_connect(team_id) as mydb:
             sql_insert = f"""
-            INSERT INTO {mydb.db}.qsignups_weekly (ao_channel_id, event_day_of_week, event_time, event_type, team_id)
-            VALUES ("{ao_channel_id}", "{event_day_of_week}", "{event_time}", "{event_type}", "{team_id}");
+            INSERT INTO {mydb.db}.qsignups_weekly (ao_channel_id, event_day_of_week, event_time, event_end_time, event_type, team_id)
+            VALUES ("{ao_channel_id}", "{event_day_of_week}", "{event_time}", "{event_end_time}", "{event_type}", "{team_id}");
             """
             logger.info(f"Attempting SQL INSERT: {sql_insert}")
 
@@ -2395,8 +2402,8 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
             while iterate_date < (date.today() + timedelta(days=schedule_create_length_days)):
                 if iterate_date.strftime('%A') == event_day_of_week:
                     sql_insert = f"""
-                    INSERT INTO {mydb.db}.qsignups_master (ao_channel_id, event_date, event_time, event_day_of_week, event_type, event_recurring, team_id)
-                    VALUES ("{ao_channel_id}", DATE("{iterate_date}"), "{event_time}", "{event_day_of_week}", "{event_type}", {event_recurring}, "{team_id}")
+                    INSERT INTO {mydb.db}.qsignups_master (ao_channel_id, event_date, event_time, event_end_time, event_day_of_week, event_type, event_recurring, team_id)
+                    VALUES ("{ao_channel_id}", DATE("{iterate_date}"), "{event_time}", "{event_end_time}", "{event_day_of_week}", "{event_type}", {event_recurring}, "{team_id}")
                     """
                     mycursor.execute(sql_insert)
                     # print(sql_insert)
