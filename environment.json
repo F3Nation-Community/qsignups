@@ -6,5 +6,13 @@
   "SLACK_SIGNING_SECRET": null,
   "SLACK_BOT_TOKEN": null,
   "SLACK_SCOPES": null,
-  "USE_WEINKES": true
+  "USE_WEINKES": true,
+  "AWS_KEY": null,
+  "AWS_SECRET": null,
+  "dev": {
+    "QLAMBDA_NAME": "qsignup-dev"
+  },
+  "prod": {
+    "QLAMBDA_NAME": "bolt_py_oauth_function"
+  }
  }

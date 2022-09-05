@@ -1,0 +1,1 @@
+lambda deploy --config-file generate/aws_config.yaml --requirements requirements.txt
