@@ -10,7 +10,7 @@ settings:
   token_rotation_enabled: false
   interactivity:
     is_enabled: true
-    request_url: __HOSTNAME__/slack/actions
+    request_url: __HOSTNAME__/slack/events
   event_subscriptions:
     request_url: __HOSTNAME__/slack/events
     bot_events:

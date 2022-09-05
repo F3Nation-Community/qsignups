@@ -358,7 +358,6 @@ def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
         blocks.append(admin_button)
 
     # Attempt to publish view
-    print("BLOCKS", blocks)
     try:
         logger.debug(blocks)
         client.views_publish(
@@ -1201,10 +1200,11 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
 
         # Pull current settings
         success_status = False
+        region_df = None
         try:
             with my_connect(team_id) as mydb:
                 sql_pull = f"SELECT * FROM {mydb.db}.qsignups_regions WHERE team_id = '{team_id}';"
-                region_df = pd.read_sql(sql_pull, mydb.conn)
+                region_df = pd.read_sql(sql_pull, mydb.conn).iloc[0]
         except Exception as e:
             logger.error(f"Error pulling region info: {e}")
             print(e)
@@ -1298,8 +1298,26 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                     "text": "Enable AO Reminders?",
                     "emoji": True
                 }
+            },
+            {
+                "type": "input",
+                "block_id": "google_calendar_id",
+                "element": {
+                    "type": "plain_text_input",
+                    "action_id": "google_calendar_id",
+                    "placeholder": {
+                        "type": "plain_text",
+                        "text": "Google Calendar ID"
+                    },
+                    "initial_value": region_df['google_calendar_id'] or ''
+                },
+                "label": {
+                    "type": "plain_text",
+                    "text": "To connect to a google calendar, provide the ID"
+                },
+                "optional": True
             }
-        ]
+         ]
 
         action_button = {
             "type":"actions",
@@ -2230,19 +2248,34 @@ def submit_edit_ao_button(ack, body, client, logger, context):
 
     refresh_home_tab(client, user_id, logger, top_message, team_id, context)
 
+def safe_get(data, keys):
+    try:
+        result = data
+        for k in keys:
+            result = result[k]
+        return result
+    except:
+        return None
 @app.action("submit_general_settings")
 def handle_submit_general_settings_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
-    print(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
 
     # Gather inputs from form
     input_data = body['view']['state']['values']
-    weinke_channel = input_data['weinke_channel_select']['weinke_channel_select']['selected_channel']
-    q_reminder_enable = input_data['q_reminder_enable']['q_reminder_enable']['selected_option']['value'] == "enable"
-    ao_reminder_enable = input_data['ao_reminder_enable']['ao_reminder_enable']['selected_option']['value'] == "enable"
+
+    query_params = {
+        'team_id': team_id
+    }
+
+    query_params['weekly_weinke_channel'] = safe_get(input_data, ['weinke_channel_select','weinke_channel_select','selected_channel'])
+    query_params['signup_reminders'] = safe_get(input_data, ['q_reminder_enable','q_reminder_enable','selected_option','value']) == "enable"
+    query_params['weekly_ao_reminders'] = safe_get(input_data, ['ao_reminder_enable','ao_reminder_enable','selected_option','value']) == "enable"
+    query_params['google_calendar_id'] = safe_get(input_data, ['google_calendar_id','google_calendar_id','value'])
+
+    print("FOUND GPARAMS ", query_params)
 
     # Update db
     success_status = False
@@ -2251,16 +2284,16 @@ def handle_submit_general_settings_button(ack, body, client, logger, context):
 
             sql_update = f"""
             UPDATE {mydb.db}.qsignups_regions
-            SET weekly_weinke_channel = "{weinke_channel}",
-                signup_reminders = {q_reminder_enable},
-                weekly_ao_reminders = {ao_reminder_enable}
-            WHERE team_id = "{team_id}"
-            ;
+            SET weekly_weinke_channel = IFNULL(%(weekly_weinke_channel)s, weekly_weinke_channel),
+                signup_reminders = IFNULL(%(signup_reminders)s, signup_reminders),
+                weekly_ao_reminders = IFNULL(%(weekly_ao_reminders)s, weekly_ao_reminders),
+                google_calendar_id = IFNULL(%(google_calendar_id)s, google_calendar_id)
+            WHERE team_id = %(team_id)s;
             """
-            logger.info(f"Attempting SQL UPDATE: {sql_update}")
+            print("SQL: ", sql_update)
 
             mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_update)
+            mycursor.execute(sql_update, query_params)
             mycursor.execute("COMMIT;")
             success_status = True
     except Exception as e:

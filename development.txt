@@ -48,7 +48,8 @@ Note the Forwarding URL.  You will need this.
 
 python generate.py -n [ngrok forwarding url]
 
-This will generate two files in an generate subfolder:
+This will generate three files in an generate subfolder:
+* generate/aws_config.yaml: Configuration for deployment of a lambda with appropriate setup
 * generate/manifest.yaml: Slack manifest file that references the provided ngrok URL
 * generate/setup: Environment variables that will be needed.  More on this later.
 
