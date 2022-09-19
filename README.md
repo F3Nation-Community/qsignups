@@ -36,17 +36,19 @@ If you find bugs, you can reach out on Slack or (even better) add the issue to m
 * Automated creation of a weekly "Weinke" / schedule shown in the app home screen
 * Reminder messages to users about upcoming Qs
 * Conditional formatting of Weinke to highlight open slots, VQs, etc.
+* Support for other event types (QSource, Ruck Beatdowns, etc)
+* Optional AO lineups sent to each AO slack channel
 
 ### Feature Requests / Roadmap (link: [Issues](https://github.com/evanpetzoldt/qsignups-lambda/issues))
+* Google Calendar Integration - In Progress (Thanks @Rudy!)
 * More calendar management UI functionality:
   * Delete recurring events
+  * Edit recurring events
   * Delete AOs and associated future events
-* Support for other event types (QSource, Ruck Beatdowns, etc) - In progress
-* Switching to weinke images being posted to specific channel (created by QSignups), just a text-based schedule in QSignups
+* Switching to weinke images being posted to specific channel (created by QSignups), just a text-based schedule in QSignups - In Progress
 * Creation of monthly AO-specific weinkes, to be posted to AO channels at specified intervals and / or accessed via secondary menu
 * "Other" option for special event qualifiers with a free text input
   * Addition of programmable region-specific list for commonly used selections?
-* Posting of weekly Weinke / schedule to specified channel or other mediums (email, etc.)
 * Support for events at the same time on the same date at the same AO
 * Integration of slackblast
 * Integration of welcomebot
@@ -55,4 +57,4 @@ If you find bugs, you can reach out on Slack or (even better) add the issue to m
 * Upcoming Qs on home screen - add an Edit button to each
 * Site Q - have a way to store these in the table (even support for multiple Site Qs per AO?)
 
-Any other ideas you have would be greatly appreciated! Feel free to add an Issue with the tag 'enhancement'.
+Any other ideas you have are welcomed! Feel free to add an Issue with the tag 'enhancement'.
