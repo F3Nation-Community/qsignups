@@ -1,0 +1,99 @@
+Instructions for creating a local development environment to build/test features.
+
+These instructions are specific to Mac development.
+They should be easily adjusted for *nix environments, and with a bit more effort adapted for Windows.
+
+Reference Links:
+
+* https://slack.dev/bolt-python/tutorial/getting-started
+* https://slack.dev/node-slack-sdk/tutorials/local-development
+
+Summary:
+
+You will be creating a Slack application, and installing it in a Slack workspace.  That slack application
+will connect to a locally running python service, which can connect to your MySQL database.  You can then
+make changes to the python code, and invoke those changes from your slack application.
+
+Python Requirements:
+In addition to requirements.txt (listing requirements needed by the lambda), locally you may need a few other dependencies:
+* yaml (for generate.py)
+* mysql-connector-python (for connecting to a local python db)
+
+Steps:
+
+1. Your slack app will need to connect to your local python server.  You can do this in one of two ways:
+Socket mode, or via a publicly accessible URL.  This approach uses the publicly accessible URL approach.
+
+1a. Install ngrok (https://ngrok.com)
+1b. Create a free ngrok account
+1b. Run it:
+
+# Launch ngrok, gives you a URL which will redirect requests to localhost:3000
+ngrok http 3000
+
+Outpu:
+
+Session Status                online
+Account                       Your Name(Plan: Free)
+Update                        update available (version 3.0.7, Ctrl-U to update)
+Version                       3.0.6
+Region                        United States (us)
+Latency                       -
+Web Interface                 http://127.0.0.1:4040
+Forwarding                    https://unique-guid.ngrok.io -> http://localhost:3000
+
+Note the Forwarding URL.  You will need this.
+
+2. Generate your slack manifest file.
+
+python generate.py -n [ngrok forwarding url]
+
+This will generate three files in an generate subfolder:
+* generate/aws_config.yaml: Configuration for deployment of a lambda with appropriate setup
+* generate/manifest.yaml: Slack manifest file that references the provided ngrok URL
+* generate/setup: Environment variables that will be needed.  More on this later.
+
+3. Create a new Slack App using the generated manifest (or update an existing one).
+You'll need the Signing Secret and a Bot Token.  Get the Signing Secret from the App Info,
+and the Bot Token from the OAuth section.
+
+4.  Create the database tables in your MySQL database.
+4a. Create a new db schema.
+4b. Create the tables from sql scripts in db/tables
+4c. In order, apply any scripts from db/scripts folder
+
+5. Create your Environment file.  Using environment.json as a template, create a second JSON file
+and set all variables as appropriate (DB connection parameters from step #4, Slack parameters from step #3).
+
+6. Generate a new environment file that combines your environment with other parameters (slack scopes, for example)
+using the provided generate script (again; like you did in step #2)
+
+python generate.py -n [ngrok forwarding url] -f [your environment file]
+
+The second file - this now has the environment variables you will need to run the python stack.
+
+7. Launch the Bolt app, after updating the environment.
+
+source ./generate/setup
+python app.py
+
+You should see "Bolt app is running! (development server)"
+
+NOTE: bolt does not automatically reload on file changes.  You can manually stop/start the process to pick up
+code changes.  OR, you can consider using the provided reload.py script, which will watch for changes and restart
+
+python reload.py python app.py
+
+8.  Back to Slack.  Verify your redirect URL.  Go back to App Manifest option.  Re-install the Manifest
+or click the "Update" link.  The link should be your ngrok URL, and you should now be able to have Slack verify.
+
+9.  Install your App into your test workspace.
+
+10. Test it!  Type "/hello".  You should see a response ("Thanks") in Slack and you should see your local python
+bolt server be invoked:
+
+127.0.0.1 - - [27/Aug/2022 17:45:05] "POST /slack/events HTTP/1.1" 200 -
+
+=======
+
+This setup does NOT use OAuth, so that part of the overall setup is not configured.
