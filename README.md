@@ -21,11 +21,11 @@ Further instructions coming for administrators.
 
 ## Project Status
 
-I consider the app to be functional, but I also have a lot more planned! I welcome all beta testers and co-developers! Hit me up if you'd like to help out [@Moneyball (F3 St. Charles)] on the Nation space, or feel free to submit pull requests.
+The app is working and in use by several regions, but we have a lot more planned! I welcome all beta testers and co-developers! Hit me up if you'd like to help out [@Moneyball (F3 St. Charles)] on the Nation space, or feel free to submit pull requests.
 
 If you find bugs, you can reach out on Slack or (even better) add the issue to my github Issues log.
 
-### What's Working
+### Working Features
 * AOs can be added and edited via the admin UI
 * Weekly beatdown schedules can be added to the calendar via the admin UI
   * Single (non-recurring) events can also be added via the admin UI
@@ -37,7 +37,7 @@ If you find bugs, you can reach out on Slack or (even better) add the issue to m
 * Reminder messages to users about upcoming Qs
 * Conditional formatting of Weinke to highlight open slots, VQs, etc.
 * Support for other event types (QSource, Ruck Beatdowns, etc)
-* Optional AO lineups sent to each AO slack channel
+* Optional weekly AO lineups sent to each AO slack channel
 
 ### Feature Requests / Roadmap (link: [Issues](https://github.com/evanpetzoldt/qsignups-lambda/issues))
 * Google Calendar Integration - In Progress (Thanks @Rudy!)
@@ -45,16 +45,20 @@ If you find bugs, you can reach out on Slack or (even better) add the issue to m
   * Delete recurring events
   * Edit recurring events
   * Delete AOs and associated future events
-* Switching to weinke images being posted to specific channel (created by QSignups), just a text-based schedule in QSignups - In Progress
+* Switching to weinke images being posted to specific channel (created by QSignups), just a text-based schedule in QSignups
+  * May not end up doing this, Google Drive hosting should work going forward
 * Creation of monthly AO-specific weinkes, to be posted to AO channels at specified intervals and / or accessed via secondary menu
 * "Other" option for special event qualifiers with a free text input
   * Addition of programmable region-specific list for commonly used selections?
-* Support for events at the same time on the same date at the same AO
+* Support for events at the same time on the same date at the same AO - will require a change to the db structure
 * Integration of slackblast
 * Integration of welcomebot
 * Q resources menu (links to Q101, exicon, helpful tips)
   * Also beatdown wheel of fun 
 * Upcoming Qs on home screen - add an Edit button to each
 * Site Q - have a way to store these in the table (even support for multiple Site Qs per AO?)
+* Optional missing backblast alerts
+* Upcoming region events listed on QSignups home page
+* Under the hood - code reorgnization
 
 Any other ideas you have are welcomed! Feel free to add an Issue with the tag 'enhancement'.
