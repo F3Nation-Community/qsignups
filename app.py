@@ -9,7 +9,8 @@ from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
 
 from qsignups.utilities import safe_get, get_user_name
 from qsignups.database import my_connect
-from qsignups.slack import home
+from qsignups.slack import home, ao, event, settings, utilities
+from qsignups import actions, constants
 # import re
 
 def get_oauth_flow():
@@ -27,7 +28,7 @@ app = App(
 # Inputs
 schedule_create_length_days = 365
 
-@app.action("refresh_home")
+@app.action(actions.REFRESH_ACTION)
 def handle_refresh_home_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -56,7 +57,6 @@ def update_home_tab(client, event, logger, context):
     top_message = f'Welcome to QSignups, {user_name}!'
     home.refresh(client, user_id, logger, top_message, team_id, context)
 
-
 # triggers when user chooses to schedule a q
 # @app.action("schedule_q_button")
 # def handle_take_q_button(ack, body, client, logger, context):
@@ -67,7 +67,7 @@ def update_home_tab(client, event, logger, context):
 #     home.refresh(client, user_id, logger)
 
 # triggers when user chooses to manager the schedule
-@app.action("manage_schedule_button")
+@app.action(actions.EDIT_SCHEDULE_ACTION)
 def handle_manager_schedule_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -85,51 +85,20 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
     ]
 
     button_list = [
-        "Add an AO",
-        "Edit an AO",
-        # "Delete an AO",
-        "Add an event",
-        "Edit an event",
-        "Delete a single event",
-        "General settings"
+        constants.ADD_AO,
+        constants.EDIT_AO,
+        # constants.DELETE_AO,
+        constants.ADD_EVENT,
+        constants.EDIT_EVENT,
+        constants.DELETE_SINGLE_EVENT,
+        constants.GENERAL_SETTINGS
     ]
 
     for button in button_list:
-        new_block = {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":button,
-                        "emoji":True
-                    },
-                    "action_id":"manage_schedule_option_button",
-                    "value":button
-                }
-            ]
-        }
-        blocks.append(new_block)
+        blocks.append(utilities.make_button(button))
 
     # Cancel button
-    new_button = {
-        "type":"actions",
-        "elements":[
-            {
-                "type":"button",
-                "text":{
-                    "type":"plain_text",
-                    "text":"Cancel",
-                    "emoji":True
-                },
-                "action_id":"cancel_button_select",
-                "value":"cancel",
-                "style":"danger"
-            }
-        ]
-    }
-    blocks.append(new_button)
+    blocks.append(utilities.make_cancel_button())
 
     try:
         client.views_publish(
@@ -153,875 +122,24 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
 
+    logging.info(selected_action)
+
     # 'Add an AO' selected
-    if selected_action == 'Add an AO':
-        logger.info('gather input data')
-        blocks = [
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "*Select an AO channel:*"
-			    }
-            },
-            {
-                "type": "input",
-                "block_id": "add_ao_channel_select",
-                "element": {
-                    "type": "channels_select",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select a channel",
-                        "emoji": True
-                    },
-                    "action_id": "add_ao_channel_select"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Channel associated with AO",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "ao_display_name",
-                "element": {
-                    "type": "plain_text_input",
-                    "action_id": "ao_display_name",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Weasel's Ridge"
-                    }
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "AO Title"
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "ao_location_subtitle",
-                "element": {
-                    "type": "plain_text_input",
-                    "multiline": True,
-                    "action_id": "ao_location_subtitle",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Oompa Loompa Kingdom"
-                    }
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Location (township, park, etc.)"
-                }
-            }
-        ]
-
-        action_button = {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":"Submit",
-                        "emoji":True
-                    },
-                    "action_id":"submit_add_ao_button",
-                    "style":"primary",
-                    "value":"Submit"
-                }
-            ]
-        }
-        cancel_button = {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":"Cancel",
-                        "emoji":True
-                    },
-                    "action_id":"cancel_button_select",
-                    "style":"danger",
-                    "value":"Cancel"
-                }
-            ]
-        }
-        blocks.append(action_button)
-        blocks.append(cancel_button)
-
-        try:
-            print(blocks)
-            client.views_publish(
-                user_id=user_id,
-                view={
-                    "type": "home",
-                    "blocks": blocks
-                }
-            )
-        except Exception as e:
-            logger.error(f"Error publishing home tab: {e}")
-            print(e)
+    if selected_action == constants.ADD_AO:
+        ao.add_form(team_id, user_id, client, logger)
     # 'Add an AO' selected
-    elif selected_action == 'Edit an AO':
-        logger.info('edit an ao')
-
-        # list of AOs for dropdown
-        try:
-            with my_connect(team_id) as mydb:
-                sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-                ao_df = pd.read_sql(sql_ao_list, mydb.conn)
-        except Exception as e:
-            logger.error(f"Error pulling AO list: {e}")
-
-        ao_options = []
-        for index, row in ao_df.iterrows():
-            new_option = {
-                "text": {
-                    "type": "plain_text",
-                    "text": row['ao_display_name'],
-                    "emoji": True
-                },
-                "value": row['ao_channel_id']
-            }
-            ao_options.append(new_option)
-
-        # Build blocks
-        blocks = [
-            {
-                "type": "section",
-                "block_id": "edit_ao_select",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "Please select an AO to edit:"
-                },
-                "accessory": {
-                    "action_id": "edit_ao_select",
-                    "type": "static_select",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select an AO"
-                },
-                "options": ao_options
-                }
-            }
-        ]
-
-        # Publish view
-        try:
-            client.views_publish(
-                user_id=user_id,
-                view={
-                    "type": "home",
-                    "blocks": blocks
-                }
-            )
-        except Exception as e:
-            logger.error(f"Error publishing home tab: {e}")
-            print(e)
-
-        # # list of AOs for dropdown
-        # try:
-        #     with my_connect(team_id) as mydb:
-        #         sql_ao_list = f"SELECT ao_display_name, ao_channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-        #         ao_list = pd.read_sql(sql_ao_list, mydb.conn)
-        #         # ao_list = ao_list['ao_display_name'].values.tolist()
-        # except Exception as e:
-        #     logger.error(f"Error pulling AO list: {e}")
-
-        # ao_options = []
-        # for index, row in ao_list.iterrows():
-        #     new_option = {
-        #         "text": {
-        #             "type": "plain_text",
-        #             "text": row['ao_display_name'],
-        #             "emoji": True
-        #         },
-        #         "value": row['ao_channel_id']
-        #     }
-        #     ao_options.append(new_option)
-
-        # blocks = [
-        #     {
-        #         "type": "section",
-        #         "text": {
-        #             "type": "mrkdwn",
-        #             "text": "*Select an AO channel:*"
-		# 	    }
-        #     },
-        #     {
-        #         "type": "actions",
-        #         "block_id": "edit_ao_select",
-        #         "elements": [{
-        #             "type": "static_select",
-        #             "placeholder": {
-        #                 "type": "plain_text",
-        #                 "text": "Select an AO to edit",
-        #                 "emoji": True
-        #             },
-        #             "options": ao_options,
-        #             "action_id": "edit_ao_select"
-        #         }]
-        #     },
-        #     {
-        #         "type": "input",
-        #         "block_id": "ao_display_name",
-        #         "element": {
-        #             "type": "plain_text_input",
-        #             "action_id": "ao_display_name",
-        #             "placeholder": {
-        #                 "type": "plain_text",
-        #                 "text": "Weasel's Ridge"
-        #             }
-        #         },
-        #         "label": {
-        #             "type": "plain_text",
-        #             "text": "AO Title"
-        #         }
-        #     },
-        #     {
-        #         "type": "input",
-        #         "block_id": "ao_location_subtitle",
-        #         "element": {
-        #             "type": "plain_text_input",
-        #             "multiline": True,
-        #             "action_id": "ao_location_subtitle",
-        #             "placeholder": {
-        #                 "type": "plain_text",
-        #                 "text": "Oompa Loompa Kingdom"
-        #             }
-        #         },
-        #         "label": {
-        #             "type": "plain_text",
-        #             "text": "Location (township, park, etc.)"
-        #         }
-        #     }
-        # ]
-
-        # action_button = {
-        #     "type":"actions",
-        #     "elements":[
-        #         {
-        #             "type":"button",
-        #             "text":{
-        #                 "type":"plain_text",
-        #                 "text":"Submit",
-        #                 "emoji":True
-        #             },
-        #             "action_id":"submit_edit_ao_button",
-        #             "style":"primary",
-        #             "value":"Submit"
-        #         }
-        #     ]
-        # }
-        # cancel_button = {
-        #     "type":"actions",
-        #     "elements":[
-        #         {
-        #             "type":"button",
-        #             "text":{
-        #                 "type":"plain_text",
-        #                 "text":"Cancel",
-        #                 "emoji":True
-        #             },
-        #             "action_id":"cancel_button_select",
-        #             "style":"danger",
-        #             "value":"Cancel"
-        #         }
-        #     ]
-        # }
-        # blocks.append(action_button)
-        # blocks.append(cancel_button)
-
-        # try:
-        #     print(blocks)
-        #     client.views_publish(
-        #         user_id=user_id,
-        #         view={
-        #             "type": "home",
-        #             "blocks": blocks
-        #         }
-        #     )
-        # except Exception as e:
-        #     logger.error(f"Error publishing home tab: {e}")
-        #     print(e)
-
+    elif selected_action == constants.EDIT_AO:
+        ao.edit_form(team_id, user_id, client, logger)
     # Add an event
-    elif selected_action == 'Add an event':
-        logging.info('add an event')
-
-        # list of AOs for dropdown
-        try:
-            with my_connect(team_id) as mydb:
-                sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-                ao_list = pd.read_sql(sql_ao_list, mydb.conn)
-                ao_list = ao_list['ao_display_name'].values.tolist()
-        except Exception as e:
-            logger.error(f"Error pulling AO list: {e}")
-
-        ao_options = []
-        for option in ao_list:
-            new_option = {
-                "text": {
-                    "type": "plain_text",
-                    "text": option,
-                    "emoji": True
-                },
-                "value": option
-            }
-            ao_options.append(new_option)
-
-        day_list = [
-            'Monday',
-            'Tuesday',
-            'Wednesday',
-            'Thursday',
-            'Friday',
-            'Saturday',
-            'Sunday'
-        ]
-        day_options = []
-        for option in day_list:
-            new_option = {
-                "text": {
-                    "type": "plain_text",
-                    "text": option,
-                    "emoji": True
-                },
-                "value": option
-            }
-            day_options.append(new_option)
-
-        event_type_list = ['Bootcamp', 'QSource', 'Custom']
-        event_type_options = []
-        for option in event_type_list:
-            new_option = {
-                "text": {
-                    "type": "plain_text",
-                    "text": option,
-                    "emoji": True
-                },
-                "value": option
-            }
-            event_type_options.append(new_option)
-
-
-        blocks = [
-            {
-                "type": "section",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "*Is this a recurring or single event?*"
-			    }
-            },
-            {
-                "type": "actions",
-                "block_id": "recurring_select_block",
-                "elements": [
-                    {
-                        "type": "radio_buttons",
-                        "options": [
-                            {
-                                "text": {
-                                    "type": "plain_text",
-                                    "text": "Recurring event",
-                                    "emoji": True
-                                },
-                                "value": "recurring"
-                            },
-                            {
-                                "text": {
-                                    "type": "plain_text",
-                                    "text": "Single event",
-                                    "emoji": True
-                                },
-                                "value": "single"
-                            },
-                        ],
-                        "action_id": "add_event_recurring_select_action",
-                        "initial_option": {
-                            "text": {
-                                "type": "plain_text",
-                                "text": "Recurring event",
-                                "emoji": True
-                            },
-                            "value": "recurring"
-                        }
-                    }
-                ]
-            },
-            {
-                "type": "input",
-                "block_id": "event_type_select",
-                "element": {
-                    "type": "static_select",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select an event type",
-                        "emoji": True
-                    },
-                    "options": event_type_options,
-                    "action_id": "event_type_select_action",
-                    "initial_option": event_type_options[0]
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Event Type",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "event_type_custom",
-                "element": {
-                    "type": "plain_text_input",
-                    "action_id": "event_type_custom",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Custom Event Name"
-                    },
-                    "initial_value": "CustomEventType"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "If Custom selected, please specify"
-                },
-                "optional": True
-            },
-            {
-                "type": "input",
-                "block_id": "ao_display_name_select",
-                "element": {
-                    "type": "static_select",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select an AO",
-                        "emoji": True
-                    },
-                    "options": ao_options,
-                    "action_id": "ao_display_name_select_action"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "AO",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "event_day_of_week_select",
-                "element": {
-                    "type": "static_select",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select a day",
-                        "emoji": True
-                    },
-                    "options": day_options,
-                    "action_id": "event_day_of_week_select_action"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Day of Week",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "event_start_time_select",
-                "element": {
-                    "type": "timepicker",
-                    "initial_time": "05:30",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select time",
-                        "emoji": True
-                    },
-                    "action_id": "event_start_time_select"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Event Start",
-                    "emoji": True
-                }
-		    },
-            {
-                "type": "input",
-                "block_id": "event_end_time_select",
-                "element": {
-                    "type": "timepicker",
-                    "initial_time": "06:30",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select time",
-                        "emoji": True
-                    },
-                    "action_id": "event_end_time_select"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Event End",
-                    "emoji": True
-                }
-		    },
-            {
-                "type": "input",
-                "block_id": "add_event_datepicker",
-                "element": {
-                    "type": "datepicker",
-                    "initial_date": date.today().strftime('%Y-%m-%d'),
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select date",
-                        "emoji": True
-                    },
-                    "action_id": "add_event_datepicker"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Start Date",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "actions",
-                "block_id": "submit_cancel_buttons",
-                "elements": [
-                    {
-                        "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Submit",
-                            "emoji": True
-                        },
-                        "value": "submit",
-                        "action_id": "submit_add_event_button",
-                        "style": "primary"
-                    },
-                    {
-                        "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Cancel",
-                            "emoji": True
-                        },
-                        "value": "cancel",
-                        "action_id": "cancel_button_select",
-                        "style": "danger"
-                    }
-                ]
-            },
-            {
-			"type": "context",
-			"elements": [
-                    {
-                        "type": "mrkdwn",
-                        "text": "Please wait after hitting Submit, and do not hit it more than once"
-                    }
-                ]
-            }
-        ]
-        try:
-            client.views_publish(
-                user_id=user_id,
-                view={
-                    "type": "home",
-                    "blocks": blocks
-                }
-            )
-        except Exception as e:
-            logger.error(f"Error publishing home tab: {e}")
-            print(e)
-    # Edit an event
-    elif selected_action == 'Edit an event':
-        logging.info('Edit an event')
-
-        # list of AOs for dropdown
-        try:
-            with my_connect(team_id) as mydb:
-                sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-                ao_df = pd.read_sql(sql_ao_list, mydb.conn)
-        except Exception as e:
-            logger.error(f"Error pulling AO list: {e}")
-
-        ao_options = []
-        for index, row in ao_df.iterrows():
-            new_option = {
-                "text": {
-                    "type": "plain_text",
-                    "text": row['ao_display_name'],
-                    "emoji": True
-                },
-                "value": row['ao_channel_id']
-            }
-            ao_options.append(new_option)
-
-        # Build blocks
-        blocks = [
-            {
-                "type": "section",
-                "block_id": "ao_select_block",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "Please select an AO to edit:"
-                },
-                "accessory": {
-                    "action_id": "edit_event_ao_select",
-                    "type": "static_select",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select an AO"
-                },
-                "options": ao_options
-                }
-            }
-        ]
-
-        # Publish view
-        try:
-            client.views_publish(
-                user_id=user_id,
-                view={
-                    "type": "home",
-                    "blocks": blocks
-                }
-            )
-        except Exception as e:
-            logger.error(f"Error publishing home tab: {e}")
-            print(e)
-
-
-    elif selected_action == 'Delete a single event':
-        logging.info('Delete an event')
-
-        # list of AOs for dropdown
-        try:
-            with my_connect(team_id) as mydb:
-                sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-                ao_df = pd.read_sql(sql_ao_list, mydb.conn)
-        except Exception as e:
-            logger.error(f"Error pulling AO list: {e}")
-
-        ao_options = []
-        for index, row in ao_df.iterrows():
-            new_option = {
-                "text": {
-                    "type": "plain_text",
-                    "text": row['ao_display_name'],
-                    "emoji": True
-                },
-                "value": row['ao_channel_id']
-            }
-            ao_options.append(new_option)
-
-        # Build blocks
-        blocks = [
-            {
-                "type": "section",
-                "block_id": "delete_single_event_ao_select",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": "Please select an AO to delete an event from:"
-                },
-                "accessory": {
-                    "action_id": "delete_single_event_ao_select",
-                    "type": "static_select",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select an AO"
-                },
-                "options": ao_options
-                }
-            }
-        ]
-
-        # Publish view
-        try:
-            client.views_publish(
-                user_id=user_id,
-                view={
-                    "type": "home",
-                    "blocks": blocks
-                }
-            )
-        except Exception as e:
-            logger.error(f"Error publishing home tab: {e}")
-            print(e)
-
+    elif selected_action == constants.ADD_EVENT:
+        event.add_form(team_id, user_id, client, logger)
+    elif selected_action == constants.EDIT_EVENT:
+        event.edit_form(team_id, user_id, client, logger)
+    elif selected_action == constants.DELETE_SINGLE_EVENT:
+        event.delete_single_form(team_id, user_id, client, logger)
     # General settings
-    elif selected_action == 'General settings':
-        logger.info('setting general settings')
-
-        # Pull current settings
-        success_status = False
-        region_df = None
-        try:
-            with my_connect(team_id) as mydb:
-                sql_pull = f"SELECT * FROM {mydb.db}.qsignups_regions WHERE team_id = '{team_id}';"
-                region_df = pd.read_sql(sql_pull, mydb.conn).iloc[0]
-        except Exception as e:
-            logger.error(f"Error pulling region info: {e}")
-            print(e)
-
-        blocks = [
-            {
-                "type": "header",
-                "text": {
-                    "type": "plain_text",
-                    "text": "General Region Settings",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "weinke_channel_select",
-                "element": {
-                    "type": "channels_select",
-                    # "initial_channel": region_df['weekly_weinke_channel'],
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select a channel",
-                        "emoji": True
-                    },
-                    "action_id": "weinke_channel_select"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Public channel for posting weekly schedules:",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "q_reminder_enable",
-                "element": {
-                    "type": "radio_buttons",
-                    "options": [
-                        {
-                            "text": {
-                                "type": "plain_text",
-                                "text": "Enable Q reminders",
-                                "emoji": True
-                            },
-                            "value": "enable"
-                        },
-                        {
-                            "text": {
-                                "type": "plain_text",
-                                "text": "Disable Q reminders",
-                                "emoji": True
-                            },
-                            "value": "disable"
-                        },
-                    ],
-                    "action_id": "q_reminder_enable"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Enable Q Reminders?",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "ao_reminder_enable",
-                "element": {
-                    "type": "radio_buttons",
-                    "options": [
-                        {
-                            "text": {
-                                "type": "plain_text",
-                                "text": "Enable AO reminders",
-                                "emoji": True
-                            },
-                            "value": "enable"
-                        },
-                        {
-                            "text": {
-                                "type": "plain_text",
-                                "text": "Disable AO reminders",
-                                "emoji": True
-                            },
-                            "value": "disable"
-                        },
-                    ],
-                    "action_id": "ao_reminder_enable"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Enable AO Reminders?",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "google_calendar_id",
-                "element": {
-                    "type": "plain_text_input",
-                    "action_id": "google_calendar_id",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Google Calendar ID"
-                    },
-                    "initial_value": region_df['google_calendar_id'] or ''
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "To connect to a google calendar, provide the ID"
-                },
-                "optional": True
-            }
-         ]
-
-        action_button = {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":"Submit",
-                        "emoji":True
-                    },
-                    "action_id":"submit_general_settings",
-                    "style":"primary",
-                    "value":"Submit"
-                }
-            ]
-        }
-        cancel_button = {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":"Cancel",
-                        "emoji":True
-                    },
-                    "action_id":"cancel_button_select",
-                    "style":"danger",
-                    "value":"Cancel"
-                }
-            ]
-        }
-        blocks.append(action_button)
-        blocks.append(cancel_button)
-
-        try:
-            print(blocks)
-            client.views_publish(
-                user_id=user_id,
-                view={
-                    "type": "home",
-                    "blocks": blocks
-                }
-            )
-        except Exception as e:
-            logger.error(f"Error publishing home tab: {e}")
-            print(e)
+    elif selected_action == constants.GENERAL_SETTINGS:
+        settings.general_form(team_id, user_id, client, logger))
 
 @app.action("delete_single_event_ao_select")
 def handle_delete_single_event_ao_select(ack, body, client, logger, context):
@@ -1121,24 +239,7 @@ def handle_delete_single_event_ao_select(ack, body, client, logger, context):
         # Append button to list
         blocks.append(new_button)
 
-    # Cancel button
-    new_button = {
-        "type":"actions",
-        "elements":[
-            {
-                "type":"button",
-                "text":{
-                    "type":"plain_text",
-                    "text":"Cancel",
-                    "emoji":True
-                },
-                "action_id":"cancel_button_select",
-                "value":"cancel",
-                "style":"danger"
-            }
-        ]
-    }
-    blocks.append(new_button)
+    blocks.append(utilities.make_cancel_button())
 
     # Publish view
     try:
@@ -1298,40 +399,8 @@ def handle_edit_ao_select(ack, body, client, logger, context):
             }
         ]
 
-        action_button = {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":"Submit",
-                        "emoji":True
-                    },
-                    "action_id":"submit_edit_ao_button",
-                    "style":"primary",
-                    "value":"Submit"
-                }
-            ]
-        }
-        cancel_button = {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":"Cancel",
-                        "emoji":True
-                    },
-                    "action_id":"cancel_button_select",
-                    "style":"danger",
-                    "value":"Cancel"
-                }
-            ]
-        }
-        blocks.append(action_button)
-        blocks.append(cancel_button)
+        blocks.append(utilities.make_button("Submit", action_id = actions.EDIT_AO_ACTION))
+        blocks.append(utilities.make_cancel_button())
 
         try:
             client.views_publish(
@@ -1589,28 +658,8 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                 "type": "actions",
                 "block_id": "submit_cancel_buttons",
                 "elements": [
-                    {
-                        "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Submit",
-                            "emoji": True
-                        },
-                        "value": "submit",
-                        "action_id": "submit_add_event_button",
-                        "style": "primary"
-                    },
-                    {
-                        "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Cancel",
-                            "emoji": True
-                        },
-                        "value": "cancel",
-                        "action_id": "cancel_button_select",
-                        "style": "danger"
-                    }
+                    utilities.make_button("Submit", action_id = actions.ADD_EVENT_ACTION),
+                    utilities.make_cancel_button()
                 ]
             },
             {
@@ -1719,17 +768,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                         "action_id": "submit_add_single_event_button",
                         "style": "primary"
                     },
-                    {
-                        "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Cancel",
-                            "emoji": True
-                        },
-                        "value": "cancel",
-                        "action_id": "cancel_button_select",
-                        "style": "danger"
-                    }
+                    utilities.make_cancel_button()
                 ]
             }
         ]
@@ -1828,23 +867,7 @@ def handle_edit_event_ao_select(ack, body, client, logger, context):
         blocks.append(new_button)
 
     # Cancel button
-    new_button = {
-        "type":"actions",
-        "elements":[
-            {
-                "type":"button",
-                "text":{
-                    "type":"plain_text",
-                    "text":"Cancel",
-                    "emoji":True
-                },
-                "action_id":"cancel_button_select",
-                "value":"cancel",
-                "style":"danger"
-            }
-        ]
-    }
-    blocks.append(new_button)
+    blocks.append(utilities.make_cancel_button())
 
     # Publish view
     try:
@@ -1859,7 +882,7 @@ def handle_edit_event_ao_select(ack, body, client, logger, context):
         logger.error(f"Error publishing home tab: {e}")
         print(e)
 
-@app.action("submit_edit_ao_button")
+@app.action(actions.EDIT_AO_ACTION)
 def submit_edit_ao_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -1904,7 +927,7 @@ def submit_edit_ao_button(ack, body, client, logger, context):
 
     home.refresh(client, user_id, logger, top_message, team_id, context)
 
-@app.action("submit_general_settings")
+@app.action(actions.EDIT_SETTINGS_ACTION)
 def handle_submit_general_settings_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -1957,7 +980,7 @@ def handle_submit_general_settings_button(ack, body, client, logger, context):
     home.refresh(client, user_id, logger, top_message, team_id, context)
 
 
-@app.action("submit_add_ao_button")
+@app.action(actions.ADD_AO_ACTION)
 def handle_submit_add_ao_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -2026,7 +1049,7 @@ def handle_submit_add_ao_button(ack, body, client, logger, context):
 
     home.refresh(client, user_id, logger, top_message, team_id, context)
 
-@app.action("submit_add_event_button")
+@app.action(actions.ADD_EVENT_ACTION)
 def handle_submit_add_event_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -2279,23 +1302,7 @@ def ao_select_slot(ack, client, body, logger, context):
         # blocks.append(new_button)
 
     # Cancel button
-    new_button = {
-        "type":"actions",
-        "elements":[
-            {
-                "type":"button",
-                "text":{
-                    "type":"plain_text",
-                    "text":"Cancel",
-                    "emoji":True
-                },
-                "action_id":"cancel_button_select",
-                "value":"cancel",
-                "style":"danger"
-            }
-        ]
-    }
-    blocks.append(new_button)
+    blocks.append(utilities.make_cancel_button())
 
     # Publish view
     try:
@@ -2493,58 +1500,47 @@ def handle_taken_date_select_button(ack, client, body, logger, context):
     if (user_name == selected_user) or user_admin:
         label = 'yourself' if user_name == selected_user else selected_user
         label2 = 'myself' if user_name == selected_user else selected_user
-        blocks = [{
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"Would you like to edit or clear this slot?"
-            }
-        },
-        {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":f"Edit this event",
-                        "emoji":True
-                    },
-                    "value":f"{selected_date}|{selected_ao}",
-                    "action_id":"edit_single_event_button"
+        blocks = [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"Would you like to edit or clear this slot?"
                 }
-            ]
-        },
-        {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":f"Take {label2} off this Q slot",
-                        "emoji":True
-                    },
-                    "value":f"{selected_date}|{selected_ao}",
-                    "action_id":"clear_slot_button",
-                    "style":"danger"
-                }
-            ]
-        },
-        {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":"Cancel",
-                        "emoji":True
-                    },
-                    "action_id":"cancel_button_select"
-                }
-            ]
-        }]
+            },
+            {
+                "type":"actions",
+                "elements":[
+                    {
+                        "type":"button",
+                        "text":{
+                            "type":"plain_text",
+                            "text":f"Edit this event",
+                            "emoji":True
+                        },
+                        "value":f"{selected_date}|{selected_ao}",
+                        "action_id": "edit_single_event_button"
+                    }
+                ]
+            },
+            {
+                "type":"actions",
+                "elements":[
+                    {
+                        "type":"button",
+                        "text":{
+                            "type":"plain_text",
+                            "text":f"Take {label2} off this Q slot",
+                            "emoji":True
+                        },
+                        "value":f"{selected_date}|{selected_ao}",
+                        "action_id":"clear_slot_button",
+                        "style":"danger"
+                    }
+                ]
+            },
+            utilities.make_cancel_button()
+        ]
 
         # Publish view
         try:
@@ -2737,30 +1733,15 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
                     "text":"Submit",
                     "emoji":True
                 },
-                "action_id":"submit_edit_event_button",
+                "action_id": actions.EDIT_EVENT_ACTION,
                 "style":"primary",
                 "value":ao_channel_id
             }
         ]
     }
-    cancel_button = {
-        "type":"actions",
-        "elements":[
-            {
-                "type":"button",
-                "text":{
-                    "type":"plain_text",
-                    "text":"Cancel",
-                    "emoji":True
-                },
-                "action_id":"cancel_button_select",
-                "style":"danger",
-                "value":"Cancel"
-            }
-        ]
-    }
+
     blocks.append(action_button)
-    blocks.append(cancel_button)
+    blocks.append(utilities.make_cancel_button())
 
     # Publish view
     try:
@@ -2777,7 +1758,7 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
 
 
 # triggered when user hits submit on event edit
-@app.action("submit_edit_event_button")
+@app.action(actions.EDIT_EVENT_ACTION)
 def handle_submit_edit_event_button(ack, client, body, logger, context):
     # acknowledge action and log payload
     ack()
@@ -2911,7 +1892,7 @@ def handle_clear_slot_button(ack, client, body, logger, context):
     home.refresh(client, user_id, logger, top_message, team_id, context)
 
 # triggered when user hits cancel or some other button that takes them home
-@app.action("cancel_button_select")
+@app.action(actions.CANCEL_BUTTON_ACTION)
 def cancel_button_select(ack, client, body, logger, context):
     # acknowledge action and log payload
     ack()
@@ -2923,10 +1904,6 @@ def cancel_button_select(ack, client, body, logger, context):
     user_name = get_user_name([user_id], logger, client)
     top_message = f"Welcome to QSignups, {user_name}!"
     home.refresh(client, user_id, logger, top_message, team_id, context)
-
-
-
-
 
 SlackRequestHandler.clear_all_log_handlers()
 logger = logging.getLogger()
