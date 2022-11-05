@@ -44,5 +44,5 @@ environment_variables:
 #    tag_2: bar
 
 # Build options
-# build:
-  # source_directories: slack_bolt # a comma delimited list of directories in your project root that contains source to package.
+build:
+  source_directories: qsignups

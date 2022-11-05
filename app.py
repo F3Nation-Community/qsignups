@@ -1,16 +1,15 @@
-from imp import reload
 import logging
-import json
 import os
-from time import strftime, strptime
-import mysql.connector
-from contextlib import ContextDecorator
-from datetime import datetime, timezone, timedelta, date
+from datetime import datetime, timedelta, date
 import pandas as pd
 
 from slack_bolt import App
 from slack_bolt.adapter.aws_lambda import SlackRequestHandler
 from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
+
+from qsignups.utilities import safe_get, get_user_name
+from qsignups.database import my_connect
+from qsignups.slack import home
 # import re
 
 def get_oauth_flow():
@@ -28,358 +27,15 @@ app = App(
 # Inputs
 schedule_create_length_days = 365
 
-# Construct class for connecting to the db
-# Takes team_id as an input, pulls schema name from paxminer.regions
-class my_connect(ContextDecorator):
-    def __init__(self, team_id):
-        self.conn = ''
-        self.team_id = team_id
-        self.db = ''
-
-    def __enter__(self):
-        self.conn = mysql.connector.connect(
-            host=os.environ['DATABASE_HOST'],
-            user=os.environ['ADMIN_DATABASE_USER'],
-            passwd=os.environ['ADMIN_DATABASE_PASSWORD'],
-            database=os.environ['ADMIN_DATABASE_SCHEMA']
-        )
-
-        # sql_select = f'SELECT schema_name, user, password FROM paxminer.regions WHERE team_id = {self.team_id};'
-
-        # with self.conn.cursor() as mycursor:
-        #     mycursor.execute(sql_select)
-        #     db, user, password = mycursor.fetchone()
-        db = os.environ['ADMIN_DATABASE_SCHEMA']
-
-        self.db = db
-        return self
-
-    def __exit__(self, *exc):
-        self.conn.close()
-        return False
-
-# Helper functions
-def safeget(dct, *keys):
-    for key in keys:
-        try:
-            dct = dct[key]
-        except KeyError:
-            return None
-    return dct
-
-def get_channel_id_and_name(body, logger):
-    # returns channel_iid, channel_name if it exists as an escaped parameter of slashcommand
-    user_id = body.get("user_id")
-    # Get "text" value which is everything after the /slash-command
-    # e.g. /slackblast #our-aggregate-backblast-channel
-    # then text would be "#our-aggregate-backblast-channel" if /slash command is not encoding
-    # but encoding needs to be checked so it will be "<#C01V75UFE56|our-aggregate-backblast-channel>" instead
-    channel_name = body.get("text") or ''
-    channel_id = ''
-    try:
-        channel_id = channel_name.split('|')[0].split('#')[1]
-        channel_name = channel_name.split('|')[1].split('>')[0]
-    except IndexError as ierr:
-        logger.error('Bad user input - cannot parse channel id')
-    except Exception as error:
-        logger.error('User did not pass in any input')
-    return channel_id, channel_name
-
-
-def get_channel_name(id, logger, client):
-    channel_info_dict = client.conversations_info(
-        channel=id
-    )
-    channel_name = safeget(channel_info_dict, 'channel', 'name') or None
-    logger.info('channel_name is {}'.format(channel_name))
-    return channel_name
-
-
-def get_user_names(array_of_user_ids, logger, client):
-    names = []
-    for user_id in array_of_user_ids:
-        user_info_dict = client.users_info(
-            user=user_id
-        )
-        user_name = safeget(user_info_dict, 'user', 'profile', 'display_name') or safeget(
-            user_info_dict, 'user', 'profile', 'real_name') or None
-        if user_name:
-            names.append(user_name)
-        logger.info('user_name is {}'.format(user_name))
-    logger.info('names are {}'.format(names))
-    return names
-
-def refresh_home_tab(client, user_id, logger, top_message, team_id, context):
-    print("CLIENT", client)
-    print("CONTEXT", context)
-    print("TEAM", team_id)
-    sMsg = ""
-    current_week_weinke_url = None
-    ao_list = None
-    upcoming_qs_df = pd.DataFrame()
-    try:
-        with my_connect(team_id) as mydb:
-            mycursor = mydb.conn.cursor()
-            # Build SQL queries
-            # list of upcoming Qs for user
-            sql_upcoming_qs = f"""
-            SELECT m.*, a.ao_display_name
-            FROM {mydb.db}.qsignups_master m
-            LEFT JOIN {mydb.db}.qsignups_aos a
-            ON m.team_id = a.team_id
-                AND m.ao_channel_id = a.ao_channel_id
-            WHERE m.team_id = "{team_id}"
-                AND m.q_pax_id = "{user_id}"
-                AND m.event_date > DATE("{date.today()}")
-            ORDER BY m.event_date, m.event_time
-            LIMIT 5;
-            """
-
-            # list of all upcoming events for the region
-            sql_upcoming_events = f"""
-            SELECT m.*, a.ao_display_name, a.ao_location_subtitle
-            FROM qsignups_master m
-            LEFT JOIN qsignups_aos a
-            ON m.team_id = a.team_id
-                AND m.ao_channel_id = a.ao_channel_id
-            WHERE m.team_id = "{team_id}"
-                AND m.event_date > DATE("{date.today()}")
-                AND m.event_date <= DATE("{date.today()+timedelta(days=7)}")
-            ORDER BY m.event_date, m.event_time
-            ;
-            """
-
-            # list of AOs for dropdown
-            sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-
-            # weinke urls
-            # sql_weinkes = f"SELECT current_week_weinke, next_week_weinke FROM paxminer.regions WHERE region_schema = '{mydb.db}';"
-            # TODO: fix this
-            sql_weinkes = f"SELECT current_week_weinke, next_week_weinke, bot_token FROM {mydb.db}.qsignups_regions WHERE team_id = '{team_id}';"
-
-            # Make pulls
-            upcoming_qs_df = pd.read_sql(sql_upcoming_qs, mydb.conn, parse_dates=['event_date'])
-            ao_list = pd.read_sql(sql_ao_list, mydb.conn)
-            upcoming_events_df = pd.read_sql(sql_upcoming_events, mydb.conn, parse_dates=['event_date'])
-
-            current_week_weinke_url = None
-            if os.environ['USE_WEINKES']:
-                mycursor.execute(sql_weinkes)
-                weinkes_list = mycursor.fetchone()
-
-                if weinkes_list is None:
-                    # team_id not on region table, so we insert it
-                    sql_insert = f"""
-                    INSERT INTO {mydb.db}.qsignups_regions (team_id, bot_token)
-                    VALUES ("{team_id}", "{context['bot_token']}");
-                    """
-                    mycursor.execute(sql_insert)
-                    mycursor.execute("COMMIT;")
-
-                    current_week_weinke_url = None
-                    next_week_weinke_url = None
-                else:
-                    current_week_weinke_url = weinkes_list[0]
-                    next_week_weinke_url = weinkes_list[1]
-
-                if weinkes_list[2] != context['bot_token']:
-                    sql_update = f"UPDATE {mydb.db}.qsignups_regions SET bot_token = '{context['bot_token']}' WHERE team_id = '{team_id}';"
-                    mycursor.execute(sql_update)
-                    mycursor.execute("COMMIT;")
-
-            # Create upcoming schedule message
-            sMsg = '*Upcoming Schedule:*'
-            iterate_date = ''
-            for index, row in upcoming_events_df.iterrows():
-                if row['event_date'] != iterate_date:
-                    sMsg += f"\n\n:calendar: *{row['event_date'].strftime('%A %m/%d/%y')}*"
-                    iterate_date = row['event_date']
-
-                if row['q_pax_name'] is None:
-                    q_name = '*OPEN!*'
-                else:
-                    q_name = row['q_pax_name']
-
-                location = row['ao_location_subtitle'].split('\n')[0]
-                sMsg += f"\n{row['ao_display_name']} - {row['event_type']} @ {row['event_time']} - {q_name}"
-
-    except Exception as e:
-        logger.error(f"Error pulling user db info: {e}")
-
-    # Extend top message with upcoming qs list
-    if len(upcoming_qs_df) > 0:
-        top_message += '\n\nYou have some upcoming Qs:'
-        for index, row in upcoming_qs_df.iterrows():
-            dt_fmt = row['event_date'].strftime("%a %m-%d")
-            top_message += f"\n- {row['event_type']} on {dt_fmt} @ {row['event_time']} at {row['ao_display_name']}"
-
-    # Build AO options list
-    options = []
-    if ao_list is not None:
-        for index, row in ao_list.iterrows():
-            new_option = {
-                "text": {
-                    "type": "plain_text",
-                    "text": row['ao_display_name']
-                },
-                "value": row['ao_channel_id']
-            }
-            options.append(new_option)
-
-    # Build view blocks
-    blocks = [
-        {
-            "type": "section",
-            "block_id": "section678",
-            "text": {
-                "type": "mrkdwn",
-                "text": top_message
-            }
-        },
-        {
-            "type": "divider"
-        },
-    ]
-    if len(options) == 0:
-        new_block = {
-            "type": "section",
-            "block_id": "ao_select_block",
-            "text": {
-                "type": "mrkdwn",
-                "text": "Please use the button below to add some AOs!"
-            }
-        }
-    else:
-        new_block = {
-            "type": "section",
-            "block_id": "ao_select_block",
-            "text": {
-                "type": "mrkdwn",
-                "text": "Please select an AO to take a Q slot:"
-            },
-            "accessory": {
-                "action_id": "ao-select",
-                "type": "static_select",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Select an AO"
-            },
-            "options": options
-            }
-        }
-    blocks.append(new_block)
-
-    if (os.environ['USE_WEINKES']) and (current_week_weinke_url != None) and (next_week_weinke_url != None):
-        weinke_blocks = [
-            {
-                "type": "image",
-                "title": {
-                    "type": "plain_text",
-                    "text": "This week's schedule",
-                    "emoji": True
-                },
-                "image_url": current_week_weinke_url,
-                "alt_text": "This week's schedule"
-            },
-            {
-                "type": "image",
-                "title": {
-                    "type": "plain_text",
-                    "text": "Next week's schedule",
-                    "emoji": True
-                },
-                "image_url": next_week_weinke_url,
-                "alt_text": "Next week's schedule"
-            },
-            {
-                "type": "context",
-                "elements": [
-                    {
-                        "type": "mrkdwn",
-                        "text": "Weekly schedules updated hourly, and may not reflect the latest changes"
-                    }
-                ]
-            },
-            {
-                "type": "divider"
-            }
-        ]
-
-        for block in weinke_blocks:
-            blocks.append(block)
-
-    # add upcoming schedule text block
-    if sMsg:
-        upcoming_schedule_block = {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": sMsg
-            }
-        }
-        blocks.append(upcoming_schedule_block)
-
-    # add page refresh button
-    refresh_button = {
-        "type":"actions",
-        "elements":[
-            {
-                "type":"button",
-                "text":{
-                    "type":"plain_text",
-                    "text":"Refresh Schedule",
-                    "emoji":True
-                },
-                "action_id":"refresh_home"
-            }
-        ]
-    }
-    blocks.append(refresh_button)
-
-    # Optionally add admin button
-    user_info_dict = client.users_info(
-        user=user_id
-    )
-    if user_info_dict['user']['is_admin']:
-        admin_button = {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":"Manage Region Calendar",
-                        "emoji":True
-                    },
-                    "action_id":"manage_schedule_button"
-                }
-            ]
-        }
-        blocks.append(admin_button)
-
-    # Attempt to publish view
-    try:
-        logger.debug(blocks)
-        client.views_publish(
-            user_id=user_id,
-            view={
-                "type": "home",
-                "blocks":blocks
-            }
-        )
-    except Exception as e:
-        logger.error(f"Error publishing home tab: {e}")
-        print(e)
-
 @app.action("refresh_home")
 def handle_refresh_home_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    user_name = (get_user_names([user_id], logger, client))[0]
+    user_name = get_user_name([user_id], logger, client)
     top_message = f'Welcome to QSignups, {user_name}!'
-    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+    home.refresh(client, user_id, logger, top_message, team_id, context)
 
 @app.event("app_mention")
 def handle_app_mentions(body, say, logger):
@@ -396,9 +52,9 @@ def update_home_tab(client, event, logger, context):
     logger.info(event)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    user_name = (get_user_names([user_id], logger, client))[0]
+    user_name = get_user_name([user_id], logger, client)
     top_message = f'Welcome to QSignups, {user_name}!'
-    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+    home.refresh(client, user_id, logger, top_message, team_id, context)
 
 
 # triggers when user chooses to schedule a q
@@ -408,7 +64,7 @@ def update_home_tab(client, event, logger, context):
 #     logger.info(body)
 #     user_id = context["user_id"]
 #     team_id = context["team_id"]
-#     refresh_home_tab(client, user_id, logger)
+#     home.refresh(client, user_id, logger)
 
 # triggers when user chooses to manager the schedule
 @app.action("manage_schedule_button")
@@ -1504,7 +1160,7 @@ def delete_single_event_button(ack, client, body, context):
     logger.info(body)
     user_id = context['user_id']
     team_id = context['team_id']
-    # user_name = (get_user_names([user_id], logger, client))[0]
+    # user_name = get_user_name([user_id], logger, client)
 
     # gather and format selected date and time
     selected_list = str.split(body['actions'][0]['value'],'|')
@@ -1541,7 +1197,7 @@ def delete_single_event_button(ack, client, body, context):
     else:
         top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
 
-    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+    home.refresh(client, user_id, logger, top_message, team_id, context)
 
 @app.action("edit_ao_select")
 def handle_edit_ao_select(ack, body, client, logger, context):
@@ -1576,7 +1232,7 @@ def handle_edit_ao_select(ack, body, client, logger, context):
         logger.error(f"Error pulling AO list: {e}")
 
     if results is None:
-        refresh_home_tab(client, user_id, logger, top_message="Selected channel not found - PAXMiner may not have added it to the aos table yet", team_id=team_id, context=context)
+        home.refresh(client, user_id, logger, top_message="Selected channel not found - PAXMiner may not have added it to the aos table yet", team_id=team_id, context=context)
     else:
         if ao_display_name is None:
             ao_display_name = ""
@@ -2246,16 +1902,8 @@ def submit_edit_ao_button(ack, body, client, logger, context):
     else:
         top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
 
-    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+    home.refresh(client, user_id, logger, top_message, team_id, context)
 
-def safe_get(data, keys):
-    try:
-        result = data
-        for k in keys:
-            result = result[k]
-        return result
-    except:
-        return None
 @app.action("submit_general_settings")
 def handle_submit_general_settings_button(ack, body, client, logger, context):
     ack()
@@ -2306,7 +1954,7 @@ def handle_submit_general_settings_button(ack, body, client, logger, context):
     else:
         top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
 
-    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+    home.refresh(client, user_id, logger, top_message, team_id, context)
 
 
 @app.action("submit_add_ao_button")
@@ -2376,7 +2024,7 @@ def handle_submit_add_ao_button(ack, body, client, logger, context):
     else:
         top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
 
-    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+    home.refresh(client, user_id, logger, top_message, team_id, context)
 
 @app.action("submit_add_event_button")
 def handle_submit_add_event_button(ack, body, client, logger, context):
@@ -2453,7 +2101,7 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
         top_message = f"Thanks, I got it! I've added {round(schedule_create_length_days/365)} year's worth of {event_type}s to the schedule for {event_day_of_week}s at {event_time} at {ao_display_name}."
     else:
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
-    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+    home.refresh(client, user_id, logger, top_message, team_id, context)
 
 @app.action("submit_add_single_event_button")
 def handle_submit_add_single_event_button(ack, body, client, logger, context):
@@ -2511,7 +2159,7 @@ def handle_submit_add_single_event_button(ack, body, client, logger, context):
         top_message = f"Thanks, I got it! I've added your event to the schedule for {event_date} at {event_time} at {ao_display_name}."
     else:
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
-    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+    home.refresh(client, user_id, logger, top_message, team_id, context)
 
 
 # triggered when user makes an ao selection
@@ -2671,7 +2319,7 @@ def handle_date_select_button(ack, client, body, logger, context):
     logging.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    user_name = (get_user_names([user_id], logger, client))[0]
+    user_name = get_user_name([user_id], logger, client)
 
     # gather and format selected date and time
     selected_date = body['actions'][0]['value']
@@ -2721,7 +2369,7 @@ def handle_date_select_button(ack, client, body, logger, context):
     else:
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
 
-    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+    home.refresh(client, user_id, logger, top_message, team_id, context)
 
 # triggered when user selects open slot on a message
 @app.action("date_select_button_from_message")
@@ -2732,7 +2380,7 @@ def handle_date_select_button_from_message(ack, client, body, logger, context):
     logging.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    user_name = (get_user_names([user_id], logger, client))[0]
+    user_name = (get_user_name([user_id], logger, client))[0]
 
     # gather and format selected date and time
     selected_date = body['actions'][0]['value']
@@ -2782,11 +2430,11 @@ def handle_date_select_button_from_message(ack, client, body, logger, context):
     block_num = -1
     if success_status:
         for counter, block in enumerate(message_blocks):
-            print(f"comparing {safeget(block, 'accessory', 'value')} and {selected_date}")
-            if safeget(block, 'accessory', 'value') == selected_date:
+            print(f"comparing {safe_get(block, 'accessory', 'value')} and {selected_date}")
+            if safe_get(block, 'accessory', 'value') == selected_date:
                 block_num = counter
 
-            if safeget(block, 'accessory', 'text', 'text'):
+            if safe_get(block, 'accessory', 'text', 'text'):
                 if block['accessory']['text']['text'][-5] == 'OPEN!':
                     open_count += 1
 
@@ -2830,7 +2478,7 @@ def handle_taken_date_select_button(ack, client, body, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
     user_info_dict = client.users_info(user=user_id)
-    user_name = safeget(user_info_dict, 'user', 'profile', 'display_name') or safeget(
+    user_name = safe_get(user_info_dict, 'user', 'profile', 'display_name') or safe_get(
             user_info_dict, 'user', 'profile', 'real_name') or None
     user_admin = user_info_dict['user']['is_admin']
 
@@ -2924,7 +2572,7 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
     logger.info(body)
     user_id = context['user_id']
     team_id = context['team_id']
-    # user_name = (get_user_names([user_id], logger, client))[0]
+    # user_name = get_user_name([user_id], logger, client)
 
     # gather and format selected date and time
     selected_list = str.split(body['actions'][0]['value'],'|')
@@ -3153,7 +2801,7 @@ def handle_submit_edit_event_button(ack, client, body, logger, context):
     else:
         selected_q_id = selected_q_id_list[0]
         user_info_dict = client.users_info(user=selected_q_id)
-        selected_q_name = safeget(user_info_dict, 'user', 'profile', 'display_name') or safeget(
+        selected_q_name = safe_get(user_info_dict, 'user', 'profile', 'display_name') or safe_get(
             user_info_dict, 'user', 'profile', 'real_name') or None
 
         selected_q_id_fmt = f'"{selected_q_id}"'
@@ -3199,7 +2847,7 @@ def handle_submit_edit_event_button(ack, client, body, logger, context):
     else:
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
 
-    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+    home.refresh(client, user_id, logger, top_message, team_id, context)
 
 # triggered when user hits cancel or some other button that takes them home
 @app.action("clear_slot_button")
@@ -3209,7 +2857,7 @@ def handle_clear_slot_button(ack, client, body, logger, context):
     logger.info(body)
     user_id = context['user_id']
     team_id = context['team_id']
-    user_name = (get_user_names([user_id], logger, client))[0]
+    user_name = get_user_name([user_id], logger, client)
 
     # gather and format selected date and time
     selected_list = str.split(body['actions'][0]['value'],'|')
@@ -3260,7 +2908,7 @@ def handle_clear_slot_button(ack, client, body, logger, context):
     else:
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
 
-    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+    home.refresh(client, user_id, logger, top_message, team_id, context)
 
 # triggered when user hits cancel or some other button that takes them home
 @app.action("cancel_button_select")
@@ -3272,9 +2920,9 @@ def cancel_button_select(ack, client, body, logger, context):
     # logging.info(context)
     user_id = context['user_id']
     team_id = context['team_id']
-    user_name = (get_user_names([user_id], logger, client))[0]
+    user_name = get_user_name([user_id], logger, client)
     top_message = f"Welcome to QSignups, {user_name}!"
-    refresh_home_tab(client, user_id, logger, top_message, team_id, context)
+    home.refresh(client, user_id, logger, top_message, team_id, context)
 
 
 
