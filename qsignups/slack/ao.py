@@ -1,8 +1,7 @@
 import pandas as pd
 
 from qsignups.database import my_connect
-from qsignups.slack import utilities
-from qsignups import actions
+from qsignups.slack import actions, utilities
 
 def add_form(team_id, user_id, client, logger):
     logger.info('gather input data')
@@ -67,9 +66,10 @@ def add_form(team_id, user_id, client, logger):
         }
     ]
 
-    action_button = utilities.make_button("Submit", action_id = actions.ADD_AO_ACTION)
-    blocks.append(action_button)
-    blocks.append(utilities.make_cancel_button())
+    blocks.append(utilities.make_action_button_row([
+        actions.make_submit_button(actions.ADD_AO_ACTION),
+        actions.CANCEL_BUTTON,
+    ]))
 
     try:
         client.views_publish(

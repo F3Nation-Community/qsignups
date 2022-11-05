@@ -1,8 +1,8 @@
 from datetime import timedelta, date
 import pandas as pd
 from qsignups.database import my_connect
-from qsignups import actions, constants
-from qsignups.slack import utilities
+from qsignups import constants
+from qsignups.slack import actions, utilities
 
 def refresh(client, user_id, logger, top_message, team_id, context):
     print("CLIENT", client)
@@ -215,7 +215,7 @@ def refresh(client, user_id, logger, top_message, team_id, context):
         blocks.append(upcoming_schedule_block)
 
     # add page refresh button
-    refresh_button = utilities.make_button("Refresh Schedule", action_id = actions.REFRESH_ACTION)
+    refresh_button = utilities.make_action_button_row([actions.ActionButton("Refresh Schedule", action = actions.REFRESH_ACTION)])
     blocks.append(refresh_button)
 
     # Optionally add admin button
@@ -223,7 +223,8 @@ def refresh(client, user_id, logger, top_message, team_id, context):
         user=user_id
     )
     if user_info_dict['user']['is_admin']:
-        blocks.append(utilities.make_button("Manage Region Calendar", action_id = actions.MANAGE_SCHEDULE_ACTION))
+        button = utilities.make_action_button_row([actions.ActionButton("Manage Region Calendar", action = actions.MANAGE_SCHEDULE_ACTION)])
+        blocks.append(button)
 
     # Attempt to publish view
     try:

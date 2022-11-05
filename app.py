@@ -10,7 +10,8 @@ from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
 from qsignups.utilities import safe_get, get_user_name
 from qsignups.database import my_connect
 from qsignups.slack import home, ao, event, settings, utilities
-from qsignups import actions, constants
+from qsignups import constants
+from qsignups.slack import actions
 # import re
 
 def get_oauth_flow():
@@ -100,12 +101,13 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
     ]
 
     for button in button_list:
-        blocks.append(utilities.make_button(button, action_id = actions.LOAD_SCHEDULE_FORM_ACTION))
+        blocks.append(utilities.make_action_button_row([actions.ActionButton(label = button, action = actions.LOAD_SCHEDULE_FORM_ACTION)]))
 
     # Cancel button
-    blocks.append(utilities.make_cancel_button())
+    blocks.append(utilities.make_cancel_button_row())
 
     try:
+        print(blocks)
         client.views_publish(
             user_id=user_id,
             view={
@@ -244,7 +246,7 @@ def handle_delete_single_event_ao_select(ack, body, client, logger, context):
         # Append button to list
         blocks.append(new_button)
 
-    blocks.append(utilities.make_cancel_button())
+    blocks.append(utilities.make_cancel_button_row())
 
     # Publish view
     try:
@@ -404,9 +406,9 @@ def handle_edit_ao_select(ack, body, client, logger, context):
             }
         ]
 
-        blocks.append(utilities.make_action_buttons([
-            utilities.ActionButton(text = 'Submit', action = actions.EDIT_AO_ACTION),
-            utilities.CANCEL_BUTTON
+        blocks.append(utilities.make_action_button_row([
+            actions.make_submit_button(actions.EDIT_AO_ACTION),
+            actions.CANCEL_BUTTON
         ]))
 
         try:
@@ -665,7 +667,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                 "type": "actions",
                 "block_id": "submit_cancel_buttons",
                 "elements": [
-                    utilities.make_button("Submit", action_id = actions.ADD_EVENT_ACTION),
+                    utilities.make_submit_button(actions.ADD_EVENT_ACTION),
                     utilities.make_cancel_button()
                 ]
             },
@@ -874,7 +876,7 @@ def handle_edit_event_ao_select(ack, body, client, logger, context):
         blocks.append(new_button)
 
     # Cancel button
-    blocks.append(utilities.make_cancel_button())
+    blocks.append(utilities.make_cancel_button_row())
 
     # Publish view
     try:
@@ -948,10 +950,10 @@ def handle_submit_general_settings_button(ack, body, client, logger, context):
         'team_id': team_id
     }
 
-    query_params['weekly_weinke_channel'] = safe_get(input_data, 'weinke_channel_select','weinke_channel_select','selected_channel')
-    query_params['signup_reminders'] = safe_get(input_data, 'q_reminder_enable','q_reminder_enable','selected_option','value') == "enable"
-    query_params['weekly_ao_reminders'] = safe_get(input_data, 'ao_reminder_enable','ao_reminder_enable','selected_option','value') == "enable"
-    query_params['google_calendar_id'] = safe_get(input_data, 'google_calendar_id','google_calendar_id','value')
+    query_params['weekly_weinke_channel'] = actions.WEINKIE_INPUT.get_selected_value(input_data)
+    query_params['signup_reminders'] = actions.Q_REMINDER_RADIO.get_selected_value(input_data) == actions.Q_REMINDER_ENABLED.value
+    query_params['weekly_ao_reminders'] = actions.AO_REMINDER_RADIO.get_selected_value(input_data) == actions.AO_REMINDER_ENABLED.value
+    query_params['google_calendar_id'] = actions.GOOGLE_CALENDAR_INPUT.get_selected_value(input_data)
 
     print("FOUND GPARAMS ", query_params)
 
@@ -1309,7 +1311,7 @@ def ao_select_slot(ack, client, body, logger, context):
         # blocks.append(new_button)
 
     # Cancel button
-    blocks.append(utilities.make_cancel_button())
+    blocks.append(utilities.make_cancel_button_row())
 
     # Publish view
     try:
@@ -1546,7 +1548,7 @@ def handle_taken_date_select_button(ack, client, body, logger, context):
                     }
                 ]
             },
-            utilities.make_cancel_button()
+            utilities.make_cancel_button_row()
         ]
 
         # Publish view
@@ -1748,7 +1750,7 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
     }
 
     blocks.append(action_button)
-    blocks.append(utilities.make_cancel_button())
+    blocks.append(utilities.make_cancel_button_row())
 
     # Publish view
     try:

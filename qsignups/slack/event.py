@@ -2,8 +2,7 @@ from datetime import date
 import pandas as pd
 
 from qsignups.database import my_connect
-from qsignups.slack import utilities
-from qsignups import actions
+from qsignups.slack import actions, utilities
 
 def add_form(team_id, user_id, client, logger):
 
@@ -240,9 +239,9 @@ def add_form(team_id, user_id, client, logger):
                 "emoji": True
             }
         },
-        utilities.make_action_buttons([
-          utilities.ActionButton(text = 'Submit', action = actions.ADD_EVENT_ACTION),
-          utilities.CANCEL_BUTTON
+        utilities.make_action_button_row([
+            actions.make_submit_button(actions.ADD_EVENT_ACTION),
+            actions.CANCEL_BUTTON
         ]),
         {
           	"type": "context",

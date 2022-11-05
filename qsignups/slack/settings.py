@@ -1,8 +1,7 @@
 import pandas as pd
 
 from qsignups.database import my_connect
-from qsignups.slack import utilities
-from qsignups import actions
+from qsignups.slack import actions, utilities
 
 def general_form(team_id, user_id, client, logger):
     # Pull current settings
@@ -25,110 +24,15 @@ def general_form(team_id, user_id, client, logger):
                 "emoji": True
             }
         },
-        {
-            "type": "input",
-            "block_id": "weinke_channel_select",
-            "element": {
-                "type": "channels_select",
-                # "initial_channel": region_df['weekly_weinke_channel'],
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Select a channel",
-                    "emoji": True
-                },
-                "action_id": "weinke_channel_select"
-            },
-            "label": {
-                "type": "plain_text",
-                "text": "Public channel for posting weekly schedules:",
-                "emoji": True
-            }
-        },
-        {
-            "type": "input",
-            "block_id": "q_reminder_enable",
-            "element": {
-                "type": "radio_buttons",
-                "options": [
-                    {
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Enable Q reminders",
-                            "emoji": True
-                        },
-                        "value": "enable"
-                    },
-                    {
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Disable Q reminders",
-                            "emoji": True
-                        },
-                        "value": "disable"
-                    },
-                ],
-                "action_id": "q_reminder_enable"
-            },
-            "label": {
-                "type": "plain_text",
-                "text": "Enable Q Reminders?",
-                "emoji": True
-            }
-        },
-        {
-            "type": "input",
-            "block_id": "ao_reminder_enable",
-            "element": {
-                "type": "radio_buttons",
-                "options": [
-                    {
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Enable AO reminders",
-                            "emoji": True
-                        },
-                        "value": "enable"
-                    },
-                    {
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Disable AO reminders",
-                            "emoji": True
-                        },
-                        "value": "disable"
-                    },
-                ],
-                "action_id": "ao_reminder_enable"
-            },
-            "label": {
-                "type": "plain_text",
-                "text": "Enable AO Reminders?",
-                "emoji": True
-            }
-        },
-        {
-            "type": "input",
-            "block_id": "google_calendar_id",
-            "element": {
-                "type": "plain_text_input",
-                "action_id": "google_calendar_id",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Google Calendar ID"
-                },
-                "initial_value": region_df['google_calendar_id'] or ''
-            },
-            "label": {
-                "type": "plain_text",
-                "text": "To connect to a google calendar, provide the ID"
-            },
-            "optional": True
-        }
+        utilities.make_input_field(actions.WEINKIE_INPUT),
+        utilities.make_radio_button_input(actions.Q_REMINDER_RADIO),
+        utilities.make_radio_button_input(actions.AO_REMINDER_RADIO),
+        utilities.make_input_field(actions.GOOGLE_CALENDAR_INPUT, initial_value = region_df['google_calendar_id']),
     ]
 
-    blocks.append(utilities.make_action_buttons([
-        utilities.ActionButton(text = 'Submit', action = actions.EDIT_SETTINGS_ACTION),
-        utilities.CANCEL_BUTTON
+    blocks.append(utilities.make_action_button_row([
+        actions.make_submit_button(actions.EDIT_SETTINGS_ACTION),
+        actions.CANCEL_BUTTON
     ]))
 
     try:
