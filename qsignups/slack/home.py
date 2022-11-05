@@ -223,7 +223,7 @@ def refresh(client, user_id, logger, top_message, team_id, context):
         user=user_id
     )
     if user_info_dict['user']['is_admin']:
-        blocks.append(utilities.make_button("Manage Region Calendar", action_id = actions.EDIT_SCHEDULE_ACTION))
+        blocks.append(utilities.make_button("Manage Region Calendar", action_id = actions.MANAGE_SCHEDULE_ACTION))
 
     # Attempt to publish view
     try:

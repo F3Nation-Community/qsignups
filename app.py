@@ -67,7 +67,7 @@ def update_home_tab(client, event, logger, context):
 #     home.refresh(client, user_id, logger)
 
 # triggers when user chooses to manager the schedule
-@app.action(actions.EDIT_SCHEDULE_ACTION)
+@app.action(actions.MANAGE_SCHEDULE_ACTION)
 def handle_manager_schedule_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -113,7 +113,7 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
         print(e)
 
 # triggers when user selects a manage schedule option
-@app.action("manage_schedule_option_button")
+@app.action(actions.MANAGE_SCHEDULE_ACTION)
 def handle_manage_schedule_option_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
