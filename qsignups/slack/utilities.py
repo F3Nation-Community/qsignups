@@ -3,7 +3,7 @@ from qsignups import actions
 def make_cancel_button():
   return make_button("Cancel", action_id = actions.CANCEL_BUTTON_ACTION)
 
-def make_button(button_text, action_id = actions.EDIT_SCHEDULE_ACTION):
+def make_button(button_text, action_id):
   return {
       "type":"actions",
       "elements":[

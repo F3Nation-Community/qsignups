@@ -95,7 +95,7 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
     ]
 
     for button in button_list:
-        blocks.append(utilities.make_button(button))
+        blocks.append(utilities.make_button(button, action_id = actions.EDIT_SCHEDULE_ACTION))
 
     # Cancel button
     blocks.append(utilities.make_cancel_button())
