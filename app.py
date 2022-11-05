@@ -48,6 +48,11 @@ def respond_to_slack_within_3_seconds(ack):
     # This method is for synchronous communication with the Slack API server
     ack("Thanks!")
 
+@app.command("/schedule")
+def display_upcoming_schedule(ack):
+    # This method is for synchronous communication with the Slack API server
+    ack("To be implemented: Upcoming Schedule!")
+
 @app.event("app_home_opened")
 def update_home_tab(client, event, logger, context):
     logger.info(event)
@@ -139,7 +144,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
         event.delete_single_form(team_id, user_id, client, logger)
     # General settings
     elif selected_action == constants.GENERAL_SETTINGS:
-        settings.general_form(team_id, user_id, client, logger))
+        settings.general_form(team_id, user_id, client, logger)
 
 @app.action("delete_single_event_ao_select")
 def handle_delete_single_event_ao_select(ack, body, client, logger, context):
@@ -941,10 +946,10 @@ def handle_submit_general_settings_button(ack, body, client, logger, context):
         'team_id': team_id
     }
 
-    query_params['weekly_weinke_channel'] = safe_get(input_data, ['weinke_channel_select','weinke_channel_select','selected_channel'])
-    query_params['signup_reminders'] = safe_get(input_data, ['q_reminder_enable','q_reminder_enable','selected_option','value']) == "enable"
-    query_params['weekly_ao_reminders'] = safe_get(input_data, ['ao_reminder_enable','ao_reminder_enable','selected_option','value']) == "enable"
-    query_params['google_calendar_id'] = safe_get(input_data, ['google_calendar_id','google_calendar_id','value'])
+    query_params['weekly_weinke_channel'] = safe_get(input_data, 'weinke_channel_select','weinke_channel_select','selected_channel')
+    query_params['signup_reminders'] = safe_get(input_data, 'q_reminder_enable','q_reminder_enable','selected_option','value') == "enable"
+    query_params['weekly_ao_reminders'] = safe_get(input_data, 'ao_reminder_enable','ao_reminder_enable','selected_option','value') == "enable"
+    query_params['google_calendar_id'] = safe_get(input_data, 'google_calendar_id','google_calendar_id','value')
 
     print("FOUND GPARAMS ", query_params)
 

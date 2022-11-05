@@ -28,6 +28,10 @@ features:
       description: Test saying hello
       usage_hint: /hello open mailbox
       url: __HOSTNAME__/slack/events
+    - command: /schedule
+      description: Query for upcoming schedule
+      usage_hint: /schedule tomorrow
+      url: __HOSTNAME__/slack/events
 oauth_config:
   scopes:
     bot:

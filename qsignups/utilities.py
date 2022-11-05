@@ -1,4 +1,4 @@
-def safe_get(data, keys):
+def safe_get(data, **keys):
   try:
     result = data
     for k in keys:
