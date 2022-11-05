@@ -240,14 +240,10 @@ def add_form(team_id, user_id, client, logger):
                 "emoji": True
             }
         },
-        {
-            "type": "actions",
-            "block_id": "submit_cancel_buttons",
-            "elements": [
-                utilities.make_button("Submit", action_id = actions.ADD_EVENT_ACTION),
-                utilities.make_cancel_button()
-            ]
-        },
+        utilities.make_action_buttons([
+          utilities.ActionButton(text = 'Submit', action = actions.ADD_EVENT_ACTION),
+          utilities.CANCEL_BUTTON
+        ]),
         {
           	"type": "context",
           	"elements": [
@@ -258,6 +254,7 @@ def add_form(team_id, user_id, client, logger):
             ]
         }
     ]
+    print(blocks)
     try:
         client.views_publish(
             user_id=user_id,

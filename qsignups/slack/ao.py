@@ -2,6 +2,7 @@ import pandas as pd
 
 from qsignups.database import my_connect
 from qsignups.slack import utilities
+from qsignups import actions
 
 def add_form(team_id, user_id, client, logger):
     logger.info('gather input data')
@@ -71,7 +72,6 @@ def add_form(team_id, user_id, client, logger):
     blocks.append(utilities.make_cancel_button())
 
     try:
-        print(blocks)
         client.views_publish(
             user_id=user_id,
             view={

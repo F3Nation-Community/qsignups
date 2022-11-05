@@ -124,15 +124,14 @@ def general_form(team_id, user_id, client, logger):
             },
             "optional": True
         }
-     ]
+    ]
 
-    action_button = utilities.make_button("Submit", action_id = actions.EDIT_SETTINGS_ACTION)
-    cancel_button = utilities.make_cancel_button()
-    blocks.append(action_button)
-    blocks.append(cancel_button)
+    blocks.append(utilities.make_action_buttons([
+        utilities.ActionButton(text = 'Submit', action = actions.EDIT_SETTINGS_ACTION),
+        utilities.CANCEL_BUTTON
+    ]))
 
     try:
-        print(blocks)
         client.views_publish(
             user_id=user_id,
             view={

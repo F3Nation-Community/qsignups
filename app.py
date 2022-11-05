@@ -100,7 +100,7 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
     ]
 
     for button in button_list:
-        blocks.append(utilities.make_button(button, action_id = actions.EDIT_SCHEDULE_ACTION))
+        blocks.append(utilities.make_button(button, action_id = actions.LOAD_SCHEDULE_FORM_ACTION))
 
     # Cancel button
     blocks.append(utilities.make_cancel_button())
@@ -118,7 +118,7 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
         print(e)
 
 # triggers when user selects a manage schedule option
-@app.action(actions.MANAGE_SCHEDULE_ACTION)
+@app.action(actions.LOAD_SCHEDULE_FORM_ACTION)
 def handle_manage_schedule_option_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -404,8 +404,10 @@ def handle_edit_ao_select(ack, body, client, logger, context):
             }
         ]
 
-        blocks.append(utilities.make_button("Submit", action_id = actions.EDIT_AO_ACTION))
-        blocks.append(utilities.make_cancel_button())
+        blocks.append(utilities.make_action_buttons([
+            utilities.ActionButton(text = 'Submit', action = actions.EDIT_AO_ACTION),
+            utilities.CANCEL_BUTTON
+        ]))
 
         try:
             client.views_publish(
