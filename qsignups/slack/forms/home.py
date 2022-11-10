@@ -1,8 +1,8 @@
 from datetime import timedelta, date
 import pandas as pd
-from qsignups.database import my_connect
+from qsignups.database import my_connect, regions
 from qsignups import constants
-from qsignups.slack import actions, utilities
+from qsignups.slack import actions, forms, inputs
 
 def refresh(client, user_id, logger, top_message, team_id, context):
     print("CLIENT", client)
@@ -50,7 +50,6 @@ def refresh(client, user_id, logger, top_message, team_id, context):
             # weinke urls
             # sql_weinkes = f"SELECT current_week_weinke, next_week_weinke FROM paxminer.regions WHERE region_schema = '{mydb.db}';"
             # TODO: fix this
-            sql_weinkes = f"SELECT current_week_weinke, next_week_weinke, bot_token FROM {mydb.db}.qsignups_regions WHERE team_id = '{team_id}';"
 
             # Make pulls
             upcoming_qs_df = pd.read_sql(sql_upcoming_qs, mydb.conn, parse_dates=['event_date'])
@@ -59,6 +58,7 @@ def refresh(client, user_id, logger, top_message, team_id, context):
 
             current_week_weinke_url = None
             if constants.use_weinkes():
+                sql_weinkes = f"SELECT current_week_weinke, next_week_weinke, bot_token FROM {mydb.db}.qsignups_regions WHERE team_id = '{team_id}';"
                 mycursor.execute(sql_weinkes)
                 weinkes_list = mycursor.fetchone()
 
@@ -215,7 +215,7 @@ def refresh(client, user_id, logger, top_message, team_id, context):
         blocks.append(upcoming_schedule_block)
 
     # add page refresh button
-    refresh_button = utilities.make_action_button_row([actions.ActionButton("Refresh Schedule", action = actions.REFRESH_ACTION)])
+    refresh_button = forms.make_action_button_row([inputs.ActionButton("Refresh Schedule", action = actions.REFRESH_ACTION)])
     blocks.append(refresh_button)
 
     # Optionally add admin button
@@ -223,8 +223,9 @@ def refresh(client, user_id, logger, top_message, team_id, context):
         user=user_id
     )
     if user_info_dict['user']['is_admin']:
-        button = utilities.make_action_button_row([actions.ActionButton("Manage Region Calendar", action = actions.MANAGE_SCHEDULE_ACTION)])
+        button = forms.make_action_button_row([inputs.ActionButton("Manage Region Calendar", action = actions.MANAGE_SCHEDULE_ACTION)])
         blocks.append(button)
+        blocks.append(forms.make_action_button_row([inputs.GENERAL_SETTINGS]))
 
     # Attempt to publish view
     try:

@@ -1,7 +1,7 @@
 import pandas as pd
 
 from qsignups.database import my_connect
-from qsignups.slack import actions, utilities
+from qsignups.slack import actions, forms, inputs
 
 def add_form(team_id, user_id, client, logger):
     logger.info('gather input data')
@@ -66,9 +66,9 @@ def add_form(team_id, user_id, client, logger):
         }
     ]
 
-    blocks.append(utilities.make_action_button_row([
-        actions.make_submit_button(actions.ADD_AO_ACTION),
-        actions.CANCEL_BUTTON,
+    blocks.append(forms.make_action_button_row([
+        inputs.make_submit_button(actions.ADD_AO_ACTION),
+        inputs.CANCEL_BUTTON,
     ]))
 
     try:

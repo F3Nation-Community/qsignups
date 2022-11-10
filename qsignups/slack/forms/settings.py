@@ -1,11 +1,10 @@
 import pandas as pd
 
 from qsignups.database import my_connect
-from qsignups.slack import actions, utilities
+from qsignups.slack import actions, forms, inputs
 
 def general_form(team_id, user_id, client, logger):
     # Pull current settings
-    success_status = False
     region_df = None
     try:
         with my_connect(team_id) as mydb:
@@ -16,24 +15,16 @@ def general_form(team_id, user_id, client, logger):
         print(e)
 
     blocks = [
-        {
-            "type": "header",
-            "text": {
-                "type": "plain_text",
-                "text": "General Region Settings",
-                "emoji": True
-            }
-        },
-        utilities.make_input_field(actions.WEINKIE_INPUT),
-        utilities.make_radio_button_input(actions.Q_REMINDER_RADIO),
-        utilities.make_radio_button_input(actions.AO_REMINDER_RADIO),
-        utilities.make_input_field(actions.GOOGLE_CALENDAR_INPUT, initial_value = region_df['google_calendar_id']),
+        forms.make_header_row("General Region Settings"),
+        inputs.WEINKIE_INPUT.as_form_field(),
+        inputs.Q_REMINDER_RADIO.as_form_field(),
+        inputs.AO_REMINDER_RADIO.as_form_field(),
+        inputs.GOOGLE_CALENDAR_INPUT.as_form_field(initial_value = region_df['google_calendar_id']),
+        forms.make_action_button_row([
+            inputs.make_submit_button(actions.EDIT_SETTINGS_ACTION),
+            inputs.CANCEL_BUTTON
+        ])
     ]
-
-    blocks.append(utilities.make_action_button_row([
-        actions.make_submit_button(actions.EDIT_SETTINGS_ACTION),
-        actions.CANCEL_BUTTON
-    ]))
 
     try:
         client.views_publish(

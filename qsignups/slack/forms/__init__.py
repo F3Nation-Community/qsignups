@@ -1,0 +1,16 @@
+from qsignups.slack import inputs
+
+def make_action_button_row(buttons):
+  return {
+      "type":"actions",
+      "elements":[ b.as_form_field() for b in buttons ]
+  }
+
+def make_header_row(text: str):
+  return {
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": text
+            }
+        }

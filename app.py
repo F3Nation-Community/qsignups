@@ -9,9 +9,10 @@ from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
 
 from qsignups.utilities import safe_get, get_user_name
 from qsignups.database import my_connect
-from qsignups.slack import home, ao, event, settings, utilities
-from qsignups import constants
-from qsignups.slack import actions
+from qsignups.slack import forms
+from qsignups.slack.forms import ao, event, home, settings
+from qsignups.slack.handlers import settings as settings_handler
+from qsignups.slack import actions, inputs
 # import re
 
 def get_oauth_flow():
@@ -81,33 +82,14 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
     team_id = context["team_id"]
 
     blocks = [
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": "Choose an option for managing the schedule:"
-            }
-        }
+        forms.make_header_row("Choose an option to update your AOs:"),
+        forms.make_action_button_row([inputs.ADD_AO, inputs.EDIT_AO]),
+        forms.make_header_row("Choose an option to update your Event Schedule:"),
+        forms.make_action_button_row([inputs.ADD_EVENT, inputs.EDIT_EVENT, inputs.DELETE_SINGLE_EVENT]),
+        forms.make_header_row("Return to the Home Page:"),
+        forms.make_action_button_row([inputs.CANCEL_BUTTON])
     ]
-
-    button_list = [
-        constants.ADD_AO,
-        constants.EDIT_AO,
-        # constants.DELETE_AO,
-        constants.ADD_EVENT,
-        constants.EDIT_EVENT,
-        constants.DELETE_SINGLE_EVENT,
-        constants.GENERAL_SETTINGS
-    ]
-
-    for button in button_list:
-        blocks.append(utilities.make_action_button_row([actions.ActionButton(label = button, action = actions.LOAD_SCHEDULE_FORM_ACTION)]))
-
-    # Cancel button
-    blocks.append(utilities.make_cancel_button_row())
-
     try:
-        print(blocks)
         client.views_publish(
             user_id=user_id,
             view={
@@ -119,34 +101,53 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
         logger.error(f"Error publishing home tab: {e}")
         print(e)
 
-# triggers when user selects a manage schedule option
-@app.action(actions.LOAD_SCHEDULE_FORM_ACTION)
-def handle_manage_schedule_option_button(ack, body, client, logger, context):
+@app.action(inputs.ADD_AO.action)
+def handle_add_ao_form(ack, body, client, logger, context):
     ack()
     logger.info(body)
-
-    selected_action = body['actions'][0]['value']
     user_id = context["user_id"]
     team_id = context["team_id"]
+    ao.add_form(team_id, user_id, client, logger)
 
-    logging.info(selected_action)
+@app.action(inputs.EDIT_AO.action)
+def handle_edit_ao_form(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    ao.edit_form(team_id, user_id, client, logger)
 
-    # 'Add an AO' selected
-    if selected_action == constants.ADD_AO:
-        ao.add_form(team_id, user_id, client, logger)
-    # 'Add an AO' selected
-    elif selected_action == constants.EDIT_AO:
-        ao.edit_form(team_id, user_id, client, logger)
-    # Add an event
-    elif selected_action == constants.ADD_EVENT:
-        event.add_form(team_id, user_id, client, logger)
-    elif selected_action == constants.EDIT_EVENT:
-        event.edit_form(team_id, user_id, client, logger)
-    elif selected_action == constants.DELETE_SINGLE_EVENT:
-        event.delete_single_form(team_id, user_id, client, logger)
-    # General settings
-    elif selected_action == constants.GENERAL_SETTINGS:
-        settings.general_form(team_id, user_id, client, logger)
+@app.action(inputs.ADD_EVENT.action)
+def handle_add_event_form(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    event.add_form(team_id, user_id, client, logger)
+
+@app.action(inputs.EDIT_EVENT.action)
+def handle_edit_event_form(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    event.edit_form(team_id, user_id, client, logger)
+
+@app.action(inputs.DELETE_SINGLE_EVENT.action)
+def handle_delete_single_event_form(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    event.delete_single_form(team_id, user_id, client, logger)
+
+@app.action(inputs.GENERAL_SETTINGS.action)
+def handle_general_settings_form(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    settings.general_form(team_id, user_id, client, logger)
 
 @app.action("delete_single_event_ao_select")
 def handle_delete_single_event_ao_select(ack, body, client, logger, context):
@@ -193,7 +194,7 @@ def handle_delete_single_event_ao_select(ack, body, client, logger, context):
     # Show next x number of events
     # TODO: future add: make a "show more" button?
     results_df['event_date_time'] = pd.to_datetime(results_df['event_date'].dt.strftime('%Y-%m-%d') + ' ' + results_df['event_time'], infer_datetime_format=True)
-    for index, row in results_df.iterrows():
+    for _, row in results_df.iterrows():
         # Pretty format date
         date_fmt = row['event_date_time'].strftime("%a, %m-%d @ %H%M")
         date_fmt_value = row['event_date_time'].strftime('%Y-%m-%d %H:%M:%S')
@@ -226,27 +227,12 @@ def handle_delete_single_event_ao_select(ack, body, client, logger, context):
         }
 
         # Button template
-        new_button = {
-            "type":"actions",
-            "elements":[
-                {
-                    "type":"button",
-                    "text":{
-                        "type":"plain_text",
-                        "text":f"{date_fmt}: {date_status}",
-                        "emoji":True
-                    },
-                    "action_id":action_id,
-                    "value":value,
-                    "confirm":confirm_obj
-                }
-            ]
-        }
-
+        new_button = inputs.ActionButton(
+            label = f"{date_fmt}: {date_status}", value = value, action = action_id, confirm = confirm_obj)
         # Append button to list
         blocks.append(new_button)
 
-    blocks.append(utilities.make_cancel_button_row())
+    blocks.append(forms.make_action_button_row([inputs.CANCEL_BUTTON]))
 
     # Publish view
     try:
@@ -406,9 +392,9 @@ def handle_edit_ao_select(ack, body, client, logger, context):
             }
         ]
 
-        blocks.append(utilities.make_action_button_row([
-            actions.make_submit_button(actions.EDIT_AO_ACTION),
-            actions.CANCEL_BUTTON
+        blocks.append(forms.make_action_button_row([
+            inputs.make_submit_button(actions.EDIT_AO_ACTION),
+            inputs.CANCEL_BUTTON
         ]))
 
         try:
@@ -667,8 +653,8 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                 "type": "actions",
                 "block_id": "submit_cancel_buttons",
                 "elements": [
-                    utilities.make_submit_button(actions.ADD_EVENT_ACTION),
-                    utilities.make_cancel_button()
+                    inputs.make_submit_button(actions.ADD_EVENT_ACTION).as_form_field(),
+                    inputs.CANCEL_BUTTON.as_form_field()
                 ]
             },
             {
@@ -777,7 +763,7 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                         "action_id": "submit_add_single_event_button",
                         "style": "primary"
                     },
-                    utilities.make_cancel_button()
+                    inputs.CANCEL_BUTTON.as_form_field()
                 ]
             }
         ]
@@ -876,7 +862,7 @@ def handle_edit_event_ao_select(ack, body, client, logger, context):
         blocks.append(new_button)
 
     # Cancel button
-    blocks.append(utilities.make_cancel_button_row())
+    blocks.append(forms.make_action_button_row([inputs.CANCEL_BUTTON]))
 
     # Publish view
     try:
@@ -942,52 +928,15 @@ def handle_submit_general_settings_button(ack, body, client, logger, context):
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-
     # Gather inputs from form
     input_data = body['view']['state']['values']
-
-    query_params = {
-        'team_id': team_id
-    }
-
-    query_params['weekly_weinke_channel'] = actions.WEINKIE_INPUT.get_selected_value(input_data)
-    query_params['signup_reminders'] = actions.Q_REMINDER_RADIO.get_selected_value(input_data) == actions.Q_REMINDER_ENABLED.value
-    query_params['weekly_ao_reminders'] = actions.AO_REMINDER_RADIO.get_selected_value(input_data) == actions.AO_REMINDER_ENABLED.value
-    query_params['google_calendar_id'] = actions.GOOGLE_CALENDAR_INPUT.get_selected_value(input_data)
-
-    print("FOUND GPARAMS ", query_params)
-
-    # Update db
-    success_status = False
-    try:
-        with my_connect(team_id) as mydb:
-
-            sql_update = f"""
-            UPDATE {mydb.db}.qsignups_regions
-            SET weekly_weinke_channel = IFNULL(%(weekly_weinke_channel)s, weekly_weinke_channel),
-                signup_reminders = IFNULL(%(signup_reminders)s, signup_reminders),
-                weekly_ao_reminders = IFNULL(%(weekly_ao_reminders)s, weekly_ao_reminders),
-                google_calendar_id = IFNULL(%(google_calendar_id)s, google_calendar_id)
-            WHERE team_id = %(team_id)s;
-            """
-            print("SQL: ", sql_update)
-
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_update, query_params)
-            mycursor.execute("COMMIT;")
-            success_status = True
-    except Exception as e:
-        logger.error(f"Error writing to db: {e}")
-        error_msg = e
-
+    response = settings_handler.update(client, user_id, team_id, logger, input_data)
     # Take the user back home
-    if success_status:
+    if response.success:
         top_message = f"Success! Changed general region settings"
     else:
-        top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
-
+        top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{response.message}"
     home.refresh(client, user_id, logger, top_message, team_id, context)
-
 
 @app.action(actions.ADD_AO_ACTION)
 def handle_submit_add_ao_button(ack, body, client, logger, context):
@@ -1311,7 +1260,7 @@ def ao_select_slot(ack, client, body, logger, context):
         # blocks.append(new_button)
 
     # Cancel button
-    blocks.append(utilities.make_cancel_button_row())
+    blocks.append(forms.make_action_button_row([inputs.CANCEL_BUTTON]))
 
     # Publish view
     try:
@@ -1548,7 +1497,7 @@ def handle_taken_date_select_button(ack, client, body, logger, context):
                     }
                 ]
             },
-            utilities.make_cancel_button_row()
+            forms.make_action_button_row([inputs.CANCEL_BUTTON])
         ]
 
         # Publish view
@@ -1750,7 +1699,7 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
     }
 
     blocks.append(action_button)
-    blocks.append(utilities.make_cancel_button_row())
+    blocks.append(forms.make_action_button_row([inputs.CANCEL_BUTTON]))
 
     # Publish view
     try:

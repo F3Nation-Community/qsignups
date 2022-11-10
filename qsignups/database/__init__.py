@@ -1,6 +1,25 @@
+from dataclasses import dataclass
+from typing import List
+
 import os
 import mysql.connector
 from contextlib import ContextDecorator
+
+@dataclass
+class DatabaseField:
+    name: str
+    value: object = None
+
+def select_clause(fields: List[DatabaseField]) -> str:
+  return ",".join([f"`{x.name}`" for x in fields]) if fields else '*'
+
+def update_clause(fields: List[DatabaseField]) -> str:
+   return ",".join(f"`{f.name}` = '{f.value}'" for f in fields)
+
+def insert_clause(fields: List[DatabaseField]) -> str:
+  fields_to_insert = ",".join([f"`{k.name}`" for k in fields])
+  values_to_insert = ",".join([f"'{k.value}'" for k in fields])
+  return f" ({fields_to_insert}) VALUES ({values_to_insert})"
 
 DATABASE_HOST = 'DATABASE_HOST'
 ADMIN_DATABASE_USER = 'ADMIN_DATABASE_USER'
