@@ -1645,6 +1645,7 @@ def handle_edit_recurring_event_slot_select(ack, body, client, logger, context):
     logger.info(body)
     user_id = context['user_id']
     team_id = context['team_id']
+    print(body['actions'][0]['value'])
     selected_ao, selected_day, selected_event_type, selected_start_time, selected_end_time, selected_ao_id = str.split(body['actions'][0]['value'], '|')
     
     # Build options lists
@@ -1812,7 +1813,7 @@ def handle_edit_recurring_event_slot_select(ack, body, client, logger, context):
             "block_id": "event_end_time_select",
             "element": {
                 "type": "timepicker",
-                "initial_time": selected_end_time[:2] + ':' + selected_end_time[2:],
+                # "initial_time": selected_end_time[:2] + ':' + selected_end_time[2:],
                 "placeholder": {
                     "type": "plain_text",
                     "text": "Select time",
@@ -1893,6 +1894,8 @@ def handle_edit_recurring_event_slot_select(ack, body, client, logger, context):
         }
         
     ]
+    
+    if selected_end_time != 'None': blocks[5]['element']['initial_time'] = selected_start_time[:2] + ':' + selected_start_time[2:]
     try:
         client.views_publish(
             user_id=user_id,
