@@ -230,7 +230,7 @@ def handle_delete_single_event_ao_select(ack, body, client, logger, context):
         new_button = inputs.ActionButton(
             label = f"{date_fmt}: {date_status}", value = value, action = action_id, confirm = confirm_obj)
         # Append button to list
-        blocks.append(new_button)
+        blocks.append(forms.make_action_button_row([new_button]))
 
     blocks.append(forms.make_action_button_row([inputs.CANCEL_BUTTON]))
 
