@@ -264,22 +264,29 @@ def delete_single_event_button(ack, client, body, context):
     selected_date_db = datetime.date(selected_date_dt).strftime('%Y-%m-%d')
     selected_time_db = datetime.time(selected_date_dt).strftime('%H%M')
 
+    # Build query params
+    query_params = {
+        'team_id': team_id,
+        'ao_channel_id': selected_ao_id,
+        'event_date': selected_date_db,
+        'event_time': selected_time_db
+    }
 
     # attempt delete
     success_status = False
     try:
         with my_connect(team_id) as mydb:
-            sql_delete = f"""
+            sql_delete = f"""-- sql
             DELETE FROM {mydb.db}.qsignups_master
-            WHERE team_id = '{team_id}'
-                AND ao_channel_id = '{selected_ao_id}'
-                AND event_date = DATE('{selected_date_db}')
-                AND event_time = '{selected_time_db}';
+            WHERE team_id = %(team_id)s
+                AND ao_channel_id = %(ao_channel_id)s
+                AND event_date = DATE(%(event_date)s)
+                AND event_time = %(event_time)s;
             """
             logger.info(f'Attempting SQL: \n{sql_delete}')
             mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_delete)
-            mycursor.execute('COMMIT;')
+            mycursor.execute(sql_delete, query_params)
+            mydb.conn.commit()
             success_status = True
     except Exception as e:
         logger.error(f"Error pulling AO list: {e}")
@@ -896,19 +903,24 @@ def submit_edit_ao_button(ack, body, client, logger, context):
     success_status = False
     try:
         with my_connect(team_id) as mydb:
+            query_params = {
+                'ao_display_name': ao_display_name,
+                'ao_location_subtitle': ao_location_subtitle,
+                'ao_channel_id': ao_channel_id
+            }
 
-            sql_update = f"""
+            sql_update = f"""-- sql
             UPDATE {mydb.db}.qsignups_aos
-            SET ao_display_name = "{ao_display_name}",
-                ao_location_subtitle = "{ao_location_subtitle}"
-            WHERE ao_channel_id = "{ao_channel_id}"
+            SET ao_display_name = %(ao_display_name)s,
+                ao_location_subtitle = %(ao_location_subtitle)s
+            WHERE ao_channel_id = %(ao_channel_id)s
             ;
             """
             logger.info(f"Attempting SQL UPDATE: {sql_update}")
 
             mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_update)
-            mycursor.execute("COMMIT;")
+            mycursor.execute(sql_update, query_params)
+            mydb.conn.commit()
             success_status = True
     except Exception as e:
         logger.error(f"Error writing to db: {e}")
@@ -951,50 +963,43 @@ def handle_submit_add_ao_button(ack, body, client, logger, context):
     ao_channel_id = input_data['add_ao_channel_select']['add_ao_channel_select']['selected_channel']
     ao_display_name = input_data['ao_display_name']['ao_display_name']['value']
     ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']['value']
-    # qsignups_enabled = input_data['qsignups_enabled_select']['qsignups_enabled_select']['selected_option']['value']
 
-    # if qsignups_enabled == 'Yes':
-    #     qsignups_enabled = 1
-    # else:
-    #     qsignups_enabled = 0
+    # Gather inputs from form
+    input_data = body['view']['state']['values']
+
+    query_params = {
+        'team_id': team_id
+    }
+
+    query_params['ao_channel_id'] = safe_get(input_data, ['add_ao_channel_select','add_ao_channel_select','selected_channel'])
+    query_params['ao_display_name'] = safe_get(input_data, ['ao_display_name','ao_display_name','value'])
+    query_params['ao_location_subtitle'] = safe_get(input_data, ['ao_location_subtitle','ao_location_subtitle','value'])
 
     # replace double quotes with single quotes
-    ao_display_name = ao_display_name.replace('"',"'")
-    ao_location_subtitle = ao_location_subtitle.replace('"',"'")
+    query_params['ao_display_name'] = query_params['ao_display_name'].replace('"',"'")
+    if query_params['ao_location_subtitle']:
+        query_params['ao_location_subtitle'] = query_params['ao_location_subtitle'].replace('"',"'")
+    else:
+        query_params['ao_location_subtitle'] = '' # TODO: I don't like this, but this field is currently non-nullable
 
-    # Write to AO table
+    print("FOUND GPARAMS ", query_params)
+
+    # Update db
     success_status = False
     try:
         with my_connect(team_id) as mydb:
-            # find out if ao is already on table
-            sql_pull = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' and ao_channel_id = '{ao_channel_id}'"
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_pull)
-            result = mycursor.fetchall()
-            sql_update = f"""
-                INSERT INTO {mydb.db}.qsignups_aos (ao_channel_id, ao_display_name, ao_location_subtitle, team_id)
-                VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}", "{team_id}");
-                """
-            # if len(result) == 0:
-            #     sql_update = f"""
-            #     INSERT INTO {mydb.db}.qsignups_aos (ao_channel_id, ao_display_name, ao_location_subtitle, team_id)
-            #     VALUES ("{ao_channel_id}", "{ao_display_name}", "{ao_location_subtitle}", "{team_id}");
-            #     """
-            # else:
-            #     # TODO: fix this
-            #     sql_update = f"""
-            #     UPDATE {mydb.db}.qsignups_aos
-            #     SET ao_display_name = "{ao_display_name}",
-            #         ao_location_subtitle = "{ao_location_subtitle}"
-            #     WHERE ao_channel_id = "{ao_channel_id}"
-            #     ;
-            #     """
-            logger.info(f"Attempting SQL INSERT / UPDATE: {sql_update}")
+
+            sql_insert = f"""
+            INSERT INTO {mydb.db}.qsignups_aos (ao_channel_id, ao_display_name, ao_location_subtitle, team_id)
+            VALUES (%(ao_channel_id)s, %(ao_display_name)s, %(ao_location_subtitle)s, %(team_id)s);
+            """
+            print("SQL: ", sql_insert)
 
             mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_update)
-            mycursor.execute("COMMIT;")
+            mycursor.execute(sql_insert, query_params)
+            mydb.conn.commit()
             success_status = True
+
     except Exception as e:
         logger.error(f"Error writing to db: {e}")
         error_msg = e
@@ -1016,19 +1021,19 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
 
     # Gather inputs from form
     input_data = body['view']['state']['values']
-    ao_display_name = input_data['ao_display_name_select']['ao_display_name_select_action']['selected_option']['value']
-    event_day_of_week = input_data['event_day_of_week_select']['event_day_of_week_select_action']['selected_option']['value']
-    starting_date = input_data['add_event_datepicker']['add_event_datepicker']['selected_date']
-    event_time = input_data['event_start_time_select']['event_start_time_select']['selected_time'].replace(':','')
-    event_end_time = input_data['event_end_time_select']['event_end_time_select']['selected_time'].replace(':','')
+    ao_display_name = safe_get(input_data, ['ao_display_name_select','ao_display_name_select_action','selected_option','value'])
+    event_day_of_week = safe_get(input_data, ['event_day_of_week_select','event_day_of_week_select_action','selected_option','value'])
+    starting_date = safe_get(input_data, ['add_event_datepicker','add_event_datepicker','selected_date'])
+    event_time = safe_get(input_data, ['event_start_time_select','event_start_time_select','selected_time']).replace(':','')
+    event_end_time = safe_get(input_data, ['event_end_time_select','event_end_time_select','selected_time']).replace(':','')
+    event_type_select = safe_get(input_data, ['event_type_select','event_type_select_action','selected_option','value'])
+    event_type_custom = safe_get(input_data, ['event_type_custom','event_type_custom','value'])
 
     # Logic for custom events
-    if input_data['event_type_select']['event_type_select_action']['selected_option']['value'] == 'Custom':
-        event_type = input_data['event_type_custom']['event_type_custom']['value']
+    if event_type_select == 'Custom':
+        event_type = event_type_custom
     else:
-        event_type = input_data['event_type_select']['event_type_select_action']['selected_option']['value']
-
-    event_recurring = True
+        event_type = event_type_select
 
     # Grab channel id
     try:
@@ -1039,18 +1044,30 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
     except Exception as e:
            logger.error(f"Error pulling from db: {e}")
 
+    # Build query_params
+    query_params = {
+        'team_id': team_id,
+        'ao_channel_id': ao_channel_id,
+        'event_day_of_week': event_day_of_week,
+        'event_time': event_time,
+        'event_end_time': event_end_time,
+        'event_type': event_type,
+        'event_recurring': True
+    }
+
     # Write to weekly table
     try:
         with my_connect(team_id) as mydb:
+
             sql_insert = f"""
             INSERT INTO {mydb.db}.qsignups_weekly (ao_channel_id, event_day_of_week, event_time, event_end_time, event_type, team_id)
-            VALUES ("{ao_channel_id}", "{event_day_of_week}", "{event_time}", "{event_end_time}", "{event_type}", "{team_id}");
+            VALUES (%(ao_channel_id)s, %(event_day_of_week)s, %(event_time)s, %(event_end_time)s, %(event_type)s, %(team_id)s);
             """
             logger.info(f"Attempting SQL INSERT: {sql_insert}")
 
             mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_insert)
-            mycursor.execute("COMMIT;")
+            mycursor.execute(sql_insert, query_params)
+            mydb.conn.commit()
     except Exception as e:
            logger.error(f"Error writing to db: {e}")
 
@@ -1063,15 +1080,16 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
             iterate_date = datetime.strptime(starting_date, '%Y-%m-%d').date()
             while iterate_date < (date.today() + timedelta(days=schedule_create_length_days)):
                 if iterate_date.strftime('%A') == event_day_of_week:
+                    query_params['event_date'] = iterate_date
                     sql_insert = f"""
                     INSERT INTO {mydb.db}.qsignups_master (ao_channel_id, event_date, event_time, event_end_time, event_day_of_week, event_type, event_recurring, team_id)
-                    VALUES ("{ao_channel_id}", DATE("{iterate_date}"), "{event_time}", "{event_end_time}", "{event_day_of_week}", "{event_type}", {event_recurring}, "{team_id}")
+                    VALUES (%(ao_channel_id)s, DATE(%(event_date)s), %(event_time)s, %(event_end_time)s, %(event_day_of_week)s, %(event_type)s, %(event_recurring)s, %(team_id)s)
                     """
-                    mycursor.execute(sql_insert)
+                    mycursor.execute(sql_insert, query_params)
                     # print(sql_insert)
                 iterate_date += timedelta(days=1)
 
-            mycursor.execute("COMMIT;")
+            mydb.conn.commit()
             success_status = True
     except Exception as e:
            logger.error(f"Error writing to schedule_master: {e}")
@@ -1104,8 +1122,6 @@ def handle_submit_add_single_event_button(ack, body, client, logger, context):
     else:
         event_type = input_data['event_type_select']['event_type_select_action']['selected_option']['value']
 
-    event_recurring = False
-
     # Grab channel id
     try:
         with my_connect(team_id) as mydb:
@@ -1115,20 +1131,31 @@ def handle_submit_add_single_event_button(ack, body, client, logger, context):
     except Exception as e:
            logger.error(f"Error pulling from db: {e}")
 
+    # Build query_params
+    query_params = {
+        'team_id': team_id,
+        'ao_channel_id': ao_channel_id,
+        'event_date': event_date,
+        'event_day_of_week': datetime.strptime(event_date, '%Y-%m-%d').date().strftime('%A'),
+        'event_time': event_time,
+        'event_end_time': event_end_time,
+        'event_type': event_type,
+        'event_recurring': False
+    }
+
     # Write to master schedule table
     logger.info(f"Attempting SQL INSERT into schedule_master")
     success_status = False
     try:
         with my_connect(team_id) as mydb:
             mycursor = mydb.conn.cursor()
-            event_date_dt = datetime.strptime(event_date, '%Y-%m-%d').date()
             sql_insert = f"""
             INSERT INTO {mydb.db}.qsignups_master (ao_channel_id, event_date, event_time, event_end_time, event_day_of_week, event_type, event_recurring, team_id)
-            VALUES ("{ao_channel_id}", DATE("{event_date}"), "{event_time}", "{event_end_time}", "{event_date_dt.strftime('%A')}", "{event_type}", {event_recurring}, "{team_id}")
+            VALUES (%(ao_channel_id)s, DATE(%(event_date)s), %(event_time)s, %(event_end_time)s, %(event_day_of_week)s, %(event_type)s, %(event_recurring)s, %(team_id)s);
             """
 
-            mycursor.execute(sql_insert)
-            mycursor.execute("COMMIT;")
+            mycursor.execute(sql_insert, query_params)
+            mydb.conn.commit()
             success_status = True
 
     except Exception as e:
@@ -1302,26 +1329,35 @@ def handle_date_select_button(ack, client, body, logger, context):
     except Exception as e:
         logger.error(f"Error pulling channel id: {e}")
 
+    query_params = {
+        'user_id': user_id,
+        'user_name': user_name,
+        'team_id': team_id,
+        'ao_channel_id': ao_channel_id,
+        'event_date': selected_date_db,
+        'event_time': selected_time_db
+    }
+
     # Attempt db update
     success_status = False
     try:
         with my_connect(team_id) as mydb:
             sql_update = \
-            f"""
+            f"""-- sql
             UPDATE {mydb.db}.qsignups_master
-            SET q_pax_id = '{user_id}'
-                , q_pax_name = '{user_name}'
-            WHERE team_id = '{team_id}'
-                AND ao_channel_id = '{ao_channel_id}'
-                AND event_date = DATE('{selected_date_db}')
-                AND event_time = '{selected_time_db}'
+            SET q_pax_id = %(user_id)s
+                , q_pax_name = %(user_name)s
+            WHERE team_id = %(team_id)s
+                AND ao_channel_id = %(ao_channel_id)s
+                AND event_date = DATE(%(event_date)s)
+                AND event_time = %(event_time)s
             ;
             """
             logging.info(f'Attempting SQL UPDATE: {sql_update}')
 
             mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_update)
-            mycursor.execute("COMMIT;")
+            mycursor.execute(sql_update, query_params)
+            mydb.conn.commit()
             success_status = True
     except Exception as e:
         logger.error(f"Error updating schedule: {e}")
@@ -1365,26 +1401,36 @@ def handle_date_select_button_from_message(ack, client, body, logger, context):
     except Exception as e:
         logger.error(f"Error pulling channel id: {e}")
 
+    # Build query params
+    query_params = {
+        'team_id': team_id,
+        'user_id': user_id,
+        'user_name': user_name,
+        'ao_channel_id': ao_channel_id,
+        'event_date': selected_date_db,
+        'event_time': selected_time_db
+    }
+
     # Attempt db update
     success_status = False
     try:
         with my_connect(team_id) as mydb:
             sql_update = \
-            f"""
+            f"""-- sql
             UPDATE {mydb.db}.qsignups_master
-            SET q_pax_id = '{user_id}'
-                , q_pax_name = '{user_name}'
-            WHERE team_id = '{team_id}'
-                AND ao_channel_id = '{ao_channel_id}'
-                AND event_date = DATE('{selected_date_db}')
-                AND event_time = '{selected_time_db}'
+            SET q_pax_id = %(user_id)s
+                , q_pax_name = %(user_name)s
+            WHERE team_id = %(team_id)s
+                AND ao_channel_id = %(ao_channel_id)s
+                AND event_date = DATE(%(event_date)s)
+                AND event_time = %(event_time)s
             ;
             """
             logging.info(f'Attempting SQL UPDATE: {sql_update}')
 
             mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_update)
-            mycursor.execute("COMMIT;")
+            mycursor.execute(sql_update, query_params)
+            mydb.conn.commit()
             success_status = True
     except Exception as e:
         logger.error(f"Error updating schedule: {e}")
@@ -1735,45 +1781,58 @@ def handle_submit_edit_event_button(ack, client, body, logger, context):
     selected_time = results['edit_event_timepicker']['edit_event_timepicker']['selected_time'].replace(':','')
     selected_q_id_list = results['edit_event_q_select']['edit_event_q_select']['selected_users']
     if len(selected_q_id_list) == 0:
-        selected_q_id_fmt = 'NULL'
-        selected_q_name_fmt = 'NULL'
+        selected_q_id_fmt = None
+        selected_q_name_fmt = None
     else:
         selected_q_id = selected_q_id_list[0]
         user_info_dict = client.users_info(user=selected_q_id)
         selected_q_name = safe_get(user_info_dict, 'user', 'profile', 'display_name') or safe_get(
             user_info_dict, 'user', 'profile', 'real_name') or None
 
-        selected_q_id_fmt = f'"{selected_q_id}"'
-        selected_q_name_fmt = f'"{selected_q_name}"'
+        selected_q_id_fmt = selected_q_id
+        selected_q_name_fmt = selected_q_name
     selected_special = results['edit_event_special_select']['edit_event_special_select']['selected_option']['text']['text']
     if selected_special == 'None':
-        selected_special_fmt = 'NULL'
+        selected_special_fmt = None
     else:
-        selected_special_fmt = f'"{selected_special}"'
+        selected_special_fmt = selected_special
+
+    # Build query params
+    query_params = {
+        'q_pax_id': selected_q_id_fmt,
+        'q_pax_name': selected_q_name_fmt,
+        'event_date': selected_date,
+        'event_time': selected_time,
+        'event_special': selected_special_fmt,
+        'team_id': team_id,
+        'og_ao_channel_id': original_channel_id,
+        'og_event_date': original_date,
+        'og_event_time': original_time
+    }
 
     # Attempt db update
     success_status = False
     try:
         with my_connect(team_id) as mydb:
             sql_update = \
-            f'''
+            f"""-- sql
             UPDATE {mydb.db}.qsignups_master
-            SET q_pax_id = {selected_q_id_fmt}
-                , q_pax_name = {selected_q_name_fmt}
-                , event_date = DATE("{selected_date}")
-                , event_time = "{selected_time}"
-                , event_special = {selected_special_fmt}
-            WHERE team_id = "{team_id}"
-                AND ao_channel_id = "{original_channel_id}"
-                AND event_date = DATE("{original_date}")
-                AND event_time = "{original_time}"
+            SET q_pax_id = %(q_pax_id)s
+                , q_pax_name = %(q_pax_name)s
+                , event_date = DATE(%(event_date)s)
+                , event_time = %(event_time)s
+                , event_special = %(event_special)s
+            WHERE team_id = %(team_id)s
+                AND ao_channel_id = %(og_ao_channel_id)s
+                AND event_date = DATE(%(og_event_date)s)
+                AND event_time = %(og_event_time)s
             ;
-            '''
+            """
             logging.info(f'Attempting SQL UPDATE: {sql_update}')
 
             mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_update)
-            mycursor.execute("COMMIT;")
+            mycursor.execute(sql_update, query_params)
+            mydb.conn.commit()
             success_status = True
     except Exception as e:
         logger.error(f"Error updating schedule: {e}")
@@ -1815,26 +1874,34 @@ def handle_clear_slot_button(ack, client, body, logger, context):
     except Exception as e:
         logger.error(f"Error pulling channel id: {e}")
 
+    # Build query params
+    query_params = {
+        'team_id': team_id,
+        'ao_channel_id': ao_channel_id,
+        'event_date': selected_date_db,
+        'event_time': selected_time_db
+    }
+
     # Attempt db update
     success_status = False
     try:
         with my_connect(team_id) as mydb:
             sql_update = \
-            f"""
+            f"""-- sql
             UPDATE {mydb.db}.qsignups_master
             SET q_pax_id = NULL
                 , q_pax_name = NULL
-            WHERE team_id = '{team_id}'
-                AND ao_channel_id = '{ao_channel_id}'
-                AND event_date = DATE('{selected_date_db}')
-                AND event_time = '{selected_time_db}'
+            WHERE team_id = %(team_id)s
+                AND ao_channel_id = %(ao_channel_id)s
+                AND event_date = DATE(%(event_date)s)
+                AND event_time = %(event_time)s
             ;
             """
             logging.info(f'Attempting SQL UPDATE: {sql_update}')
 
             mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_update)
-            mycursor.execute("COMMIT;")
+            mycursor.execute(sql_update, query_params)
+            mydb.conn.commit()
             success_status = True
     except Exception as e:
         logger.error(f"Error updating schedule: {e}")
