@@ -14,6 +14,7 @@ def general_form(team_id, user_id, client, logger):
         logger.error(f"Error pulling region info: {e}")
         print(e)
 
+    print(region_df)
     initial_q_reminder = None
     if region_df["signup_reminders"] == 1:
         initial_q_reminder = inputs.Q_REMINDER_ENABLED
@@ -41,6 +42,8 @@ def general_form(team_id, user_id, client, logger):
             inputs.CANCEL_BUTTON
         ])
     ]
+
+    print("BLOCKS", blocks)
 
     try:
         client.views_publish(

@@ -7,6 +7,7 @@ def update(client, user_id, team_id, logger, input_data) -> UpdateResponse:
     query_params = {
         'team_id': team_id
     }
+    print("INPUT DATA", input_data)
 
     query_params['weekly_weinke_channel'] = inputs.WEINKIE_INPUT.get_selected_value(input_data)
     query_params['signup_reminders'] = inputs.Q_REMINDER_RADIO.get_selected_value(input_data) == inputs.Q_REMINDER_ENABLED.value

@@ -1388,52 +1388,15 @@ def handle_submit_general_settings_button(ack, body, client, logger, context):
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-
     # Gather inputs from form
     input_data = body['view']['state']['values']
-
-    query_params = {
-        'team_id': team_id
-    }
-
-    query_params['weekly_weinke_channel'] = safe_get(input_data, ['weinke_channel_select','weinke_channel_select','selected_channel'])
-    query_params['signup_reminders'] = safe_get(input_data, ['q_reminder_enable','q_reminder_enable','selected_option','value']) == "enable"
-    query_params['weekly_ao_reminders'] = safe_get(input_data, ['ao_reminder_enable','ao_reminder_enable','selected_option','value']) == "enable"
-    query_params['google_calendar_id'] = safe_get(input_data, ['google_calendar_id','google_calendar_id','value'])
-
-    print("FOUND GPARAMS ", query_params)
-
-    # Update db
-    success_status = False
-    try:
-        with my_connect(team_id) as mydb:
-
-            sql_update = f"""-- sql
-            UPDATE {mydb.db}.qsignups_regions
-            SET weekly_weinke_channel = IFNULL(%(weekly_weinke_channel)s, weekly_weinke_channel),
-                signup_reminders = IFNULL(%(signup_reminders)s, signup_reminders),
-                weekly_ao_reminders = IFNULL(%(weekly_ao_reminders)s, weekly_ao_reminders),
-                google_calendar_id = IFNULL(%(google_calendar_id)s, google_calendar_id)
-            WHERE team_id = %(team_id)s;
-            """
-            print("SQL: ", sql_update)
-
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_update, query_params)
-            mydb.conn.commit()
-            success_status = True
-    except Exception as e:
-        logger.error(f"Error writing to db: {e}")
-        error_msg = e
-
+    response = settings_handler.update(client, user_id, team_id, logger, input_data)
     # Take the user back home
-    if success_status:
+    if response.success:
         top_message = f"Success! Changed general region settings"
     else:
-        top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
-
+        top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{response.message}"
     home.refresh(client, user_id, logger, top_message, team_id, context)
-
 
 @app.action(actions.ADD_AO_ACTION)
 def handle_submit_add_ao_button(ack, body, client, logger, context):
