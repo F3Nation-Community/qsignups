@@ -58,7 +58,7 @@ class DbManager:
       try:
         return service_class(session).update_record_by_orm(id, record)
       finally:
-        session.rollback()
+        session.commit()
         close_session(session)
 
     def create_record(service_class, record):
@@ -66,7 +66,7 @@ class DbManager:
       try:
         return service_class(session).create_record(record)
       finally:
-        session.rollback()
+        session.commit()
         close_session(session)
 
 # Construct class for connecting to the db

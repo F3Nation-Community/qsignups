@@ -1,9 +1,9 @@
 from sqlalchemy import *
 from sqlalchemy.dialects.mysql import LONGTEXT
 from datetime import datetime
-from . import BaseClass, BaseService
+from . import BaseClass, QSignupClass, BaseService
 
-class Region(BaseClass):
+class Region(BaseClass, QSignupClass):
   __tablename__ = "qsignups_regions"
   current_week_weinke = Column("current_week_weinke", LONGTEXT)
   next_week_weinke = Column("next_week_weinke", LONGTEXT)
@@ -17,7 +17,7 @@ class Region(BaseClass):
   weekly_ao_reminders = Column("weekly_ao_reminders", Integer)
   google_calendar_id = Column("google_calendar_id", String(45))
   created = Column('created', DateTime, default = datetime.utcnow)
-  created = Column('updated', DateTime, default = datetime.utcnow)
+  updated = Column('updated', DateTime, default = datetime.utcnow)
 
   def get_id(self):
     return self.team_id
