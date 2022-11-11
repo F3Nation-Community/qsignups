@@ -147,11 +147,14 @@ GOOGLE_CALENDAR_INPUT = ActionInput(
 )
 
 ADD_EVENT: ActionButton = ActionButton(label = 'Add an event', action = "add_event_form")
-EDIT_EVENT: ActionButton = ActionButton(label = 'Edit an event', action = "edit_event_form")
+EDIT_SINGLE_EVENT: ActionButton = ActionButton(label = 'Edit a single event', action = "edit_single_event_form")
+DELETE_SINGLE_EVENT: ActionButton = ActionButton(label = 'Delete a single event', action = "delete_single_event_form")
+
+EDIT_RECURRING_EVENT: ActionButton = ActionButton(label = 'Edit a recurring event', action = "edit_recurring_event_form")
+DELETE_RECURRING_EVENT: ActionButton = ActionButton(label = 'Delete a recurring event', action = "delete_recurring_event_form")
 
 ADD_AO: ActionButton = ActionButton(label = 'Add an AO', action = "add_ao_form")
 EDIT_AO: ActionButton = ActionButton(label = 'Edit an AO', action = "edit_ao_form")
 DELETE_AO: ActionButton = ActionButton(label = 'Delete an AO', action = "delete_ao_form")
 
-DELETE_SINGLE_EVENT: ActionButton = ActionButton(label = 'Delete a single event', action = "delete_single_event_form")
 GENERAL_SETTINGS: ActionButton = ActionButton(label = 'General settings', action = "general_settings_form")

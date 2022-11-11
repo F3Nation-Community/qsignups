@@ -62,14 +62,20 @@ def refresh(client, user_id, logger, top_message, team_id, context):
                 mycursor.execute(sql_weinkes)
                 weinkes_list = mycursor.fetchone()
 
+                query_params = {
+                    'team_id': team_id,
+                    'bot_token': context['bot_token']
+                }
+
                 if weinkes_list is None:
                     # team_id not on region table, so we insert it
+
                     sql_insert = f"""
                     INSERT INTO {mydb.db}.qsignups_regions (team_id, bot_token)
-                    VALUES ("{team_id}", "{context['bot_token']}");
+                    VALUES (%(team_id)s, %(bot_token)s);
                     """
-                    mycursor.execute(sql_insert)
-                    mycursor.execute("COMMIT;")
+                    mycursor.execute(sql_insert, query_params)
+                    mydb.conn.commit()
 
                     current_week_weinke_url = None
                     next_week_weinke_url = None
@@ -78,9 +84,9 @@ def refresh(client, user_id, logger, top_message, team_id, context):
                     next_week_weinke_url = weinkes_list[1]
 
                 if weinkes_list[2] != context['bot_token']:
-                    sql_update = f"UPDATE {mydb.db}.qsignups_regions SET bot_token = '{context['bot_token']}' WHERE team_id = '{team_id}';"
-                    mycursor.execute(sql_update)
-                    mycursor.execute("COMMIT;")
+                    sql_update = f"UPDATE {mydb.db}.qsignups_regions SET bot_token = %(bot_token)s WHERE team_id = %(team_id)s;"
+                    mycursor.execute(sql_update, query_params)
+                    mydb.conn.commit()
 
             # Create upcoming schedule message
             sMsg = '*Upcoming Schedule:*'

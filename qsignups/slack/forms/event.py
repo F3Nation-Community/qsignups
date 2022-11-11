@@ -266,7 +266,7 @@ def add_form(team_id, user_id, client, logger):
         logger.error(f"Error publishing home tab: {e}")
         print(e)
 
-def edit_form(team_id, user_id, client, logger):
+def edit_single_form(team_id, user_id, client, logger):
 
     # list of AOs for dropdown
     try:
@@ -376,3 +376,207 @@ def delete_single_form(team_id, user_id, client, logger):
     except Exception as e:
         logger.error(f"Error publishing home tab: {e}")
         print(e)
+
+def edit_recurring_form(team_id, user_id, client, logger):
+    try:
+        with my_connect(team_id) as mydb:
+            sql_pull = f"""
+            SELECT w.*, a.ao_display_name
+            FROM {mydb.db}.qsignups_weekly w
+            INNER JOIN {mydb.db}.qsignups_aos a
+            ON w.ao_channel_id = a.ao_channel_id
+                AND w.team_id = '{team_id}';
+            """
+            logger.info(f'Pulling from db, attempting SQL: {sql_pull}')
+
+            results_df = pd.read_sql_query(sql_pull, mydb.conn)
+    except Exception as e:
+        logger.error(f"Error pulling from schedule_weekly: {e}")
+
+    # Sort results_df
+    day_of_week_map = {'Sunday':0, 'Monday':1, 'Tuesday':2, 'Wednesday':3, 'Thursday':4, 'Friday':5, 'Saturday':6}
+    results_df['event_day_of_week_num'] = results_df['event_day_of_week'].map(day_of_week_map)
+    results_df['ao_display_name_sort'] = results_df['ao_display_name'].str.replace('The ','')
+    results_df.sort_values(by=['ao_display_name_sort', 'event_day_of_week_num', 'event_time'], inplace=True)
+
+    # Construct view
+    # Top of view
+    blocks = [{
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": "Please select a recurring event to edit:"}
+        },
+        {
+            "type": "divider"
+        }
+    ]
+
+    # Show next x number of events
+    for ao in results_df['ao_display_name'].unique():
+        # Header block
+        blocks.append({
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": ao
+            }
+        })
+
+        # Create button blocks for each event for each AO
+        for _, row in results_df[results_df['ao_display_name'] == ao].iterrows():
+            blocks.append({
+                "type":"section",
+                "text":{
+                    "type":"mrkdwn",
+                    "text":f"{row['event_type']} {row['event_day_of_week']}s @ {row['event_time']}"
+                },
+                "accessory":{
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":"Edit Event",
+                        "emoji":True
+                    },
+                    "action_id":"edit_recurring_event_slot_select",
+                    "value":f"{row['ao_display_name']}|{row['event_day_of_week']}|{row['event_type']}|{row['event_time']}|{row['event_end_time']}|{row['ao_channel_id']}"
+                }
+            })
+
+        # Divider block
+        blocks.append({
+            "type":"divider"
+        })
+
+    # Cancel block
+    blocks.append({
+        "type":"actions",
+        "elements":[
+            {
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":"Cancel",
+                    "emoji":True
+                },
+                "action_id":"cancel_button_select",
+                "style":"danger",
+                "value":"Cancel"
+            }
+        ]
+    })
+
+
+    # Publish view
+    try:
+        client.views_publish(
+            user_id=user_id,
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
+
+def delete_recurring_form(team_id, user_id, client, logger):
+    try:
+        with my_connect(team_id) as mydb:
+            sql_pull = f"""
+            SELECT w.*, a.ao_display_name
+            FROM {mydb.db}.qsignups_weekly w
+            INNER JOIN {mydb.db}.qsignups_aos a
+            ON w.ao_channel_id = a.ao_channel_id
+                AND w.team_id = '{team_id}';
+            """
+            logger.info(f'Pulling from db, attempting SQL: {sql_pull}')
+
+            results_df = pd.read_sql_query(sql_pull, mydb.conn)
+    except Exception as e:
+        logger.error(f"Error pulling from schedule_weekly: {e}")
+
+    # Sort results_df
+    day_of_week_map = {'Sunday':0, 'Monday':1, 'Tuesday':2, 'Wednesday':3, 'Thursday':4, 'Friday':5, 'Saturday':6}
+    results_df['event_day_of_week_num'] = results_df['event_day_of_week'].map(day_of_week_map)
+    results_df['ao_display_name_sort'] = results_df['ao_display_name'].str.replace('The ','')
+    results_df.sort_values(by=['ao_display_name_sort', 'event_day_of_week_num', 'event_time'], inplace=True)
+
+    # Construct view
+    # Top of view
+    blocks = [{
+        "type": "section",
+        "text": {"type": "mrkdwn", "text": "Please select a recurring event to delete:"}
+    },
+    {
+        "type": "divider"
+    }]
+
+    # Show next x number of events
+    for ao in results_df['ao_display_name'].unique():
+        # Header block
+        blocks.append({
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": ao
+            }
+        })
+
+        # Create button blocks for each event for each AO
+        for _, row in results_df[results_df['ao_display_name'] == ao].iterrows():
+            blocks.append({
+                "type":"section",
+                "text":{
+                    "type":"mrkdwn",
+                    "text":f"{row['event_type']} {row['event_day_of_week']}s @ {row['event_time']}"
+                },
+                "accessory":{
+                    "type":"button",
+                    "text":{
+                        "type":"plain_text",
+                        "text":"Delete Event",
+                        "emoji":True
+                    },
+                    "action_id":"delete_recurring_event_slot_select",
+                    "style":"danger",
+                    "value":f"{row['ao_display_name']}|{row['event_day_of_week']}|{row['event_type']}|{row['event_time']}|{row['event_end_time']}|{row['ao_channel_id']}"
+                }
+            })
+
+        # Divider block
+        blocks.append({
+            "type":"divider"
+        })
+
+    # Cancel block
+    blocks.append({
+        "type":"actions",
+        "elements":[
+            {
+                "type":"button",
+                "text":{
+                    "type":"plain_text",
+                    "text":"Cancel",
+                    "emoji":True
+                },
+                "action_id":"cancel_button_select",
+                "style":"danger",
+                "value":"Cancel"
+            }
+        ]
+    })
+
+
+    # Publish view
+    try:
+        client.views_publish(
+            user_id=user_id,
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
+
+
