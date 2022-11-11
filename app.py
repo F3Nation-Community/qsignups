@@ -9,11 +9,11 @@ from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
 
 from qsignups.utilities import safe_get, get_user_name
 from qsignups.database import my_connect
+
 from qsignups.slack import forms
 from qsignups.slack.forms import ao, event, home, settings
 from qsignups.slack.handlers import settings as settings_handler
 from qsignups.slack import actions, inputs
-# import re
 
 def get_oauth_flow():
     if os.environ.get("SLACK_BOT_TOKEN"):
@@ -64,6 +64,7 @@ def update_home_tab(client, event, logger, context):
     top_message = f'Welcome to QSignups, {user_name}!'
     home.refresh(client, user_id, logger, top_message, team_id, context)
 
+
 # triggers when user chooses to schedule a q
 # @app.action("schedule_q_button")
 # def handle_take_q_button(ack, body, client, logger, context):
@@ -85,10 +86,11 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
         forms.make_header_row("Choose an option to update your AOs:"),
         forms.make_action_button_row([inputs.ADD_AO, inputs.EDIT_AO]),
         forms.make_header_row("Choose an option to update your Event Schedule:"),
-        forms.make_action_button_row([inputs.ADD_EVENT, inputs.EDIT_EVENT, inputs.DELETE_SINGLE_EVENT]),
+        forms.make_action_button_row([inputs.ADD_EVENT, inputs.EDIT_SINGLE_EVENT, inputs.DELETE_SINGLE_EVENT]),
         forms.make_header_row("Return to the Home Page:"),
         forms.make_action_button_row([inputs.CANCEL_BUTTON])
     ]
+
     try:
         client.views_publish(
             user_id=user_id,
@@ -100,6 +102,7 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
     except Exception as e:
         logger.error(f"Error publishing home tab: {e}")
         print(e)
+
 
 @app.action(inputs.ADD_AO.action)
 def handle_add_ao_form(ack, body, client, logger, context):
@@ -125,13 +128,13 @@ def handle_add_event_form(ack, body, client, logger, context):
     team_id = context["team_id"]
     event.add_form(team_id, user_id, client, logger)
 
-@app.action(inputs.EDIT_EVENT.action)
+@app.action(inputs.EDIT_SINGLE_EVENT.action)
 def handle_edit_event_form(ack, body, client, logger, context):
     ack()
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    event.edit_form(team_id, user_id, client, logger)
+    event.edit_single_form(team_id, user_id, client, logger)
 
 @app.action(inputs.DELETE_SINGLE_EVENT.action)
 def handle_delete_single_event_form(ack, body, client, logger, context):
@@ -141,6 +144,22 @@ def handle_delete_single_event_form(ack, body, client, logger, context):
     team_id = context["team_id"]
     event.delete_single_form(team_id, user_id, client, logger)
 
+@app.action(inputs.EDIT_RECURRING_EVENT.action)
+def handle_edit_event_form(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    event.edit_recurring_form(team_id, user_id, client, logger)
+
+@app.action(inputs.DELETE_RECURRING_EVENT.action)
+def handle_delete_single_event_form(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    event.delete_recurring_form(team_id, user_id, client, logger)
+
 @app.action(inputs.GENERAL_SETTINGS.action)
 def handle_general_settings_form(ack, body, client, logger, context):
     ack()
@@ -148,6 +167,441 @@ def handle_general_settings_form(ack, body, client, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
     settings.general_form(team_id, user_id, client, logger)
+
+@app.action("delete_recurring_event_slot_select")
+def handle_delete_recurring_event_slot_select(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context['user_id']
+    team_id = context['team_id']
+
+    # Build query params
+    query_params = {'team_id': team_id}
+    query_params['selected_ao'], query_params['selected_day'], query_params['selected_event_type'], query_params['selected_start_time'], query_params['selected_end_time'], query_params['selected_ao_id'] = str.split(body['actions'][0]['value'], '|')
+
+    # Build options lists
+    # list of AOs for dropdown
+    try:
+        with my_connect(team_id) as mydb:
+            sql_delete1 = f"""-- sql
+            DELETE FROM {mydb.db}.qsignups_weekly
+            WHERE team_id = %(team_id)s
+                AND ao_channel_id = %(selected_ao_id)s
+                AND event_day_of_week = %(selected_day)s
+                AND event_time = %(selected_start_time)s
+            ;
+            """
+            sql_delete2 = f"""-- sql
+            DELETE FROM {mydb.db}.qsignups_master
+            WHERE team_id = %(team_id)s
+                AND ao_channel_id = %(selected_ao_id)s
+                AND event_day_of_week = %(selected_day)s
+                AND event_time = %(selected_start_time)s
+                AND event_date >= DATE(NOW()) # TODO: make another step to select effective date?
+            ;
+            """
+            logger.info(f"Attempting SQL DELETE:\n{sql_delete1}\n\n{sql_delete2}")
+            mycursor = mydb.conn.cursor()
+            mycursor.execute(sql_delete1, query_params)
+            mycursor.execute(sql_delete2, query_params)
+            mydb.conn.commit()
+            success_status = True
+    except Exception as e:
+        logger.error(f"Error deleting events: {e}")
+        error_msg = e
+        success_status = False
+
+    if success_status:
+        top_message = f"I've deleted all future {query_params['selected_event_type']}s from the schedule for {query_params['selected_day']}s at {query_params['selected_start_time']} at {query_params['selected_ao']}."
+    else:
+        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
+    home.refresh(client, user_id, logger, top_message, team_id, context)
+
+@app.action("edit_recurring_event_slot_select")
+def handle_edit_recurring_event_slot_select(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context['user_id']
+    team_id = context['team_id']
+    print(body['actions'][0]['value'])
+    selected_ao, selected_day, selected_event_type, selected_start_time, selected_end_time, selected_ao_id = str.split(body['actions'][0]['value'], '|')
+
+    # Build options lists
+    # list of AOs for dropdown
+    try:
+        with my_connect(team_id) as mydb:
+            sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
+            ao_list = pd.read_sql(sql_ao_list, mydb.conn)
+            ao_list = ao_list['ao_display_name'].values.tolist()
+    except Exception as e:
+        logger.error(f"Error pulling AO list: {e}")
+
+    ao_options = []
+    for option in ao_list:
+        new_option = {
+            "text": {
+                "type": "plain_text",
+                "text": option,
+                "emoji": True
+            },
+            "value": option
+        }
+        ao_options.append(new_option)
+    selected_ao_index = ao_list.index(selected_ao)
+
+    day_list = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday'
+    ]
+    day_options = []
+    for option in day_list:
+        new_option = {
+            "text": {
+                "type": "plain_text",
+                "text": option,
+                "emoji": True
+            },
+            "value": option
+        }
+        day_options.append(new_option)
+    selected_day_index = day_list.index(selected_day)
+
+    event_type_list = ['Bootcamp', 'QSource', 'Custom']
+    event_type_options = []
+    for option in event_type_list:
+        new_option = {
+            "text": {
+                "type": "plain_text",
+                "text": option,
+                "emoji": True
+            },
+            "value": option
+        }
+        event_type_options.append(new_option)
+    try:
+        selected_event_type_index = event_type_list.index(selected_event_type)
+    except ValueError as e:
+        selected_event_type_index = -1
+
+    blocks = [
+        {
+            "type": "input",
+            "block_id": "event_type_select",
+            "element": {
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select an event type",
+                    "emoji": True
+                },
+                "options": event_type_options,
+                "action_id": "event_type_select_action",
+                "initial_option": event_type_options[selected_event_type_index]
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Event Type",
+                "emoji": True
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "event_type_custom",
+            "element": {
+                "type": "plain_text_input",
+                "action_id": "event_type_custom",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Custom Event Name"
+                },
+                "initial_value": selected_event_type
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "If Custom selected, please specify"
+            },
+            "optional": True
+        },
+        {
+            "type": "input",
+            "block_id": "ao_display_name_select",
+            "element": {
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select an AO",
+                    "emoji": True
+                },
+                "options": ao_options,
+                "action_id": "ao_display_name_select_action",
+                "initial_option": ao_options[selected_ao_index]
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "AO",
+                "emoji": True
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "event_day_of_week_select",
+            "element": {
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select a day",
+                    "emoji": True
+                },
+                "options": day_options,
+                "action_id": "event_day_of_week_select_action",
+                "initial_option": day_options[selected_day_index]
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Day of Week",
+                "emoji": True
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "event_start_time_select",
+            "element": {
+                "type": "timepicker",
+                "initial_time": selected_start_time[:2] + ':' + selected_start_time[2:],
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select time",
+                    "emoji": True
+                },
+                "action_id": "event_start_time_select"
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Event Start",
+                "emoji": True
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "event_end_time_select",
+            "element": {
+                "type": "timepicker",
+                # "initial_time": selected_end_time[:2] + ':' + selected_end_time[2:],
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select time",
+                    "emoji": True
+                },
+                "action_id": "event_end_time_select"
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Event End",
+                "emoji": True
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "add_event_datepicker",
+            "element": {
+                "type": "datepicker",
+                "initial_date": date.today().strftime('%Y-%m-%d'),
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select date",
+                    "emoji": True
+                },
+                "action_id": "add_event_datepicker"
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Start Date",
+                "emoji": True
+            }
+        },
+        {
+            "type": "actions",
+            "block_id": "submit_cancel_buttons",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Submit",
+                        "emoji": True
+                    },
+                    "value": "submit",
+                    "action_id": "submit_edit_recurring_event",
+                    "style": "primary"
+                },
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Cancel",
+                        "emoji": True
+                    },
+                    "value": "cancel",
+                    "action_id": "cancel_button_select",
+                    "style": "danger"
+                }
+            ]
+        },
+        {
+            "type": "context",
+            "elements": [
+                {
+                    "type": "mrkdwn",
+                    "text": "Please wait after hitting Submit, and do not hit it more than once"
+                }
+            ]
+        },
+        {
+            "type": "context",
+            "elements": [
+                {
+                    "type": "mrkdwn",
+                    "text": selected_ao_id + '|' + selected_day + '|' + selected_start_time
+                }
+            ]
+        }
+
+    ]
+
+    if selected_end_time != 'None': blocks[5]['element']['initial_time'] = selected_start_time[:2] + ':' + selected_start_time[2:]
+    try:
+        client.views_publish(
+            user_id=user_id,
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
+
+@app.action("submit_edit_recurring_event")
+def handle_edit_recurring_event(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    print(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+
+    # Gather inputs from form
+    input_data = body['view']['state']['values']
+    ao_display_name = input_data['ao_display_name_select']['ao_display_name_select_action']['selected_option']['value']
+    event_day_of_week = input_data['event_day_of_week_select']['event_day_of_week_select_action']['selected_option']['value']
+    starting_date = input_data['add_event_datepicker']['add_event_datepicker']['selected_date']
+    event_time = input_data['event_start_time_select']['event_start_time_select']['selected_time'].replace(':','')
+    event_end_time = input_data['event_end_time_select']['event_end_time_select']['selected_time'].replace(':','')
+
+    og_ao_channel_id, og_event_day_of_week, og_event_time = body['view']['blocks'][-1]['elements'][0]['text'].split('|')
+
+    # Logic for custom events
+    if input_data['event_type_select']['event_type_select_action']['selected_option']['value'] == 'Custom':
+        event_type = input_data['event_type_custom']['event_type_custom']['value']
+    else:
+        event_type = input_data['event_type_select']['event_type_select_action']['selected_option']['value']
+
+    event_recurring = True
+
+    # Grab channel id
+    try:
+        with my_connect(team_id) as mydb:
+            mycursor = mydb.conn.cursor()
+            mycursor.execute(f'SELECT ao_channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id}" AND ao_display_name = "{ao_display_name}";')
+            ao_channel_id = mycursor.fetchone()[0]
+    except Exception as e:
+           logger.error(f"Error pulling from db: {e}")
+
+    # Build query params
+    query_params = {
+        'team_id': team_id,
+        'ao_channel_id': ao_channel_id,
+        'event_day_of_week': event_day_of_week,
+        'event_time': event_time,
+        'event_end_time': event_end_time,
+        'event_type': event_type,
+        'event_recurring': True,
+        'og_ao_channel_id': og_ao_channel_id,
+        'og_event_day_of_week': og_event_day_of_week,
+        'og_event_time': og_event_time,
+        'starting_date': starting_date
+    }
+
+    # Update weekly table
+    try:
+        with my_connect(team_id) as mydb:
+            sql_update = f"""-- sql
+            UPDATE {mydb.db}.qsignups_weekly
+            SET ao_channel_id = %(ao_channel_id)s, event_day_of_week = %(event_day_of_week)s, event_time = %(event_time)s,
+                event_end_time = %(event_end_time)s, event_type = %(event_type)s, team_id = %(team_id)s
+            WHERE team_id = %(team_id)s
+                AND ao_channel_id = %(og_ao_channel_id)s
+                AND event_day_of_week = %(og_event_day_of_week)s
+                AND event_time = %(og_event_time)s
+            ;
+            """
+            logging.info(f"Attempting SQL UPDATE: {sql_update}")
+
+            mycursor = mydb.conn.cursor()
+            mycursor.execute(sql_update, query_params)
+            mydb.conn.commit()
+    except Exception as e:
+           logger.error(f"Error writing to schedule_weekly: {e}")
+
+    # Update master schedule table
+    logger.info(f"Attempting SQL UPDATE into schedule_master")
+    success_status = False
+
+    # Support for changing day of week
+    if event_day_of_week != og_event_day_of_week:
+        day_list = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+        new_dow_num = day_list.index(event_day_of_week)
+        old_dow_num = day_list.index(og_event_day_of_week)
+        query_params['day_adjust'] = new_dow_num - old_dow_num
+    else:
+        query_params['day_adjust'] = 0
+
+    # Attempt update
+    try:
+        with my_connect(team_id) as mydb:
+
+            sql_update = f"""-- sql
+            UPDATE {mydb.db}.qsignups_master
+            SET ao_channel_id = %(ao_channel_id)s, event_date = DATE_ADD(event_date, INTERVAL %(day_adjust)s DAY), event_day_of_week = %(event_day_of_week)s,
+                event_time = %(event_time)s, event_end_time = %(event_end_time)s, event_type = %(event_type)s, team_id = %(team_id)s, event_recurring = %(event_recurring)s
+            WHERE team_id = %(team_id)s
+                AND ao_channel_id = %(og_ao_channel_id)s
+                AND event_day_of_week = %(og_event_day_of_week)s
+                AND event_time = %(og_event_time)s
+                AND event_date >= DATE(%(starting_date)s)
+            ;
+            """
+
+            logging.info(f"Attempting SQL UPDATE: {sql_update}")
+
+            mycursor = mydb.conn.cursor()
+            mycursor.execute(sql_update, query_params)
+            mydb.conn.commit()
+            success_status = True
+    except Exception as e:
+           logger.error(f"Error writing to schedule_master: {e}")
+           error_msg = e
+
+    # Give status message and return to home
+    if success_status:
+        top_message = f"Thanks, I got it! I've made your selected changes to {event_type}s on {event_day_of_week}s at {event_time} at {ao_display_name}."
+    else:
+        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
+    home.refresh(client, user_id, logger, top_message, team_id, context)
 
 @app.action("delete_single_event_ao_select")
 def handle_delete_single_event_ao_select(ack, body, client, logger, context):
@@ -194,7 +648,7 @@ def handle_delete_single_event_ao_select(ack, body, client, logger, context):
     # Show next x number of events
     # TODO: future add: make a "show more" button?
     results_df['event_date_time'] = pd.to_datetime(results_df['event_date'].dt.strftime('%Y-%m-%d') + ' ' + results_df['event_time'], infer_datetime_format=True)
-    for _, row in results_df.iterrows():
+    for index, row in results_df.iterrows():
         # Pretty format date
         date_fmt = row['event_date_time'].strftime("%a, %m-%d @ %H%M")
         date_fmt_value = row['event_date_time'].strftime('%Y-%m-%d %H:%M:%S')
@@ -225,7 +679,6 @@ def handle_delete_single_event_ao_select(ack, body, client, logger, context):
                 "text": "Cancel"
             }
         }
-
         # Button template
         new_button = inputs.ActionButton(
             label = f"{date_fmt}: {date_status}", value = value, action = action_id, confirm = confirm_obj)
@@ -398,11 +851,11 @@ def handle_edit_ao_select(ack, body, client, logger, context):
                 }
             }
         ]
-
         blocks.append(forms.make_action_button_row([
             inputs.make_submit_button(actions.EDIT_AO_ACTION),
             inputs.CANCEL_BUTTON
         ]))
+
 
         try:
             client.views_publish(
@@ -755,24 +1208,10 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
                     "emoji": True
                 }
             },
-            {
-                "type": "actions",
-                "block_id": "submit_cancel_buttons",
-                "elements": [
-                    {
-                        "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "Submit",
-                            "emoji": True
-                        },
-                        "value": "submit",
-                        "action_id": "submit_add_single_event_button",
-                        "style": "primary"
-                    },
-                    inputs.CANCEL_BUTTON.as_form_field()
-                ]
-            }
+            forms.make_action_button_row([
+                actions.make_submit_button(actions.ADD_SINGLE_EVENT_ACTION),
+                inputs.CANCEL_BUTTON
+            ])
         ]
 
     try:
@@ -934,21 +1373,67 @@ def submit_edit_ao_button(ack, body, client, logger, context):
 
     home.refresh(client, user_id, logger, top_message, team_id, context)
 
+def safe_get(data, keys):
+    try:
+        result = data
+        for k in keys:
+            result = result[k]
+        return result
+    except:
+        return None
+
 @app.action(actions.EDIT_SETTINGS_ACTION)
 def handle_submit_general_settings_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
+
     # Gather inputs from form
     input_data = body['view']['state']['values']
-    response = settings_handler.update(client, user_id, team_id, logger, input_data)
+
+    query_params = {
+        'team_id': team_id
+    }
+
+    query_params['weekly_weinke_channel'] = safe_get(input_data, ['weinke_channel_select','weinke_channel_select','selected_channel'])
+    query_params['signup_reminders'] = safe_get(input_data, ['q_reminder_enable','q_reminder_enable','selected_option','value']) == "enable"
+    query_params['weekly_ao_reminders'] = safe_get(input_data, ['ao_reminder_enable','ao_reminder_enable','selected_option','value']) == "enable"
+    query_params['google_calendar_id'] = safe_get(input_data, ['google_calendar_id','google_calendar_id','value'])
+
+    print("FOUND GPARAMS ", query_params)
+
+    # Update db
+    success_status = False
+    try:
+        with my_connect(team_id) as mydb:
+
+            sql_update = f"""-- sql
+            UPDATE {mydb.db}.qsignups_regions
+            SET weekly_weinke_channel = IFNULL(%(weekly_weinke_channel)s, weekly_weinke_channel),
+                signup_reminders = IFNULL(%(signup_reminders)s, signup_reminders),
+                weekly_ao_reminders = IFNULL(%(weekly_ao_reminders)s, weekly_ao_reminders),
+                google_calendar_id = IFNULL(%(google_calendar_id)s, google_calendar_id)
+            WHERE team_id = %(team_id)s;
+            """
+            print("SQL: ", sql_update)
+
+            mycursor = mydb.conn.cursor()
+            mycursor.execute(sql_update, query_params)
+            mydb.conn.commit()
+            success_status = True
+    except Exception as e:
+        logger.error(f"Error writing to db: {e}")
+        error_msg = e
+
     # Take the user back home
-    if response.success:
+    if success_status:
         top_message = f"Success! Changed general region settings"
     else:
-        top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{response.message}"
+        top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
+
     home.refresh(client, user_id, logger, top_message, team_id, context)
+
 
 @app.action(actions.ADD_AO_ACTION)
 def handle_submit_add_ao_button(ack, body, client, logger, context):
@@ -1102,7 +1587,7 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
         top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
     home.refresh(client, user_id, logger, top_message, team_id, context)
 
-@app.action("submit_add_single_event_button")
+@app.action(actions.ADD_SINGLE_EVENT_ACTION)
 def handle_submit_add_single_event_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -1381,7 +1866,7 @@ def handle_date_select_button_from_message(ack, client, body, logger, context):
     logging.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    user_name = (get_user_name([user_id], logger, client))[0]
+    user_name = get_user_name([user_id], logger, client)
 
     # gather and format selected date and time
     selected_date = body['actions'][0]['value']
@@ -1523,7 +2008,7 @@ def handle_taken_date_select_button(ack, client, body, logger, context):
                             "emoji":True
                         },
                         "value":f"{selected_date}|{selected_ao}",
-                        "action_id": "edit_single_event_button"
+                        "action_id":"edit_single_event_button"
                     }
                 ]
             },
@@ -1727,25 +2212,9 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
     ]
 
     # Sumbit / Cancel buttons
-    action_button = {
-        "type":"actions",
-        "elements":[
-            {
-                "type":"button",
-                "text":{
-                    "type":"plain_text",
-                    "text":"Submit",
-                    "emoji":True
-                },
-                "action_id": actions.EDIT_EVENT_ACTION,
-                "style":"primary",
-                "value":ao_channel_id
-            }
-        ]
-    }
-
-    blocks.append(action_button)
-    blocks.append(forms.make_action_button_row([inputs.CANCEL_BUTTON]))
+    submit_button = inputs.ActionButton(
+        label = 'Submit', style = 'primary', value = ao_channel_id, aciton = actions.EDIT_EVENT_ACTION)
+    blocks.append(forms.make_action_button_row([submit_button, inputs.CANCEL_BUTTON]))
 
     # Publish view
     try:
@@ -1929,6 +2398,7 @@ def cancel_button_select(ack, client, body, logger, context):
     user_name = get_user_name([user_id], logger, client)
     top_message = f"Welcome to QSignups, {user_name}!"
     home.refresh(client, user_id, logger, top_message, team_id, context)
+
 
 SlackRequestHandler.clear_all_log_handlers()
 logger = logging.getLogger()

@@ -71,8 +71,8 @@ class ActionChannelInput(BaseAction):
     else:
       return utilities.safe_get(input_data, self.action, self.action, self.input_type)
 
-  def as_form_field(self):
-    return {
+  def as_form_field(self, initial_value = None):
+    j = {
         "type": "input",
         "block_id": self.action,
         "element": {
@@ -82,6 +82,8 @@ class ActionChannelInput(BaseAction):
         },
         "label": self.make_label_field()
     }
+    if initial_value:
+      j['element']['initial_value'] = initial_value
 
 @dataclass
 class ActionRadioButton(BaseAction):
@@ -96,11 +98,12 @@ class ActionRadioButton(BaseAction):
 @dataclass
 class ActionRadioButtons(BaseAction):
   options: List[ActionRadioButton]
+
   def get_selected_value(self, input_data):
     return utilities.safe_get(input_data, self.action, self.action, 'selected_option', 'value')
 
   def as_form_field(self, initial_value=None):
-    return {
+    j = {
         "type": "input",
         "block_id": self.action,
         "element": {
@@ -110,6 +113,8 @@ class ActionRadioButtons(BaseAction):
         },
         "label": self.make_label_field()
     }
+    if initial_value:
+      j['element']['initial_option'] = initial_value
 
 Q_REMINDER_ENABLED = ActionRadioButton(label = "Enable Q reminders", action = None, value = "enabled")
 Q_REMINDER_DISABLED = ActionRadioButton(label = "Disable Q reminders", action = None, value = "disabled")
