@@ -3,6 +3,8 @@ from typing import List
 
 import os
 import mysql.connector
+from sqlalchemy import create_engine, pool
+from sqlalchemy.orm import sessionmaker
 from contextlib import ContextDecorator
 
 @dataclass
@@ -10,21 +12,62 @@ class DatabaseField:
     name: str
     value: object = None
 
-def select_clause(fields: List[DatabaseField]) -> str:
-  return ",".join([f"`{x.name}`" for x in fields]) if fields else '*'
-
-def update_clause(fields: List[DatabaseField]) -> str:
-   return ",".join(f"`{f.name}` = '{f.value}'" for f in fields)
-
-def insert_clause(fields: List[DatabaseField]) -> str:
-  fields_to_insert = ",".join([f"`{k.name}`" for k in fields])
-  values_to_insert = ",".join([f"'{k.value}'" for k in fields])
-  return f" ({fields_to_insert}) VALUES ({values_to_insert})"
-
 DATABASE_HOST = 'DATABASE_HOST'
 ADMIN_DATABASE_USER = 'ADMIN_DATABASE_USER'
 ADMIN_DATABASE_PASSWORD = 'ADMIN_DATABASE_PASSWORD'
 ADMIN_DATABASE_SCHEMA = 'ADMIN_DATABASE_SCHEMA'
+
+GLOBAL_ENGINE = None
+GLOBAL_SESSION = None
+def get_session(echo = False):
+    if GLOBAL_SESSION:
+        return GLOBAL_SESSION
+
+    global GLOBAL_ENGINE
+    if not GLOBAL_ENGINE:
+
+        host = os.environ[DATABASE_HOST]
+        user = os.environ[ADMIN_DATABASE_USER]
+        passwd = os.environ[ADMIN_DATABASE_PASSWORD]
+        database = os.environ[ADMIN_DATABASE_SCHEMA]
+
+        db_url = f"mysql+pymysql://{user}:{passwd}@{host}:3306/{database}?charset=utf8mb4"
+        GLOBAL_ENGINE = create_engine(
+            db_url, echo = echo, poolclass = pool.NullPool, convert_unicode = True)
+    return sessionmaker()(bind=GLOBAL_ENGINE)
+
+def close_session(session):
+    global GLOBAL_SESSION, GLOBAL_ENGINE
+    if GLOBAL_SESSION == session:
+        if GLOBAL_ENGINE:
+            GLOBAL_ENGINE.close()
+            GLOBAL_SESSION = None
+
+
+class DbManager:
+    def get_record(service_class, id):
+      session = get_session()
+      try:
+        return service_class(session).get_record(id)
+      finally:
+        session.rollback()
+        close_session(session)
+
+    def update_record(service_class, id, record):
+      session = get_session()
+      try:
+        return service_class(session).update_record_by_orm(id, record)
+      finally:
+        session.rollback()
+        close_session(session)
+
+    def create_record(service_class, record):
+      session = get_session()
+      try:
+        return service_class(session).create_record(record)
+      finally:
+        session.rollback()
+        close_session(session)
 
 # Construct class for connecting to the db
 # Takes team_id as an input, pulls schema name from paxminer.regions

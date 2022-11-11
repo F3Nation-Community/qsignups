@@ -3,3 +3,5 @@ slack_bolt
 mysql.connector
 datetime
 pandas
+pymysql
+SQLAlchemy

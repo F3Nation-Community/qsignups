@@ -1,6 +1,7 @@
 from datetime import timedelta, date
 import pandas as pd
-from qsignups.database import my_connect, regions
+from qsignups.database import DbManager, my_connect
+from qsignups.database.orm.region import Region, RegionService
 from qsignups import constants
 from qsignups.slack import actions, forms, inputs
 
@@ -58,40 +59,32 @@ def refresh(client, user_id, logger, top_message, team_id, context):
 
             current_week_weinke_url = None
             if constants.use_weinkes():
-                sql_weinkes = f"SELECT current_week_weinke, next_week_weinke, bot_token FROM {mydb.db}.qsignups_regions WHERE team_id = '{team_id}';"
-                mycursor.execute(sql_weinkes)
-                weinkes_list = mycursor.fetchone()
+                region_record = DbManager.get_record(RegionService, team_id)
 
                 query_params = {
                     'team_id': team_id,
                     'bot_token': context['bot_token']
                 }
 
-                if weinkes_list is None:
+                if region_record is None:
                     # team_id not on region table, so we insert it
-
-                    sql_insert = f"""
-                    INSERT INTO {mydb.db}.qsignups_regions (team_id, bot_token)
-                    VALUES (%(team_id)s, %(bot_token)s);
-                    """
-                    mycursor.execute(sql_insert, query_params)
-                    mydb.conn.commit()
-
-                    current_week_weinke_url = None
-                    next_week_weinke_url = None
+                    region_record = DbManager.create_record(RegionService, Region(
+                        team_id = team_id,
+                        bot_token = context['bot_token']
+                    ))
                 else:
-                    current_week_weinke_url = weinkes_list[0]
-                    next_week_weinke_url = weinkes_list[1]
+                    current_week_weinke_url = region_record.current_week_weinke
+                    next_week_weinke_url = region_record.next_week_weinke
 
-                if weinkes_list[2] != context['bot_token']:
-                    sql_update = f"UPDATE {mydb.db}.qsignups_regions SET bot_token = %(bot_token)s WHERE team_id = %(team_id)s;"
-                    mycursor.execute(sql_update, query_params)
-                    mydb.conn.commit()
+                if region_record.bot_token != context['bot_token']:
+                    DbManager.update_record(RegionService, team_id, Region(
+                        bot_token = context['bot_token']
+                    ))
 
             # Create upcoming schedule message
             sMsg = '*Upcoming Schedule:*'
             iterate_date = ''
-            for index, row in upcoming_events_df.iterrows():
+            for _, row in upcoming_events_df.iterrows():
                 if row['event_date'] != iterate_date:
                     sMsg += f"\n\n:calendar: *{row['event_date'].strftime('%A %m/%d/%y')}*"
                     iterate_date = row['event_date']
@@ -100,8 +93,6 @@ def refresh(client, user_id, logger, top_message, team_id, context):
                     q_name = '*OPEN!*'
                 else:
                     q_name = row['q_pax_name']
-
-                location = row['ao_location_subtitle'].split('\n')[0]
                 sMsg += f"\n{row['ao_display_name']} - {row['event_type']} @ {row['event_time']} - {q_name}"
 
     except Exception as e:
