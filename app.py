@@ -83,10 +83,12 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
     team_id = context["team_id"]
 
     blocks = [
-        forms.make_header_row("Choose an option to update your AOs:"),
-        forms.make_action_button_row([inputs.ADD_AO, inputs.EDIT_AO]),
-        forms.make_header_row("Choose an option to update your Event Schedule:"),
-        forms.make_action_button_row([inputs.ADD_EVENT, inputs.EDIT_SINGLE_EVENT, inputs.DELETE_SINGLE_EVENT]),
+        forms.make_header_row("Choose an option to update your Schedule:"),
+        forms.make_action_button_row([inputs.ADD_AO, inputs.EDIT_AO, inputs.ADD_EVENT]),
+        forms.make_header_row("Choose an option to update your Recurring Events:"),
+        forms.make_action_button_row([inputs.EDIT_RECURRING_EVENT, inputs.DELETE_RECURRING_EVENT]),
+        forms.make_header_row("Choose an option to update your Single Events:"),
+        forms.make_action_button_row([inputs.EDIT_SINGLE_EVENT, inputs.DELETE_SINGLE_EVENT]),
         forms.make_header_row("Return to the Home Page:"),
         forms.make_action_button_row([inputs.CANCEL_BUTTON])
     ]
@@ -2176,7 +2178,7 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
 
     # Sumbit / Cancel buttons
     submit_button = inputs.ActionButton(
-        label = 'Submit', style = 'primary', value = ao_channel_id, aciton = actions.EDIT_EVENT_ACTION)
+        label = 'Submit', style = 'primary', value = ao_channel_id, action = actions.EDIT_EVENT_ACTION)
     blocks.append(forms.make_action_button_row([submit_button, inputs.CANCEL_BUTTON]))
 
     # Publish view

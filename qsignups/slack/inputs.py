@@ -80,7 +80,7 @@ class ActionChannelInput(BaseAction):
         "label": self.make_label_field()
     }
     if initial_value:
-      j['element']['initial_option'] = initial_value
+      j['element']['initial_channel'] = initial_value
     return j
 
 @dataclass
