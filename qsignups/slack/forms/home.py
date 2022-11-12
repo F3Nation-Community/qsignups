@@ -1,14 +1,11 @@
 from datetime import timedelta, date
 import pandas as pd
-from qsignups.database import DbManager, my_connect
-from qsignups.database.orm.region import Region, RegionService
+from qsignups.database import my_connect, DbManager
+from qsignups.database.orm import AO, Region
 from qsignups import constants
 from qsignups.slack import actions, forms, inputs
 
 def refresh(client, user_id, logger, top_message, team_id, context):
-    print("CLIENT", client)
-    print("CONTEXT", context)
-    print("TEAM", team_id)
     sMsg = ""
     current_week_weinke_url = None
     ao_list = None
@@ -46,7 +43,11 @@ def refresh(client, user_id, logger, top_message, team_id, context):
             """
 
             # list of AOs for dropdown
-            sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
+            ao_list = DbManager.find_records(AO, [
+                AO.team_id == team_id
+            ])
+
+            ao_list.sort( key = lambda x: x.ao_display_name.replace('The ', ''))
 
             # weinke urls
             # sql_weinkes = f"SELECT current_week_weinke, next_week_weinke FROM paxminer.regions WHERE region_schema = '{mydb.db}';"
@@ -54,21 +55,15 @@ def refresh(client, user_id, logger, top_message, team_id, context):
 
             # Make pulls
             upcoming_qs_df = pd.read_sql(sql_upcoming_qs, mydb.conn, parse_dates=['event_date'])
-            ao_list = pd.read_sql(sql_ao_list, mydb.conn)
             upcoming_events_df = pd.read_sql(sql_upcoming_events, mydb.conn, parse_dates=['event_date'])
 
             current_week_weinke_url = None
             if constants.use_weinkes():
-                region_record = DbManager.get_record(RegionService, team_id)
-
-                query_params = {
-                    'team_id': team_id,
-                    'bot_token': context['bot_token']
-                }
+                region_record = DbManager.get_record(Region, team_id)
 
                 if region_record is None:
                     # team_id not on region table, so we insert it
-                    region_record = DbManager.create_record(RegionService, Region(
+                    region_record = DbManager.create_record(Region(
                         team_id = team_id,
                         bot_token = context['bot_token']
                     ))
@@ -77,9 +72,9 @@ def refresh(client, user_id, logger, top_message, team_id, context):
                     next_week_weinke_url = region_record.next_week_weinke
 
                 if region_record.bot_token != context['bot_token']:
-                    DbManager.update_record(RegionService, team_id, Region(
-                        bot_token = context['bot_token']
-                    ))
+                    DbManager.update_record(Region, team_id, {
+                        Region.bot_token: context['bot_token']
+                    })
 
             # Create upcoming schedule message
             sMsg = '*Upcoming Schedule:*'
@@ -106,42 +101,25 @@ def refresh(client, user_id, logger, top_message, team_id, context):
             top_message += f"\n- {row['event_type']} on {dt_fmt} @ {row['event_time']} at {row['ao_display_name']}"
 
     # Build AO options list
-    options = []
-    if ao_list is not None:
-        for index, row in ao_list.iterrows():
+    # Build view blocks
+    blocks = [
+        forms.make_header_row(top_message),
+        forms.make_divider(),
+    ]
+    if not ao_list:
+        blocks.append(forms.make_header_row("Please use the button below to add some AOs!"))
+    else:
+        options = []
+        for ao_row in ao_list:
             new_option = {
                 "text": {
                     "type": "plain_text",
-                    "text": row['ao_display_name']
+                    "text": ao_row.ao_display_name
                 },
-                "value": row['ao_channel_id']
+                "value": ao_row.ao_channel_id
             }
             options.append(new_option)
 
-    # Build view blocks
-    blocks = [
-        {
-            "type": "section",
-            "block_id": "section678",
-            "text": {
-                "type": "mrkdwn",
-                "text": top_message
-            }
-        },
-        {
-            "type": "divider"
-        },
-    ]
-    if len(options) == 0:
-        new_block = {
-            "type": "section",
-            "block_id": "ao_select_block",
-            "text": {
-                "type": "mrkdwn",
-                "text": "Please use the button below to add some AOs!"
-            }
-        }
-    else:
         new_block = {
             "type": "section",
             "block_id": "ao_select_block",
@@ -155,11 +133,11 @@ def refresh(client, user_id, logger, top_message, team_id, context):
                 "placeholder": {
                     "type": "plain_text",
                     "text": "Select an AO"
-            },
-            "options": options
+                },
+                "options": options
             }
         }
-    blocks.append(new_block)
+        blocks.append(new_block)
 
     if (constants.use_weinkes()) and (current_week_weinke_url != None) and (next_week_weinke_url != None):
         weinke_blocks = [

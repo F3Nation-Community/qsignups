@@ -1,12 +1,12 @@
 import pandas as pd
 
 from qsignups.database import DbManager
-from qsignups.database.orm.region import RegionService
+from qsignups.database.orm import Region
 from qsignups.slack import actions, forms, inputs
 
 def general_form(team_id, user_id, client, logger):
     # Pull current settings
-    region = DbManager.get_record(RegionService, team_id)
+    region = DbManager.get_record(Region, team_id)
 
     initial_q_reminder = None
     if region.signup_reminders == 1:

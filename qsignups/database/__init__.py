@@ -1,11 +1,13 @@
 from dataclasses import dataclass
-from typing import List
+from typing import TypeVar, List
 
 import os
 import mysql.connector
-from sqlalchemy import create_engine, pool
+from sqlalchemy import create_engine, pool, and_
 from sqlalchemy.orm import sessionmaker
 from contextlib import ContextDecorator
+
+from qsignups.database.orm import BaseClass
 
 @dataclass
 class DatabaseField:
@@ -43,28 +45,40 @@ def close_session(session):
             GLOBAL_ENGINE.close()
             GLOBAL_SESSION = None
 
-
+T = TypeVar('T')
 class DbManager:
-    def get_record(service_class, id):
+
+    def get_record(cls: T, id) -> T:
       session = get_session()
       try:
-        return service_class(session).get_record(id)
+        return session.query(cls).filter(cls.get_id() == id).first()
       finally:
         session.rollback()
         close_session(session)
 
-    def update_record(service_class, id, record):
+    def find_records(cls: T, filters) -> List[T]:
       session = get_session()
       try:
-        return service_class(session).update_record_by_orm(id, record)
+        return session.query(cls).filter(and_(*filters)).all()
+      finally:
+        session.rollback()
+        close_session(session)
+
+    def update_record(cls: T, id, fields):
+      session = get_session()
+      try:
+        session.query(cls).filter(cls.get_id() == id).update(fields, synchronize_session='fetch')
+        session.flush()
       finally:
         session.commit()
         close_session(session)
 
-    def create_record(service_class, record):
+    def create_record(record: BaseClass) -> int:
       session = get_session()
       try:
-        return service_class(session).create_record(record)
+          session.add(record)
+          session.flush()
+          return record.get_id()
       finally:
         session.commit()
         close_session(session)

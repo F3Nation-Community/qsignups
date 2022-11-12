@@ -14,3 +14,8 @@ def make_header_row(text: str):
                 "text": text
             }
         }
+
+def make_divider():
+  return  {
+      "type": "divider"
+  }
