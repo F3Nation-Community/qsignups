@@ -1209,7 +1209,7 @@ def handle_manage_schedule_option_button(ack, body, client, logger, context):
                 sql_pull = f"""
                 SELECT w.*, a.ao_display_name
                 FROM {mydb.db}.qsignups_weekly w
-                INNER JOIN {mydb.db}.qsignups_aos a
+                LEFT JOIN {mydb.db}.qsignups_aos a
                 ON w.ao_channel_id = a.ao_channel_id
                     AND w.team_id = '{team_id}';
                 """
