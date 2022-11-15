@@ -383,7 +383,7 @@ def edit_recurring_form(team_id, user_id, client, logger):
             sql_pull = f"""
             SELECT w.*, a.ao_display_name
             FROM {mydb.db}.qsignups_weekly w
-            INNER JOIN {mydb.db}.qsignups_aos a
+            LEFT JOIN {mydb.db}.qsignups_aos a
             ON w.ao_channel_id = a.ao_channel_id
                 AND w.team_id = '{team_id}';
             """
@@ -484,7 +484,7 @@ def delete_recurring_form(team_id, user_id, client, logger):
             sql_pull = f"""
             SELECT w.*, a.ao_display_name
             FROM {mydb.db}.qsignups_weekly w
-            INNER JOIN {mydb.db}.qsignups_aos a
+            LEFT JOIN {mydb.db}.qsignups_aos a
             ON w.ao_channel_id = a.ao_channel_id
                 AND w.team_id = '{team_id}';
             """
