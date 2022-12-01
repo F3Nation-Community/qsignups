@@ -53,6 +53,7 @@ class DbManager:
       try:
         x = session.query(cls).filter(cls.get_id() == id).first()
         session.expunge(x)
+        return x
       finally:
         session.rollback()
         close_session(session)
