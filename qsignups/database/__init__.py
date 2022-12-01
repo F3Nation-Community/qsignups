@@ -51,7 +51,8 @@ class DbManager:
     def get_record(cls: T, id) -> T:
       session = get_session()
       try:
-        return session.query(cls).filter(cls.get_id() == id).first()
+        x = session.query(cls).filter(cls.get_id() == id).first()
+        session.expunge(x)
       finally:
         session.rollback()
         close_session(session)
@@ -59,7 +60,10 @@ class DbManager:
     def find_records(cls: T, filters) -> List[T]:
       session = get_session()
       try:
-        return session.query(cls).filter(and_(*filters)).all()
+        records = session.query(cls).filter(and_(*filters)).all()
+        for r in records:
+          session.expunge(r)
+        return records
       finally:
         session.rollback()
         close_session(session)
