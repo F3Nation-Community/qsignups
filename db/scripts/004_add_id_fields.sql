@@ -1,0 +1,4 @@
+ALTER TABLE `qsignup`.`qsignups_aos`
+ADD COLUMN `id` INT NOT NULL AUTO_INCREMENT FIRST,
+ADD PRIMARY KEY (`id`);
+;
