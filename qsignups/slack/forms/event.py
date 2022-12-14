@@ -378,6 +378,7 @@ def delete_single_form(team_id, user_id, client, logger):
         print(e)
 
 def edit_recurring_form(team_id, user_id, client, logger):
+    results_df = None
     try:
         with my_connect(team_id) as mydb:
             sql_pull = f"""
@@ -386,7 +387,7 @@ def edit_recurring_form(team_id, user_id, client, logger):
             INNER JOIN {mydb.db}.qsignups_aos a
             ON w.ao_channel_id = a.ao_channel_id
                 AND w.team_id = a.team_id
-            WHERE w.team_id '{team_id}';
+            WHERE w.team_id = '{team_id}';
             """
             logger.info(f'Pulling from db, attempting SQL: {sql_pull}')
 
@@ -488,7 +489,7 @@ def delete_recurring_form(team_id, user_id, client, logger):
             INNER JOIN {mydb.db}.qsignups_aos a
             ON w.ao_channel_id = a.ao_channel_id
                 AND w.team_id = a.team_id
-            WHERE w.team_id '{team_id}';
+            WHERE w.team_id = '{team_id}';
             """
             logger.info(f'Pulling from db, attempting SQL: {sql_pull}')
 
