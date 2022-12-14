@@ -383,9 +383,10 @@ def edit_recurring_form(team_id, user_id, client, logger):
             sql_pull = f"""
             SELECT w.*, a.ao_display_name
             FROM {mydb.db}.qsignups_weekly w
-            LEFT JOIN {mydb.db}.qsignups_aos a
+            INNER JOIN {mydb.db}.qsignups_aos a
             ON w.ao_channel_id = a.ao_channel_id
-                AND w.team_id = '{team_id}';
+                AND w.team_id = a.team_id
+            WHERE w.team_id '{team_id}';
             """
             logger.info(f'Pulling from db, attempting SQL: {sql_pull}')
 
@@ -484,9 +485,10 @@ def delete_recurring_form(team_id, user_id, client, logger):
             sql_pull = f"""
             SELECT w.*, a.ao_display_name
             FROM {mydb.db}.qsignups_weekly w
-            LEFT JOIN {mydb.db}.qsignups_aos a
+            INNER JOIN {mydb.db}.qsignups_aos a
             ON w.ao_channel_id = a.ao_channel_id
-                AND w.team_id = '{team_id}';
+                AND w.team_id = a.team_id
+            WHERE w.team_id '{team_id}';
             """
             logger.info(f'Pulling from db, attempting SQL: {sql_pull}')
 

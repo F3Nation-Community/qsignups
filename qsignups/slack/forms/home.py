@@ -90,6 +90,8 @@ def refresh(client, user_id, logger, top_message, team_id, context):
                     q_name = row['q_pax_name']
                 sMsg += f"\n{row['ao_display_name']} - {row['event_type']} @ {row['event_time']} - {q_name}"
 
+            print(sMsg)
+
     except Exception as e:
         logger.error(f"Error pulling user db info: {e}")
 

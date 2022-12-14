@@ -93,6 +93,8 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
         forms.make_action_button_row([inputs.CANCEL_BUTTON])
     ]
 
+    print(blocks)
+
     try:
         client.views_publish(
             user_id=user_id,
