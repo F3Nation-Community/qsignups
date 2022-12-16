@@ -87,6 +87,24 @@ class DbManager:
       finally:
         session.commit()
         close_session(session)
+        
+    def delete_record(cls: T, id):
+      session = get_session()
+      try:
+        session.query(cls).filter(cls.get_id() == id).delete()
+        session.flush()
+      finally:
+        session.commit()
+        close_session(session)
+        
+    def delete_records(cls: T, filters):
+      session = get_session()
+      try:
+        session.query(cls).filter(and_(*filters)).delete()
+        session.flush()
+      finally:
+        session.commit()
+        close_session(session)
 
 # Construct class for connecting to the db
 # Takes team_id as an input, pulls schema name from paxminer.regions

@@ -12,7 +12,7 @@ from qsignups.database import my_connect
 
 from qsignups.slack import forms
 from qsignups.slack.forms import ao, event, home, settings
-from qsignups.slack.handlers import settings as settings_handler
+from qsignups.slack.handlers import settings as settings_handler, weekly as weekly_handler, master as master_handler
 from qsignups.slack import actions, inputs
 
 def get_oauth_flow():
@@ -172,53 +172,23 @@ def handle_general_settings_form(ack, body, client, logger, context):
     team_id = context["team_id"]
     settings.general_form(team_id, user_id, client, logger)
 
-@app.action("delete_recurring_event_slot_select")
-def handle_delete_recurring_event_slot_select(ack, body, client, logger, context):
+@app.action(actions.DELETE_RECURRING_SELECT_ACTION)
+def handle_delete_recurring_select(ack, body, client, logger, context):
     ack()
     logger.info(body)
     user_id = context['user_id']
     team_id = context['team_id']
+    input_data = body['actions'][0]['value'] # in the future we'd only need this to be the qsignups_weekly.id
+    selected_ao, selected_day, selected_event_type, selected_start_time, selected_end_time, selected_ao_id = str.split(input_data, '|')
+    
+    weekly_response = weekly_handler.delete(client, user_id, team_id, logger, input_data) 
+    master_response = master_handler.delete(client, user_id, team_id, logger, input_data) # if we use cascade on foreign keys we wouldn't need this step
 
-    # Build query params
-    query_params = {'team_id': team_id}
-    query_params['selected_ao'], query_params['selected_day'], query_params['selected_event_type'], query_params['selected_start_time'], query_params['selected_end_time'], query_params['selected_ao_id'] = str.split(body['actions'][0]['value'], '|')
-
-    # Build options lists
-    # list of AOs for dropdown
-    try:
-        with my_connect(team_id) as mydb:
-            sql_delete1 = f"""-- sql
-            DELETE FROM {mydb.db}.qsignups_weekly
-            WHERE team_id = %(team_id)s
-                AND ao_channel_id = %(selected_ao_id)s
-                AND event_day_of_week = %(selected_day)s
-                AND event_time = %(selected_start_time)s
-            ;
-            """
-            sql_delete2 = f"""-- sql
-            DELETE FROM {mydb.db}.qsignups_master
-            WHERE team_id = %(team_id)s
-                AND ao_channel_id = %(selected_ao_id)s
-                AND event_day_of_week = %(selected_day)s
-                AND event_time = %(selected_start_time)s
-                AND event_date >= DATE(NOW()) # TODO: make another step to select effective date?
-            ;
-            """
-            logger.info(f"Attempting SQL DELETE:\n{sql_delete1}\n\n{sql_delete2}")
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_delete1, query_params)
-            mycursor.execute(sql_delete2, query_params)
-            mydb.conn.commit()
-            success_status = True
-    except Exception as e:
-        logger.error(f"Error deleting events: {e}")
-        error_msg = e
-        success_status = False
-
-    if success_status:
-        top_message = f"I've deleted all future {query_params['selected_event_type']}s from the schedule for {query_params['selected_day']}s at {query_params['selected_start_time']} at {query_params['selected_ao']}."
+    # could put this in the handler too particularly if we use cascade
+    if weekly_response.success & master_response.success:
+        top_message = f"I've deleted all future {selected_event_type}s from the schedule for {selected_day}s at {selected_start_time} at {selected_ao}."
     else:
-        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
+        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Errors:\nWeekly: {safe_get(weekly_response.message)}\nMaster: {safe_get(master_response.message)}"
     home.refresh(client, user_id, logger, top_message, team_id, context)
 
 @app.action("edit_recurring_event_slot_select")
@@ -291,7 +261,10 @@ def handle_edit_recurring_event_slot_select(ack, body, client, logger, context):
         selected_event_type_index = event_type_list.index(selected_event_type)
     except ValueError as e:
         selected_event_type_index = -1
-
+        
+    if selected_end_time is None:
+        selected_end_time = str(int(selected_start_time[:2]) + 1) + ':' + selected_start_time[2:]
+    
     blocks = [
         {
             "type": "input",
@@ -395,7 +368,7 @@ def handle_edit_recurring_event_slot_select(ack, body, client, logger, context):
             "block_id": "event_end_time_select",
             "element": {
                 "type": "timepicker",
-                # "initial_time": selected_end_time[:2] + ':' + selected_end_time[2:],
+                "initial_time": selected_end_time[:2] + ':' + selected_end_time[2:],
                 "placeholder": {
                     "type": "plain_text",
                     "text": "Select time",
