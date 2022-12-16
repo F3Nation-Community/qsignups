@@ -541,7 +541,7 @@ def delete_recurring_form(team_id, user_id, client, logger):
                     },
                     "action_id":actions.DELETE_RECURRING_SELECT_ACTION,
                     "style":"danger",
-                    "value":f"{row['ao_display_name']}|{row['event_day_of_week']}|{row['event_type']}|{row['event_time']}|{row['event_end_time']}|{row['ao_channel_id']}" # in the future this could just be str(row['id'])
+                    "value":str(row[['id', 'ao_display_name', 'event_day_of_week', 'event_type', 'event_time', 'event_end_time', 'ao_channel_id']].to_dict())
                 }
             })
 

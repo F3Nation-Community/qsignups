@@ -12,7 +12,7 @@ from qsignups.database import my_connect
 
 from qsignups.slack import forms
 from qsignups.slack.forms import ao, event, home, settings
-from qsignups.slack.handlers import settings as settings_handler, weekly as weekly_handler, master as master_handler
+from qsignups.slack.handlers import settings as settings_handler, weekly as weekly_handler
 from qsignups.slack import actions, inputs
 
 def get_oauth_flow():
@@ -178,18 +178,9 @@ def handle_delete_recurring_select(ack, body, client, logger, context):
     logger.info(body)
     user_id = context['user_id']
     team_id = context['team_id']
-    input_data = body['actions'][0]['value'] # in the future we'd only need this to be the qsignups_weekly.id
-    selected_ao, selected_day, selected_event_type, selected_start_time, selected_end_time, selected_ao_id = str.split(input_data, '|')
-    
-    weekly_response = weekly_handler.delete(client, user_id, team_id, logger, input_data) 
-    master_response = master_handler.delete(client, user_id, team_id, logger, input_data) # if we use cascade on foreign keys we wouldn't need this step
-
-    # could put this in the handler too particularly if we use cascade
-    if weekly_response.success & master_response.success:
-        top_message = f"I've deleted all future {selected_event_type}s from the schedule for {selected_day}s at {selected_start_time} at {selected_ao}."
-    else:
-        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Errors:\nWeekly: {safe_get(weekly_response.message)}\nMaster: {safe_get(master_response.message)}"
-    home.refresh(client, user_id, logger, top_message, team_id, context)
+    input_data = body['actions'][0]['value']
+    response = weekly_handler.delete(client, user_id, team_id, logger, input_data) 
+    home.refresh(client, user_id, logger, response.message, team_id, context)
 
 @app.action("edit_recurring_event_slot_select")
 def handle_edit_recurring_event_slot_select(ack, body, client, logger, context):
