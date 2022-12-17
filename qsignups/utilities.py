@@ -7,6 +7,13 @@ def safe_get(data, *keys):
   except KeyError:
     return None
 
+def list_to_dict(l, fn):
+  result = {}
+  for i in (l or []):
+    key = fn(i)
+    if not result.get(key): result[key] = []
+    result[key].append(i)
+  return result
 
 def get_user_name(array_of_user_ids, logger, client) -> str:
     names = []

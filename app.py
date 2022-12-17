@@ -84,11 +84,11 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
 
     blocks = [
         forms.make_header_row("Choose an option to update your Schedule:"),
-        forms.make_action_button_row([inputs.ADD_AO, inputs.EDIT_AO, inputs.ADD_EVENT]),
+        forms.make_action_button_row([inputs.ADD_AO_FORM, inputs.EDIT_AO_FORM, inputs.ADD_EVENT_FORM]),
         forms.make_header_row("Choose an option to update your Recurring Events:"),
-        forms.make_action_button_row([inputs.EDIT_RECURRING_EVENT, inputs.DELETE_RECURRING_EVENT]),
+        forms.make_action_button_row([inputs.SELECT_RECURRING_EVENT_FORM, inputs.DELETE_RECURRING_EVENT_FORM]),
         forms.make_header_row("Choose an option to update your Single Events:"),
-        forms.make_action_button_row([inputs.EDIT_SINGLE_EVENT, inputs.DELETE_SINGLE_EVENT]),
+        forms.make_action_button_row([inputs.EDIT_SINGLE_EVENT_FORM, inputs.DELETE_SINGLE_EVENT_FORM]),
         forms.make_header_row("Return to the Home Page:"),
         forms.make_action_button_row([inputs.CANCEL_BUTTON])
     ]
@@ -108,7 +108,7 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
         print(e)
 
 
-@app.action(inputs.ADD_AO.action)
+@app.action(inputs.ADD_AO_FORM.action)
 def handle_add_ao_form(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -116,7 +116,7 @@ def handle_add_ao_form(ack, body, client, logger, context):
     team_id = context["team_id"]
     ao.add_form(team_id, user_id, client, logger)
 
-@app.action(inputs.EDIT_AO.action)
+@app.action(inputs.EDIT_AO_FORM.action)
 def handle_edit_ao_form(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -124,7 +124,7 @@ def handle_edit_ao_form(ack, body, client, logger, context):
     team_id = context["team_id"]
     ao.edit_form(team_id, user_id, client, logger)
 
-@app.action(inputs.ADD_EVENT.action)
+@app.action(inputs.ADD_EVENT_FORM.action)
 def handle_add_event_form(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -132,7 +132,7 @@ def handle_add_event_form(ack, body, client, logger, context):
     team_id = context["team_id"]
     event.add_form(team_id, user_id, client, logger)
 
-@app.action(inputs.EDIT_SINGLE_EVENT.action)
+@app.action(inputs.EDIT_SINGLE_EVENT_FORM.action)
 def handle_edit_event_form(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -140,7 +140,7 @@ def handle_edit_event_form(ack, body, client, logger, context):
     team_id = context["team_id"]
     event.edit_single_form(team_id, user_id, client, logger)
 
-@app.action(inputs.DELETE_SINGLE_EVENT.action)
+@app.action(inputs.DELETE_SINGLE_EVENT_FORM.action)
 def handle_delete_single_event_form(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -148,21 +148,21 @@ def handle_delete_single_event_form(ack, body, client, logger, context):
     team_id = context["team_id"]
     event.delete_single_form(team_id, user_id, client, logger)
 
-@app.action(inputs.EDIT_RECURRING_EVENT.action)
+@app.action(inputs.SELECT_RECURRING_EVENT_FORM.action)
 def handle_edit_event_form(ack, body, client, logger, context):
     ack()
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    event.edit_recurring_form(team_id, user_id, client, logger)
+    event.select_recurring_form_for_edit(team_id, user_id, client, logger)
 
-@app.action(inputs.DELETE_RECURRING_EVENT.action)
+@app.action(inputs.DELETE_RECURRING_EVENT_FORM.action)
 def handle_delete_single_event_form(ack, body, client, logger, context):
     ack()
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    event.delete_recurring_form(team_id, user_id, client, logger)
+    event.select_recurring_form_for_delete(team_id, user_id, client, logger)
 
 @app.action(inputs.GENERAL_SETTINGS.action)
 def handle_general_settings_form(ack, body, client, logger, context):
@@ -179,7 +179,7 @@ def handle_delete_recurring_select(ack, body, client, logger, context):
     user_id = context['user_id']
     team_id = context['team_id']
     input_data = body['actions'][0]['value']
-    response = weekly_handler.delete(client, user_id, team_id, logger, input_data) 
+    response = weekly_handler.delete(client, user_id, team_id, logger, input_data)
     home.refresh(client, user_id, logger, response.message, team_id, context)
 
 @app.action("edit_recurring_event_slot_select")
@@ -252,10 +252,10 @@ def handle_edit_recurring_event_slot_select(ack, body, client, logger, context):
         selected_event_type_index = event_type_list.index(selected_event_type)
     except ValueError as e:
         selected_event_type_index = -1
-        
+
     if selected_end_time is None:
         selected_end_time = str(int(selected_start_time[:2]) + 1) + ':' + selected_start_time[2:]
-    
+
     blocks = [
         {
             "type": "input",
@@ -857,244 +857,20 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
     except Exception as e:
         logger.error(f"Error pulling AO list: {e}")
 
-    ao_options = []
-    for option in ao_list:
-        new_option = {
-            "text": {
-                "type": "plain_text",
-                "text": option,
-                "emoji": True
-            },
-            "value": option
-        }
-        ao_options.append(new_option)
-
-    day_list = [
-        'Monday',
-        'Tuesday',
-        'Wednesday',
-        'Thursday',
-        'Friday',
-        'Saturday',
-        'Sunday'
-    ]
-    day_options = []
-    for option in day_list:
-        new_option = {
-            "text": {
-                "type": "plain_text",
-                "text": option,
-                "emoji": True
-            },
-            "value": option
-        }
-        day_options.append(new_option)
-
-    event_type_list = ['Beatdown', 'QSource', 'Custom']
-    event_type_options = []
-    for option in event_type_list:
-        new_option = {
-            "text": {
-                "type": "plain_text",
-                "text": option,
-                "emoji": True
-            },
-            "value": option
-        }
-        event_type_options.append(new_option)
+    ao_selector = inputs.ActionSelector(label = "Select an AO", action = "ao_display_name_select_action", options = ao_list)
 
     blocks = [
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": "*Is this a recurring or single event?*"
-            }
-        },
-        {
-            "type": "actions",
-            "block_id": "recurring_select_block",
-            "elements": [
-                {
-                    "type": "radio_buttons",
-                    "options": [
-                        {
-                            "text": {
-                                "type": "plain_text",
-                                "text": "Recurring event",
-                                "emoji": True
-                            },
-                            "value": "recurring"
-                        },
-                        {
-                            "text": {
-                                "type": "plain_text",
-                                "text": "Single event",
-                                "emoji": True
-                            },
-                            "value": "single"
-                        },
-                    ],
-                    "action_id": "add_event_recurring_select_action",
-                    "initial_option": recurring_select_option
-                }
-            ]
-        },
-        {
-            "type": "input",
-            "block_id": "event_type_select",
-            "element": {
-                "type": "static_select",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Select an event type",
-                    "emoji": True
-                },
-                "options": event_type_options,
-                "action_id": "event_type_select_action",
-                "initial_option": event_type_options[0]
-            },
-            "label": {
-                "type": "plain_text",
-                "text": "Event Type",
-                "emoji": True
-            }
-        },
-        {
-            "type": "input",
-            "block_id": "event_type_custom",
-            "element": {
-                "type": "plain_text_input",
-                "action_id": "event_type_custom",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Custom Event Name"
-                },
-                "initial_value": "CustomEventType"
-            },
-            "label": {
-                "type": "plain_text",
-                "text": "If Custom selected, please specify"
-            },
-            "optional": True
-        },
-        {
-            "type": "input",
-            "block_id": "ao_display_name_select",
-            "element": {
-                "type": "static_select",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Select an AO",
-                    "emoji": True
-                },
-                "options": ao_options,
-                "action_id": "ao_display_name_select_action"
-            },
-            "label": {
-                "type": "plain_text",
-                "text": "AO",
-                "emoji": True
-            }
-        }
+        forms.make_header_row("*Is this a recurring or single event?*"),
+        inputs.EVENT_TYPE_RADIO.as_form_field(initial_value = recurring_select_option),
+        inputs.EVENT_TYPE_SELECTOR.as_form_field(),
+        inputs.ActionInput(label = "Custom Event Name", action = "event_type_custom", placeholder = "If custom is selected, specify a name", optional = True),
+        ao_selector.as_form_field(),
     ]
 
     if recurring_select == 'recurring':
-        new_blocks = [
-            {
-                "type": "input",
-                "block_id": "event_day_of_week_select",
-                "element": {
-                    "type": "static_select",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select a day",
-                        "emoji": True
-                    },
-                    "options": day_options,
-                    "action_id": "event_day_of_week_select_action"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Day of Week",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "event_start_time_select",
-                "element": {
-                    "type": "timepicker",
-                    "initial_time": "05:30",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select time",
-                        "emoji": True
-                    },
-                    "action_id": "event_start_time_select"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Event Start",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "event_end_time_select",
-                "element": {
-                    "type": "timepicker",
-                    "initial_time": "06:10",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select time",
-                        "emoji": True
-                    },
-                    "action_id": "event_end_time_select"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Event End",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "add_event_datepicker",
-                "element": {
-                    "type": "datepicker",
-                    "initial_date": date.today().strftime('%Y-%m-%d'),
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select date",
-                        "emoji": True
-                    },
-                    "action_id": "add_event_datepicker"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Start Date",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "actions",
-                "block_id": "submit_cancel_buttons",
-                "elements": [
-                    inputs.make_submit_button(actions.ADD_EVENT_ACTION).as_form_field(),
-                    inputs.CANCEL_BUTTON.as_form_field()
-                ]
-            },
-            {
-            "type": "context",
-            "elements": [
-                    {
-                        "type": "mrkdwn",
-                        "text": "Please wait after hitting Submit, and do not hit it more than once"
-                    }
-                ]
-            }
-        ]
+        blocks.append(inputs.WEEKDAY_SELECTOR.as_form_field())
+        blocks.append(inputs.START_DATE_SELECTOR.as_form_field(initial_value = date.today().strftime('%Y-%m-%d')))
+
     else:
         # TODO: have "other" / freeform option
         # TODO: add this to form
@@ -1104,87 +880,33 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
             'VQ',
             'F3versary',
             'Birthday Q',
-            'AO Launch'
+            'AO Launch',
+            'Convergence'
         ]
-        special_options = []
-        for option in special_list:
-            new_option = {
-                "text": {
-                    "type": "plain_text",
-                    "text": option,
-                    "emoji": True
-                },
-                "value": option
-            }
-            special_options.append(new_option)
+        special_selector = inputs.ActionSelector(label = "Event Type", action = "event_special_type_selector", options = special_list)
+        blocks.append(special_selector.as_form_field())
+        blocks.append(inputs.EVENT_DATE_SELECTOR.as_form_field(initial_value = date.today().strftime('%Y-%m-%d')))
 
-        new_blocks = [
-            {
-                "type": "input",
-                "block_id": "add_event_datepicker",
-                "element": {
-                    "type": "datepicker",
-                    "initial_date": date.today().strftime('%Y-%m-%d'),
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select date",
-                        "emoji": True
-                    },
-                    "action_id": "add_event_datepicker"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Event Date",
-                    "emoji": True
+    blocks += [
+        inputs.START_TIME_SELECTOR.as_form_field(initial_value = "05:30"),
+        inputs.END_TIME_SELECTOR.as_form_field(initial_value = "06:15"),
+
+        forms.make_action_button_row([
+            inputs.make_submit_button(actions.ADD_EVENT_ACTION).as_form_field(),
+            inputs.CANCEL_BUTTON.as_form_field()
+        ]),
+        {
+        "type": "context",
+        "elements": [
+                {
+                    "type": "mrkdwn",
+                    "text": "Please wait after hitting Submit, and do not hit it more than once"
                 }
-            },
-            {
-                "type": "input",
-                "block_id": "event_start_time_select",
-                "element": {
-                    "type": "timepicker",
-                    "initial_time": "05:30",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select time",
-                        "emoji": True
-                    },
-                    "action_id": "event_start_time_select"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Event Start",
-                    "emoji": True
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "event_end_time_select",
-                "element": {
-                    "type": "timepicker",
-                    "initial_time": "06:10",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Select time",
-                        "emoji": True
-                    },
-                    "action_id": "event_end_time_select"
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Event End",
-                    "emoji": True
-                }
-            },
-            forms.make_action_button_row([
-                actions.make_submit_button(actions.ADD_SINGLE_EVENT_ACTION),
-                inputs.CANCEL_BUTTON
-            ])
-        ]
+            ]
+        }
+    ]
 
     try:
-        for block in new_blocks:
-            blocks.append(block)
         client.views_publish(
             user_id=user_id,
             view={

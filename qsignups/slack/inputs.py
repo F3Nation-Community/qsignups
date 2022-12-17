@@ -10,10 +10,10 @@ class BaseAction:
 
   def make_label_field(self, text = None):
     return {
-      "type":"plain_text",
+      "type": "plain_text",
       "text": text or self.label,
       "emoji":True
-  }
+    }
 
   def as_form_field(self, initial_value = None):
     raise Exception("Not Implemented")
@@ -59,6 +59,48 @@ class ActionInput(BaseAction):
         "optional": self.optional,
         "label": self.make_label_field()
     }
+
+@dataclass
+class ActionDateSelect(BaseAction):
+
+  def as_form_field(self, initial_value = None):
+    j = {
+        "type": "input",
+        "block_id": self.action,
+        "element": {
+            "type": "datepicker",
+            "placeholder": self.make_label_field(),
+            "action_id": self.action
+        },
+        "label": self.make_label_field()
+    }
+    if initial_value:
+      j["element"]["initial_date"] = initial_value
+
+    return j
+@dataclass
+class ActionTimeSelect(BaseAction):
+  optional: bool = True
+  placeholder: str = None
+
+  def as_form_field(self, initial_value = None):
+    j = {
+          "type": "input",
+          "block_id": self.action,
+          "element": {
+              "type": "timepicker",
+              "placeholder": self.make_label_field(self.placeholder),
+              "action_id": self.action
+          },
+          "label": {
+              "type": "plain_text",
+              "text": self.label,
+              "emoji": True
+          }
+      }
+    if initial_value:
+      j["initial_time"] = "05:30"
+    return j
 
 @dataclass
 class ActionChannelInput(BaseAction):
@@ -115,6 +157,43 @@ class ActionRadioButtons(BaseAction):
       j['element']['initial_option'] = initial_value.as_form_field()
     return j
 
+@dataclass
+class ActionSelector(BaseAction):
+  options: List[str]
+
+  def as_form_field(self, initial_value = None):
+    option_elements = [self.__make_option(o) for o in self.options]
+    j = {
+          "type": "input",
+          "block_id": self.action,
+          "element": {
+              "type": "static_select",
+              "placeholder": {
+                  "type": "plain_text",
+                  "text": self.make_label_field(self.placeholder),
+                  "emoji": True
+              },
+              "options": option_elements,
+              "action_id": "event_type_select_action"
+          },
+          "label": self.make_label_field()
+      },
+    if initial_value:
+      initial_option = next((x for x in option_elements if x["value"] == initial_value), None )
+      if initial_option:
+        j['element']['initial_option'] = initial_option
+    return j
+
+  def __make_option(self, option):
+    return  {
+              "text": {
+                  "type": "plain_text",
+                  "text": option,
+                  "emoji": True
+              },
+              "value": option
+            }
+
 Q_REMINDER_ENABLED = ActionRadioButton(label = "Enable Q reminders", action = None, value = "enabled")
 Q_REMINDER_DISABLED = ActionRadioButton(label = "Disable Q reminders", action = None, value = "disabled")
 Q_REMINDER_RADIO = ActionRadioButtons(
@@ -129,6 +208,14 @@ AO_REMINDER_RADIO = ActionRadioButtons(
   action = "ao_reminder_enable",
   label = "Enable AO Reminders?",
   options = [ AO_REMINDER_ENABLED, AO_REMINDER_DISABLED ]
+)
+
+EVENT_TYPE_RECURRING = ActionRadioButton(label = "Recurring event", action = None, value = "recurring")
+EVENT_TYPE_SINGLE = ActionRadioButton(label = "Single event", action = None, value = "single")
+EVENT_TYPE_RADIO = ActionRadioButtons(
+  action = "add_event_recurring_select_action",
+  label = "",
+  options = [ EVENT_TYPE_RECURRING, EVENT_TYPE_SINGLE ]
 )
 
 CANCEL_BUTTON: ActionButton = ActionButton(label = 'Cancel', action = actions.CANCEL_BUTTON_ACTION, style = 'danger')
@@ -150,15 +237,38 @@ GOOGLE_CALENDAR_INPUT = ActionInput(
   optional = True
 )
 
-ADD_EVENT: ActionButton = ActionButton(label = 'Add an event', action = "add_event_form")
-EDIT_SINGLE_EVENT: ActionButton = ActionButton(label = 'Edit a single event', action = "edit_single_event_form")
-DELETE_SINGLE_EVENT: ActionButton = ActionButton(label = 'Delete a single event', action = "delete_single_event_form")
+ADD_EVENT_FORM: ActionButton = ActionButton(label = 'Add an event', action = "add_event_form")
+EDIT_SINGLE_EVENT_FORM: ActionButton = ActionButton(label = 'Edit a single event', action = "edit_single_event_form")
+DELETE_SINGLE_EVENT_FORM: ActionButton = ActionButton(label = 'Delete a single event', action = "delete_single_event_form")
 
-EDIT_RECURRING_EVENT: ActionButton = ActionButton(label = 'Edit a recurring event', action = "edit_recurring_event_form")
-DELETE_RECURRING_EVENT: ActionButton = ActionButton(label = 'Delete a recurring event', action = "delete_recurring_event_form")
+SELECT_RECURRING_EVENT_FORM: ActionButton = ActionButton(label = 'Edit a recurring event', action = "edit_recurring_event_form")
+DELETE_RECURRING_EVENT_FORM: ActionButton = ActionButton(label = 'Delete a recurring event', action = "delete_recurring_event_form")
 
-ADD_AO: ActionButton = ActionButton(label = 'Add an AO', action = "add_ao_form")
-EDIT_AO: ActionButton = ActionButton(label = 'Edit an AO', action = "edit_ao_form")
-DELETE_AO: ActionButton = ActionButton(label = 'Delete an AO', action = "delete_ao_form")
+ADD_AO_FORM: ActionButton = ActionButton(label = 'Add an AO', action = "add_ao_form")
+EDIT_AO_FORM: ActionButton = ActionButton(label = 'Edit an AO', action = "edit_ao_form")
+DELETE_AO_FORM: ActionButton = ActionButton(label = 'Delete an AO', action = "delete_ao_form")
 
 GENERAL_SETTINGS: ActionButton = ActionButton(label = 'General settings', action = "general_settings_form")
+
+WEEKDAY_SELECTOR = ActionSelector(
+  label = "Day of Week",
+  action = "event_day_of_week_select_action",
+  options = [
+            'Monday',
+            'Tuesday',
+            'Wednesday',
+            'Thursday',
+            'Friday',
+            'Saturday',
+            'Sunday'
+        ])
+START_DATE_SELECTOR = ActionDateSelect(label = "Select Start Date", action = "add_event_datepicker")
+EVENT_DATE_SELECTOR = ActionDateSelect(label = "Select Event Date", action = "add_event_datepicker")
+START_TIME_SELECTOR = ActionTimeSelect(label = "Select Start Time", action = "event_start_time_select", optional = True)
+END_TIME_SELECTOR = ActionTimeSelect(label = "Select End Time", action = "event_end_time_select", optional = True)
+
+EVENT_TYPE_SELECTOR = ActionSelector(
+  label = "Select an event type",
+  action = "event_type_select_action",
+  options = ['Beatdown', 'QSource', 'Custom'])
+

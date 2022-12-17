@@ -6,6 +6,15 @@ def make_action_button_row(buttons):
       "elements":[ b.as_form_field() for b in buttons ]
   }
 
+def make_section_header_row(text: str):
+  return {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": text
+            }
+        }
+
 def make_header_row(text: str):
   return {
             "type": "section",

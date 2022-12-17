@@ -62,7 +62,7 @@ class AO(BaseClass, QSignupClass):
 
   def get_id():
     return AO.id
-  
+
 class Weekly(BaseClass, QSignupClass):
   __tablename__ = "qsignups_weekly"
   id = Column("id", Integer, primary_key = True)
@@ -79,7 +79,7 @@ class Weekly(BaseClass, QSignupClass):
 
   def get_id():
     return Weekly.id
-  
+
 class Master(BaseClass, QSignupClass):
   __tablename__ = "qsignups_master"
   id = Column("id", Integer, primary_key = True)
