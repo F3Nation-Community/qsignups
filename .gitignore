@@ -6,3 +6,4 @@ gcal_testing/credentials.json
 gcal_testing/token.pickle
 environments/
 generate/
+gcal_data/

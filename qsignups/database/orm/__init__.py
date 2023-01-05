@@ -2,6 +2,7 @@ from datetime import datetime
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import *
+from sqlalchemy.types import JSON
 from sqlalchemy.dialects.mysql import LONGTEXT
 
 BaseClass = declarative_base(mapper=sqlalchemy.orm.mapper)
@@ -38,6 +39,7 @@ class Region(BaseClass, QSignupClass):
   next_week_weinke_updated = Column("next_week_weinke_updated", String(100))
   weekly_ao_reminders = Column("weekly_ao_reminders", Integer)
   google_calendar_id = Column("google_calendar_id", String(45))
+  google_auth_data = Column("google_auth_data", JSON)
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
 

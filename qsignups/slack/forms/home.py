@@ -4,6 +4,8 @@ from qsignups.database import my_connect, DbManager
 from qsignups.database.orm import AO, Region
 from qsignups import constants
 from qsignups.slack import actions, forms, inputs
+from qsignups import google
+from qsignups.google import commands
 
 def refresh(client, user_id, logger, top_message, team_id, context):
     sMsg = ""
@@ -203,6 +205,12 @@ def refresh(client, user_id, logger, top_message, team_id, context):
         button = forms.make_action_button_row([inputs.ActionButton("Manage Region Calendar", action = actions.MANAGE_SCHEDULE_ACTION)])
         blocks.append(button)
         blocks.append(forms.make_action_button_row([inputs.GENERAL_SETTINGS]))
+
+    if google.is_enabled():
+        if commands.is_connected(team_id):
+            blocks.append(forms.make_action_button_row([inputs.GOOGLE_DISCONNECT]))
+        else:
+            blocks.append(forms.make_action_button_row([inputs.GOOGLE_CONNECT]))
 
     # Attempt to publish view
     try:

@@ -9,6 +9,7 @@ from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
 
 from qsignups.utilities import safe_get, get_user_name
 from qsignups.database import my_connect
+from qsignups.google import commands
 
 from qsignups.slack import forms
 from qsignups.slack.forms import ao, event, home, settings
@@ -50,6 +51,12 @@ def respond_to_slack_within_3_seconds(ack):
     # This method is for synchronous communication with the Slack API server
     ack("Thanks!")
 
+@app.command("/google")
+def connect_google_calendar(ack, respond, command):
+    # This method is for synchronous communication with the Slack API server
+    ack()
+    commands.execute_command(command["text"], command["team_id"], command, respond)
+
 @app.command("/schedule")
 def display_upcoming_schedule(ack):
     # This method is for synchronous communication with the Slack API server
@@ -63,6 +70,32 @@ def update_home_tab(client, event, logger, context):
     user_name = get_user_name([user_id], logger, client)
     top_message = f'Welcome to QSignups, {user_name}!'
     home.refresh(client, user_id, logger, top_message, team_id, context)
+
+@app.action(inputs.GOOGLE_DISCONNECT.action)
+def handle_google_disconnect(ack, body, client, logger, context):
+    ack()
+    team_id = context["team_id"]
+    user_id = context["user_id"]
+    result = commands.execute_command(commands.DISCONNECT_COMMAND, team_id)
+    if result.success:
+        top_message = f'You have disconnected from Google!'
+        home.refresh(client, user_id, logger, top_message, team_id, context)
+    else:
+        top_message = f'Something went wrong trying to disconnect!'
+        home.refresh(client, user_id, logger, top_message, team_id, context)
+
+@app.action(inputs.GOOGLE_CONNECT.action)
+def handle_google_connect(ack, body, client, logger, context):
+    ack()
+    team_id = context["team_id"]
+    user_id = context["user_id"]
+    result = commands.execute_command(commands.CONNECT_COMMAND, team_id)
+    if result.success:
+        top_message = f'You have connected from Google!'
+        home.refresh(client, user_id, logger, top_message, team_id, context)
+    else:
+        top_message = f'Something went wrong trying to connect!'
+        home.refresh(client, user_id, logger, top_message, team_id, context)
 
 
 # triggers when user chooses to schedule a q

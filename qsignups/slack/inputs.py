@@ -237,6 +237,9 @@ GOOGLE_CALENDAR_INPUT = ActionInput(
   optional = True
 )
 
+GOOGLE_CONNECT: ActionButton = ActionButton(label = 'Connect Google Calendar', action = "connect_google_calendar")
+GOOGLE_DISCONNECT: ActionButton = ActionButton(label = 'Disonnect Google Calendar', action = "disconnect_google_calendar")
+
 ADD_EVENT_FORM: ActionButton = ActionButton(label = 'Add an event', action = "add_event_form")
 EDIT_SINGLE_EVENT_FORM: ActionButton = ActionButton(label = 'Edit a single event', action = "edit_single_event_form")
 DELETE_SINGLE_EVENT_FORM: ActionButton = ActionButton(label = 'Delete a single event', action = "delete_single_event_form")

@@ -1,8 +1,8 @@
-import pandas as pd
-
 from qsignups.database import DbManager
 from qsignups.database.orm import Region
 from qsignups.slack import actions, forms, inputs
+from qsignups import google
+from qsignups.google import commands
 
 def general_form(team_id, user_id, client, logger):
     # Pull current settings
@@ -28,13 +28,16 @@ def general_form(team_id, user_id, client, logger):
         forms.make_header_row("General Region Settings"),
         inputs.WEINKIE_INPUT.as_form_field(initial_value = region.weekly_weinke_channel),
         inputs.Q_REMINDER_RADIO.as_form_field(initial_value = initial_q_reminder),
-        inputs.AO_REMINDER_RADIO.as_form_field(initial_value = initial_ao_reminder),
-        inputs.GOOGLE_CALENDAR_INPUT.as_form_field(initial_value = region.google_calendar_id),
+        inputs.AO_REMINDER_RADIO.as_form_field(initial_value = initial_ao_reminder)
+    ]
+    if google.is_enabled() and commands.is_connected(team_id):
+        blocks.append(inputs.GOOGLE_CALENDAR_INPUT.as_form_field(initial_value = region.google_calendar_id))
+    blocks.append(
         forms.make_action_button_row([
             inputs.make_submit_button(actions.EDIT_SETTINGS_ACTION),
             inputs.CANCEL_BUTTON
         ])
-    ]
+    )
 
     try:
         client.views_publish(
