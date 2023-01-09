@@ -33,4 +33,4 @@ def schedule_event(team_id, region: Region, event: Master):
       'summary': 'QSignups Generated Event',
       'start': event.event_date
     }
-    svc.events.insert(calendarId = region.google_calendar_id, body = body)
+    #svc.events.insert(calendarId = region.google_calendar_id, body = body)
