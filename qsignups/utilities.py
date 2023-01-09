@@ -2,7 +2,10 @@ def safe_get(data, *keys):
   try:
     result = data
     for k in keys:
-      result = result[k]
+      if result.get(k):
+        result = result[k]
+      else:
+        return None
     return result
   except KeyError:
     return None

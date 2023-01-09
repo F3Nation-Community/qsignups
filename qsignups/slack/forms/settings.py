@@ -6,7 +6,7 @@ from qsignups.google import commands
 
 def general_form(team_id, user_id, client, logger):
     # Pull current settings
-    region = DbManager.get_record(Region, team_id)
+    region: Region = DbManager.get_record(Region, team_id)
 
     initial_q_reminder = None
     if region.signup_reminders == 1:
@@ -31,7 +31,10 @@ def general_form(team_id, user_id, client, logger):
         inputs.AO_REMINDER_RADIO.as_form_field(initial_value = initial_ao_reminder)
     ]
     if google.is_enabled() and commands.is_connected(team_id):
-        blocks.append(inputs.GOOGLE_CALENDAR_INPUT.as_form_field(initial_value = region.google_calendar_id))
+        input = inputs.GOOGLE_CALENDAR_SELECT
+        calendars = commands.get_calendars(team_id)
+        input.options = [ inputs.SelectorOption(name = x.name, value = x.id) for x in calendars]
+        blocks.append(input.as_form_field(initial_value = region.google_calendar_id))
     blocks.append(
         forms.make_action_button_row([
             inputs.make_submit_button(actions.EDIT_SETTINGS_ACTION),

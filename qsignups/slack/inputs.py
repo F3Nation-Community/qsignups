@@ -158,40 +158,50 @@ class ActionRadioButtons(BaseAction):
     return j
 
 @dataclass
-class ActionSelector(BaseAction):
-  options: List[str]
+class SelectorOption:
+  name: str
+  value: str
 
-  def as_form_field(self, initial_value = None):
+def as_selector_options(inputs: List[str]) -> List[SelectorOption]:
+  return [SelectorOption(name = x, value = x) for x in inputs]
+
+@dataclass
+class ActionSelector(BaseAction):
+  options: List[SelectorOption]
+
+  def as_form_field(self, initial_value: str = None):
+    if not self.options:
+      self.options = as_selector_options(["Default"])
+
     option_elements = [self.__make_option(o) for o in self.options]
     j = {
           "type": "input",
           "block_id": self.action,
           "element": {
               "type": "static_select",
-              "placeholder": {
-                  "type": "plain_text",
-                  "text": self.make_label_field(self.placeholder),
-                  "emoji": True
-              },
+              "placeholder": self.make_label_field(),
               "options": option_elements,
-              "action_id": "event_type_select_action"
+              "action_id": self.action
           },
           "label": self.make_label_field()
-      },
+      }
     if initial_value:
       initial_option = next((x for x in option_elements if x["value"] == initial_value), None )
       if initial_option:
         j['element']['initial_option'] = initial_option
     return j
 
-  def __make_option(self, option):
+  def get_selected_value(self, input_data):
+    return utilities.safe_get(input_data, self.action, self.action, 'selected_option', 'value')
+
+  def __make_option(self, option: SelectorOption):
     return  {
               "text": {
                   "type": "plain_text",
-                  "text": option,
+                  "text": option.name,
                   "emoji": True
               },
-              "value": option
+              "value": option.value
             }
 
 Q_REMINDER_ENABLED = ActionRadioButton(label = "Enable Q reminders", action = None, value = "enabled")
@@ -229,16 +239,13 @@ WEINKIE_INPUT = ActionChannelInput(
   label = "Public channel for posting weekly schedules:"
 )
 
-GOOGLE_CALENDAR_INPUT = ActionInput(
-  action = "google_calendar_id",
-  input_type = "plain_text_input",
-  placeholder = "Google Calendar ID",
-  label = "To connect to a google calendar, provide the ID",
-  optional = True
-)
+GOOGLE_CALENDAR_SELECT: ActionSelector = ActionSelector(
+  action = 'google_calendar_select',
+  label = 'Select your Google Calendar',
+  options = as_selector_options([]))
 
-GOOGLE_CONNECT: ActionButton = ActionButton(label = 'Connect Google Calendar', action = "connect_google_calendar")
-GOOGLE_DISCONNECT: ActionButton = ActionButton(label = 'Disonnect Google Calendar', action = "disconnect_google_calendar")
+GOOGLE_CONNECT: ActionButton = ActionButton(label = 'Connect Google Calendar', action = "connect_google_calendar", style = 'primary')
+GOOGLE_DISCONNECT: ActionButton = ActionButton(label = 'Disonnect Google Calendar', action = "disconnect_google_calendar", style = 'danger')
 
 ADD_EVENT_FORM: ActionButton = ActionButton(label = 'Add an event', action = "add_event_form")
 EDIT_SINGLE_EVENT_FORM: ActionButton = ActionButton(label = 'Edit a single event', action = "edit_single_event_form")
@@ -256,7 +263,7 @@ GENERAL_SETTINGS: ActionButton = ActionButton(label = 'General settings', action
 WEEKDAY_SELECTOR = ActionSelector(
   label = "Day of Week",
   action = "event_day_of_week_select_action",
-  options = [
+  options = as_selector_options([
             'Monday',
             'Tuesday',
             'Wednesday',
@@ -264,7 +271,7 @@ WEEKDAY_SELECTOR = ActionSelector(
             'Friday',
             'Saturday',
             'Sunday'
-        ])
+        ]))
 START_DATE_SELECTOR = ActionDateSelect(label = "Select Start Date", action = "add_event_datepicker")
 EVENT_DATE_SELECTOR = ActionDateSelect(label = "Select Event Date", action = "add_event_datepicker")
 START_TIME_SELECTOR = ActionTimeSelect(label = "Select Start Time", action = "event_start_time_select", optional = True)
@@ -273,5 +280,5 @@ END_TIME_SELECTOR = ActionTimeSelect(label = "Select End Time", action = "event_
 EVENT_TYPE_SELECTOR = ActionSelector(
   label = "Select an event type",
   action = "event_type_select_action",
-  options = ['Beatdown', 'QSource', 'Custom'])
+  options = as_selector_options(['Beatdown', 'QSource', 'Custom']))
 
