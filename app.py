@@ -11,6 +11,9 @@ from qsignups.utilities import safe_get, get_user_name
 from qsignups.database import my_connect
 from qsignups.google import commands
 
+from qsignups.database import DbManager
+from qsignups.database.orm import Region, AO, Master
+
 from qsignups.slack import forms
 from qsignups.slack.forms import ao, event, home, settings
 from qsignups.slack.handlers import settings as settings_handler, weekly as weekly_handler
@@ -1493,53 +1496,43 @@ def handle_date_select_button(ack, client, body, logger, context):
     # gather info needed for message and SQL
     ao_display_name = body['view']['blocks'][1]['text']['text'].replace('*','')
 
-    try:
-        with my_connect(team_id) as mydb:
-            sql_channel_pull = f'SELECT ao_channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id}" and ao_display_name = "{ao_display_name}";'
-            ao_channel_id = pd.read_sql_query(sql_channel_pull, mydb.conn).iloc[0,0]
-    except Exception as e:
-        logger.error(f"Error pulling channel id: {e}")
+    aos = DbManager.find_records(AO, [
+        AO.team_id == team_id,
+        AO.ao_display_name == ao_display_name
+    ])
+    if len(aos) != 1:
+        top_message = f"Error pulling channel - found {len(aos)} records for {ao_display_name}"
+        logger.error(top_message)
+    else:
+        ao: AO = aos[0]
 
-    query_params = {
-        'user_id': user_id,
-        'user_name': user_name,
-        'team_id': team_id,
-        'ao_channel_id': ao_channel_id,
-        'event_date': selected_date_db,
-        'event_time': selected_time_db
-    }
+        masters = DbManager.find_records(Master, {
+            Master.ao_channel_id == ao.ao_channel_id,
+            Master.event_date == selected_date_db,
+            Master.event_time == selected_time_db
+        })
 
-    # Attempt db update
-    success_status = False
-    try:
-        with my_connect(team_id) as mydb:
-            sql_update = \
-            f"""-- sql
-            UPDATE {mydb.db}.qsignups_master
-            SET q_pax_id = %(user_id)s
-                , q_pax_name = %(user_name)s
-            WHERE team_id = %(team_id)s
-                AND ao_channel_id = %(ao_channel_id)s
-                AND event_date = DATE(%(event_date)s)
-                AND event_time = %(event_time)s
-            ;
-            """
-            logging.info(f'Attempting SQL UPDATE: {sql_update}')
-
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_update, query_params)
-            mydb.conn.commit()
+        if len(masters) == 1:
+            top_message = "Unable to uniquely find that AO/Date/Time"
+        else:
+            master: Master = masters[0]
+            DbManager.update_record(Master, master.id, {
+                Master.q_pax_id: user_id,
+                Master.q_pax_name: user_name
+            })
             success_status = True
-    except Exception as e:
-        logger.error(f"Error updating schedule: {e}")
-        error_msg = e
+            region: Region = DbManager.get_record(Region, team_id)
+            if commands.is_connected(team_id) and region.google_calendar_id:
+                new_master = DbManager.get_record(Master, master.id)
+                commands.schedule_event(team_id, new_master)
 
     # Generate top message and go back home
     if success_status:
         top_message = f"Got it, {user_name}! I have you down for the Q at *{ao_display_name}* on *{selected_date_dt.strftime('%A, %B %-d @ %H%M')}*"
         # TODO: if selected date was in weinke range (current or next week), update local weinke png
     else:
-        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
+        if not top_message:
+            top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
 
     home.refresh(client, user_id, logger, top_message, team_id, context)
 

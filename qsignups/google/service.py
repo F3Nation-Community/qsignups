@@ -1,5 +1,6 @@
 from googleapiclient.discovery import build
 
+from qsignups.database.orm import Master, Region
 from .authenticate import connect
 from . import GoogleCalendar
 
@@ -24,3 +25,12 @@ def get_calendar_service(team_id):
     return service
   else:
     return None
+
+def schedule_event(team_id, region: Region, event: Master):
+  svc = get_calendar_service(team_id)
+  if svc:
+    body = {
+      'summary': 'QSignups Generated Event',
+      'start': event.event_date
+    }
+    svc.events.insert(calendarId = region.google_calendar_id, body = body)
