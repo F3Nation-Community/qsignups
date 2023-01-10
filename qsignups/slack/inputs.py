@@ -1,3 +1,4 @@
+import pytz
 from typing import List
 from dataclasses import dataclass
 from qsignups import utilities
@@ -282,3 +283,18 @@ EVENT_TYPE_SELECTOR = ActionSelector(
   action = "event_type_select_action",
   options = as_selector_options(['Beatdown', 'QSource', 'Custom']))
 
+TIMEZONE_SELECT = ActionSelector(
+  label = "Select your Timezone",
+  action = "timezone_select_action",
+  options = as_selector_options([
+    'America/New_York',
+    'America/Detroit',
+    'America/Chicago',
+    'America/Indiana/Indianapolis',
+    'America/Indiana/Knox',
+    'America/Denver',
+    'America/Phoenix',
+    'America/Los_Angeles',
+    'Pacific/Honolulu',
+  ])
+)

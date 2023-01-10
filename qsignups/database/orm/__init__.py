@@ -40,6 +40,7 @@ class Region(BaseClass, QSignupClass):
   weekly_ao_reminders = Column("weekly_ao_reminders", Integer)
   google_calendar_id = Column("google_calendar_id", String(45))
   google_auth_data = Column("google_auth_data", JSON)
+  timezone = Column("timezone", String(45), default = 'America/New_York')
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
 

@@ -4,6 +4,7 @@ mysql.connector
 datetime
 pandas
 pymysql
+pytz
 SQLAlchemy
 google-auth
 google-auth-oauthlib

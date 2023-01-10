@@ -35,6 +35,8 @@ def general_form(team_id, user_id, client, logger):
         calendars = commands.get_calendars(team_id)
         input.options = [ inputs.SelectorOption(name = x.name, value = x.id) for x in calendars]
         blocks.append(input.as_form_field(initial_value = region.google_calendar_id))
+
+        blocks.append(inputs.TIMEZONE_SELECT.as_form_field(initial_value = region.timezone))
     blocks.append(
         forms.make_action_button_row([
             inputs.make_submit_button(actions.EDIT_SETTINGS_ACTION),

@@ -7,7 +7,7 @@ from slack_bolt import App
 from slack_bolt.adapter.aws_lambda import SlackRequestHandler
 from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
 
-from qsignups.utilities import safe_get, get_user_name
+from qsignups.utilities import safe_get, get_user, get_user_name
 from qsignups.database import my_connect
 from qsignups.google import commands
 
@@ -40,7 +40,7 @@ def handle_refresh_home_button(ack, body, client, logger, context):
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    user_name = get_user_name([user_id], logger, client)
+    user_name = get_user_name(user_id, client)
     top_message = f'Welcome to QSignups, {user_name}!'
     home.refresh(client, user_id, logger, top_message, team_id, context)
 
@@ -70,7 +70,7 @@ def update_home_tab(client, event, logger, context):
     logger.info(event)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    user_name = get_user_name([user_id], logger, client)
+    user_name = get_user_name(user_id, client)
     top_message = f'Welcome to QSignups, {user_name}!'
     home.refresh(client, user_id, logger, top_message, team_id, context)
 
@@ -224,7 +224,6 @@ def handle_edit_recurring_event_slot_select(ack, body, client, logger, context):
     logger.info(body)
     user_id = context['user_id']
     team_id = context['team_id']
-    print(body['actions'][0]['value'])
     selected_ao, selected_day, selected_event_type, selected_start_time, selected_end_time, selected_ao_id = str.split(body['actions'][0]['value'], '|')
 
     # Build options lists
@@ -289,7 +288,7 @@ def handle_edit_recurring_event_slot_select(ack, body, client, logger, context):
     except ValueError as e:
         selected_event_type_index = -1
 
-    if selected_end_time is None:
+    if selected_end_time is None or selected_end_time == 'None':
         selected_end_time = str(int(selected_start_time[:2]) + 1) + ':' + selected_start_time[2:]
 
     blocks = [
@@ -477,7 +476,6 @@ def handle_edit_recurring_event_slot_select(ack, body, client, logger, context):
 
     ]
 
-    if selected_end_time != 'None': blocks[5]['element']['initial_time'] = selected_start_time[:2] + ':' + selected_start_time[2:]
     try:
         client.views_publish(
             user_id=user_id,
@@ -711,8 +709,7 @@ def delete_single_event_button(ack, client, body, context):
     logger.info(body)
     user_id = context['user_id']
     team_id = context['team_id']
-    # user_name = get_user_name([user_id], logger, client)
-
+    # user_name = get_user_name(user_id, client)
     # gather and format selected date and time
     selected_list = str.split(body['actions'][0]['value'],'|')
     selected_date = selected_list[0]
@@ -1099,15 +1096,6 @@ def submit_edit_ao_button(ack, body, client, logger, context):
 
     home.refresh(client, user_id, logger, top_message, team_id, context)
 
-def safe_get(data, keys):
-    try:
-        result = data
-        for k in keys:
-            result = result[k]
-        return result
-    except:
-        return None
-
 @app.action(actions.EDIT_SETTINGS_ACTION)
 def handle_submit_general_settings_button(ack, body, client, logger, context):
     ack()
@@ -1145,9 +1133,9 @@ def handle_submit_add_ao_button(ack, body, client, logger, context):
         'team_id': team_id
     }
 
-    query_params['ao_channel_id'] = safe_get(input_data, ['add_ao_channel_select','add_ao_channel_select','selected_channel'])
-    query_params['ao_display_name'] = safe_get(input_data, ['ao_display_name','ao_display_name','value'])
-    query_params['ao_location_subtitle'] = safe_get(input_data, ['ao_location_subtitle','ao_location_subtitle','value'])
+    query_params['ao_channel_id'] = safe_get(input_data, 'add_ao_channel_select', 'add_ao_channel_select', 'selected_channel')
+    query_params['ao_display_name'] = safe_get(input_data, 'ao_display_name', 'ao_display_name', 'value')
+    query_params['ao_location_subtitle'] = safe_get(input_data, 'ao_location_subtitle','ao_location_subtitle', 'value')
 
     # replace double quotes with single quotes
     query_params['ao_display_name'] = query_params['ao_display_name'].replace('"',"'")
@@ -1195,13 +1183,13 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
 
     # Gather inputs from form
     input_data = body['view']['state']['values']
-    ao_display_name = safe_get(input_data, ['ao_display_name_select','ao_display_name_select_action','selected_option','value'])
-    event_day_of_week = safe_get(input_data, ['event_day_of_week_select','event_day_of_week_select_action','selected_option','value'])
-    starting_date = safe_get(input_data, ['add_event_datepicker','add_event_datepicker','selected_date'])
-    event_time = safe_get(input_data, ['event_start_time_select','event_start_time_select','selected_time']).replace(':','')
-    event_end_time = safe_get(input_data, ['event_end_time_select','event_end_time_select','selected_time']).replace(':','')
-    event_type_select = safe_get(input_data, ['event_type_select','event_type_select_action','selected_option','value'])
-    event_type_custom = safe_get(input_data, ['event_type_custom','event_type_custom','value'])
+    ao_display_name = safe_get(input_data, 'ao_display_name_select','ao_display_name_select_action','selected_option','value')
+    event_day_of_week = safe_get(input_data, 'event_day_of_week_select','event_day_of_week_select_action','selected_option','value')
+    starting_date = safe_get(input_data, 'add_event_datepicker','add_event_datepicker','selected_date')
+    event_time = safe_get(input_data, 'event_start_time_select','event_start_time_select','selected_time').replace(':','')
+    event_end_time = safe_get(input_data, 'event_end_time_select','event_end_time_select','selected_time').replace(':','')
+    event_type_select = safe_get(input_data, 'event_type_select','event_type_select_action','selected_option','value')
+    event_type_custom = safe_get(input_data, 'event_type_custom','event_type_custom','value')
 
     # Logic for custom events
     if event_type_select == 'Custom':
@@ -1482,10 +1470,9 @@ def handle_date_select_button(ack, client, body, logger, context):
     # acknowledge action and log payload
     ack()
     logger.info(body)
-    logging.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    user_name = get_user_name([user_id], logger, client)
+    user_name = get_user_name(user_id, client)
 
     # gather and format selected date and time
     selected_date = body['actions'][0]['value']
@@ -1496,6 +1483,7 @@ def handle_date_select_button(ack, client, body, logger, context):
     # gather info needed for message and SQL
     ao_display_name = body['view']['blocks'][1]['text']['text'].replace('*','')
 
+    success_status = False
     aos = DbManager.find_records(AO, [
         AO.team_id == team_id,
         AO.ao_display_name == ao_display_name
@@ -1512,8 +1500,8 @@ def handle_date_select_button(ack, client, body, logger, context):
             Master.event_time == selected_time_db
         })
 
-        if len(masters) == 1:
-            top_message = "Unable to uniquely find that AO/Date/Time"
+        if len(masters) != 1:
+            top_message = f"Unable to uniquely find that AO/Date/Time {len(masters)}"
         else:
             master: Master = masters[0]
             DbManager.update_record(Master, master.id, {
@@ -1524,7 +1512,8 @@ def handle_date_select_button(ack, client, body, logger, context):
             region: Region = DbManager.get_record(Region, team_id)
             if commands.is_connected(team_id) and region.google_calendar_id:
                 new_master = DbManager.get_record(Master, master.id)
-                commands.schedule_event(team_id, new_master)
+                user = get_user(user_id, client)
+                commands.schedule_event(team_id, user, region, new_master)
 
     # Generate top message and go back home
     if success_status:
@@ -1545,7 +1534,7 @@ def handle_date_select_button_from_message(ack, client, body, logger, context):
     logging.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    user_name = get_user_name([user_id], logger, client)
+    user_name = get_user_name(user_id, client)
 
     # gather and format selected date and time
     selected_date = body['actions'][0]['value']
@@ -1653,8 +1642,8 @@ def handle_taken_date_select_button(ack, client, body, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
     user_info_dict = client.users_info(user=user_id)
-    user_name = safe_get(user_info_dict, 'user', 'profile', 'display_name') or safe_get(
-            user_info_dict, 'user', 'profile', 'real_name') or None
+    user_name = safe_get(user_info_dict, 'user', 'profile', 'display_name') or \
+                safe_get(user_info_dict, 'user', 'profile', 'real_name') or None
     user_admin = user_info_dict['user']['is_admin']
 
     selected_value = body['actions'][0]['value']
@@ -1736,7 +1725,7 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
     logger.info(body)
     user_id = context['user_id']
     team_id = context['team_id']
-    # user_name = get_user_name([user_id], logger, client)
+    # user_name = get_user_name(user_id, client)
 
     # gather and format selected date and time
     selected_list = str.split(body['actions'][0]['value'],'|')
@@ -2003,7 +1992,7 @@ def handle_clear_slot_button(ack, client, body, logger, context):
     logger.info(body)
     user_id = context['user_id']
     team_id = context['team_id']
-    user_name = get_user_name([user_id], logger, client)
+    user_name = get_user_name(user_id, client)
 
     # gather and format selected date and time
     selected_list = str.split(body['actions'][0]['value'],'|')
@@ -2074,7 +2063,7 @@ def cancel_button_select(ack, client, body, logger, context):
     # logging.info(context)
     user_id = context['user_id']
     team_id = context['team_id']
-    user_name = get_user_name([user_id], logger, client)
+    user_name = get_user_name(user_id, client)
     top_message = f"Welcome to QSignups, {user_name}!"
     home.refresh(client, user_id, logger, top_message, team_id, context)
 

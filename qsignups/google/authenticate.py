@@ -29,17 +29,26 @@ def __load_region_credentials(team_id):
   else:
     return None
 
-def is_connected(team_id):
-  region_credentials = __load_region_credentials(team_id)
-  return region_credentials and region_credentials.valid
-
-def connect(team_id):
+def __get_refreshed_credentials(team_id):
   region_credentials = __load_region_credentials(team_id)
   if region_credentials and region_credentials.valid:
     return region_credentials
 
   if region_credentials and region_credentials.expired and region_credentials.refresh_token:
     region_credentials.refresh(Request())
+    DbManager.update_record(Region, team_id, {
+      Region.google_auth_data: json.loads(region_credentials.to_json())
+    })
+  return region_credentials
+
+def is_connected(team_id):
+  region_credentials = __get_refreshed_credentials(team_id)
+  return region_credentials and region_credentials.valid
+
+def connect(team_id):
+  region_credentials = __get_refreshed_credentials(team_id)
+  if region_credentials and region_credentials.valid:
+    return region_credentials
   else:
     flow = InstalledAppFlow.from_client_config(
       client_config = GOOGLE_CREDENTIALS,

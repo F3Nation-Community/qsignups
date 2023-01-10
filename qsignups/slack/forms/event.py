@@ -418,7 +418,7 @@ def select_recurring_form_for_edit(team_id, user_id, client, logger):
     # Show next x number of events
     for ao in results_df['ao_display_name'].unique():
         # Header block
-        blocks.append(forms.make_header_row(ao, type = "header"))
+        blocks.append(forms.make_header_row(ao))
 
         # Create button blocks for each event for each AO
         for _, row in results_df[results_df['ao_display_name'] == ao].iterrows():

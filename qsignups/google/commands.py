@@ -94,5 +94,5 @@ def is_enabled(team_id):
 def get_calendars(team_id) -> List[GoogleCalendar]:
   return service.get_calendars(team_id)
 
-def schedule_event(team_id, region, event):
-  return service.schedule_event(team_id, region, event)
+def schedule_event(team_id, user, region, event):
+  return service.schedule_event(team_id, user, region, event)
