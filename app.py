@@ -129,8 +129,6 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
         forms.make_action_button_row([inputs.CANCEL_BUTTON])
     ]
 
-    print(blocks)
-
     try:
         client.views_publish(
             user_id=user_id,
@@ -890,13 +888,19 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
     except Exception as e:
         logger.error(f"Error pulling AO list: {e}")
 
-    ao_selector = inputs.ActionSelector(label = "Select an AO", action = "ao_display_name_select_action", options = ao_list)
+    ao_selector = inputs.ActionSelector(
+        label = "Select an AO",
+        action = "ao_display_name_select_action",
+        options = inputs.as_selector_options(ao_list))
 
     blocks = [
-        forms.make_header_row("*Is this a recurring or single event?*"),
         inputs.EVENT_TYPE_RADIO.as_form_field(initial_value = recurring_select_option),
         inputs.EVENT_TYPE_SELECTOR.as_form_field(),
-        inputs.ActionInput(label = "Custom Event Name", action = "event_type_custom", placeholder = "If custom is selected, specify a name", optional = True),
+        inputs.ActionInput(
+            label = "Custom Event Name",
+            action = "event_type_custom",
+            placeholder = "If custom is selected, specify a name",
+            optional = True).as_form_field(),
         ao_selector.as_form_field(),
     ]
 
@@ -916,7 +920,10 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
             'AO Launch',
             'Convergence'
         ]
-        special_selector = inputs.ActionSelector(label = "Event Type", action = "event_special_type_selector", options = special_list)
+        special_selector = inputs.ActionSelector(
+            label = "Event Type",
+            action = "event_special_type_selector",
+            options = inputs.as_selector_options(special_list))
         blocks.append(special_selector.as_form_field())
         blocks.append(inputs.EVENT_DATE_SELECTOR.as_form_field(initial_value = date.today().strftime('%Y-%m-%d')))
 
@@ -925,8 +932,8 @@ def handle_add_event_recurring_select_action(ack, body, client, logger, context)
         inputs.END_TIME_SELECTOR.as_form_field(initial_value = "06:15"),
 
         forms.make_action_button_row([
-            inputs.make_submit_button(actions.ADD_EVENT_ACTION).as_form_field(),
-            inputs.CANCEL_BUTTON.as_form_field()
+            inputs.make_submit_button(actions.ADD_EVENT_ACTION),
+            inputs.CANCEL_BUTTON
         ]),
         {
         "type": "context",

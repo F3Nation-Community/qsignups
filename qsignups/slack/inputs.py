@@ -41,7 +41,6 @@ class ActionButton(BaseAction):
 @dataclass
 class ActionInput(BaseAction):
   placeholder: str
-  input_type: str
   optional: bool = True
 
   def get_selected_value(self, input_data):
@@ -100,7 +99,7 @@ class ActionTimeSelect(BaseAction):
           }
       }
     if initial_value:
-      j["initial_time"] = "05:30"
+      j["element"]["initial_time"] = initial_value
     return j
 
 @dataclass
@@ -155,7 +154,10 @@ class ActionRadioButtons(BaseAction):
         "label": self.make_label_field()
     }
     if initial_value:
-      j['element']['initial_option'] = initial_value.as_form_field()
+      if isinstance(initial_value,BaseAction):
+        j['element']['initial_option'] = initial_value.as_form_field()
+      else:
+        j['element']['initial_option'] = initial_value
     return j
 
 @dataclass
@@ -225,7 +227,7 @@ EVENT_TYPE_RECURRING = ActionRadioButton(label = "Recurring event", action = Non
 EVENT_TYPE_SINGLE = ActionRadioButton(label = "Single event", action = None, value = "single")
 EVENT_TYPE_RADIO = ActionRadioButtons(
   action = "add_event_recurring_select_action",
-  label = "",
+  label = "Is this a recurring or single event?",
   options = [ EVENT_TYPE_RECURRING, EVENT_TYPE_SINGLE ]
 )
 
