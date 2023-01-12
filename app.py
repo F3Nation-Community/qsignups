@@ -1,6 +1,7 @@
 import logging
 import os
 from datetime import datetime, timedelta, date
+import pytz
 import pandas as pd
 
 from slack_bolt import App
@@ -119,12 +120,12 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
     team_id = context["team_id"]
 
     blocks = [
-        forms.make_header_row("Choose an option to update your Schedule:"),
-        forms.make_action_button_row([inputs.ADD_AO_FORM, inputs.EDIT_AO_FORM, inputs.ADD_EVENT_FORM]),
-        forms.make_header_row("Choose an option to update your Recurring Events:"),
-        forms.make_action_button_row([inputs.SELECT_RECURRING_EVENT_FORM, inputs.DELETE_RECURRING_EVENT_FORM]),
-        forms.make_header_row("Choose an option to update your Single Events:"),
-        forms.make_action_button_row([inputs.EDIT_SINGLE_EVENT_FORM, inputs.DELETE_SINGLE_EVENT_FORM]),
+        forms.make_header_row("Choose an option to manage your AOs:"),
+        forms.make_action_button_row([inputs.ADD_AO_FORM, inputs.EDIT_AO_FORM]),
+        forms.make_header_row("Choose an option to manage your Recurring Events:"),
+        forms.make_action_button_row([inputs.ADD_RECURRING_EVENT_FORM, inputs.SELECT_RECURRING_EVENT_FORM, inputs.DELETE_RECURRING_EVENT_FORM]),
+        forms.make_header_row("Choose an option to manage your Single Events:"),
+        forms.make_action_button_row([inputs.ADD_SINGLE_EVENT_FORM, inputs.EDIT_SINGLE_EVENT_FORM, inputs.DELETE_SINGLE_EVENT_FORM]),
         forms.make_header_row("Return to the Home Page:"),
         forms.make_action_button_row([inputs.CANCEL_BUTTON])
     ]
@@ -158,13 +159,13 @@ def handle_edit_ao_form(ack, body, client, logger, context):
     team_id = context["team_id"]
     ao.edit_form(team_id, user_id, client, logger)
 
-@app.action(inputs.ADD_EVENT_FORM.action)
+@app.action(inputs.ADD_SINGLE_EVENT_FORM.action)
 def handle_add_event_form(ack, body, client, logger, context):
     ack()
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    event.add_form(team_id, user_id, client, logger)
+    event.add_single_form(team_id, user_id, client, logger)
 
 @app.action(inputs.EDIT_SINGLE_EVENT_FORM.action)
 def handle_edit_event_form(ack, body, client, logger, context):
@@ -181,6 +182,14 @@ def handle_delete_single_event_form(ack, body, client, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
     event.delete_single_form(team_id, user_id, client, logger)
+    
+@app.action(inputs.ADD_RECURRING_EVENT_FORM.action)
+def handle_add_event_form(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    event.add_recurring_form(team_id, user_id, client, logger)
 
 @app.action(inputs.SELECT_RECURRING_EVENT_FORM.action)
 def handle_edit_event_form(ack, body, client, logger, context):
@@ -623,7 +632,7 @@ def handle_delete_single_event_ao_select(ack, body, client, logger, context):
             ON m.ao_channel_id = a.ao_channel_id
             WHERE a.team_id = "{team_id}"
                 AND a.ao_channel_id = "{ao_channel_id}"
-                AND m.event_date > DATE("{date.today()}")
+                AND m.event_date > DATE("{datetime.now(tz=pytz.timezone('US/Central')).strftime('%Y-%m-%d')}")
                 AND m.event_date <= DATE("{date.today() + timedelta(weeks=12)}");
             '''
             logging.info(f'Pulling from db, attempting SQL: {sql_pull}')
@@ -868,96 +877,6 @@ def handle_edit_ao_select(ack, body, client, logger, context):
             logger.error(f"Error publishing home tab: {e}")
             print(e)
 
-@app.action("add_event_recurring_select_action")
-def handle_add_event_recurring_select_action(ack, body, client, logger, context):
-    ack()
-    logger.info(body)
-    user_id = context["user_id"]
-    team_id = context["team_id"]
-    recurring_select_option = body['view']['state']['values']['recurring_select_block']['add_event_recurring_select_action']['selected_option']
-    recurring_select = recurring_select_option['value']
-
-    logger.info('add an event - switch recurring type')
-
-    # list of AOs for dropdown
-    try:
-        with my_connect(team_id) as mydb:
-            sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-            ao_list = pd.read_sql(sql_ao_list, mydb.conn)
-            ao_list = ao_list['ao_display_name'].values.tolist()
-    except Exception as e:
-        logger.error(f"Error pulling AO list: {e}")
-
-    ao_selector = inputs.ActionSelector(
-        label = "Select an AO",
-        action = "ao_display_name_select_action",
-        options = inputs.as_selector_options(ao_list))
-
-    blocks = [
-        inputs.EVENT_TYPE_RADIO.as_form_field(initial_value = recurring_select_option),
-        inputs.EVENT_TYPE_SELECTOR.as_form_field(),
-        inputs.ActionInput(
-            label = "Custom Event Name",
-            action = "event_type_custom",
-            placeholder = "If custom is selected, specify a name",
-            optional = True).as_form_field(),
-        ao_selector.as_form_field(),
-    ]
-
-    if recurring_select == 'recurring':
-        blocks.append(inputs.WEEKDAY_SELECTOR.as_form_field())
-        blocks.append(inputs.START_DATE_SELECTOR.as_form_field(initial_value = date.today().strftime('%Y-%m-%d')))
-
-    else:
-        # TODO: have "other" / freeform option
-        # TODO: add this to form
-        special_list = [
-            'None',
-            'The Forge',
-            'VQ',
-            'F3versary',
-            'Birthday Q',
-            'AO Launch',
-            'Convergence'
-        ]
-        special_selector = inputs.ActionSelector(
-            label = "Event Type",
-            action = "event_special_type_selector",
-            options = inputs.as_selector_options(special_list))
-        blocks.append(special_selector.as_form_field())
-        blocks.append(inputs.EVENT_DATE_SELECTOR.as_form_field(initial_value = date.today().strftime('%Y-%m-%d')))
-
-    blocks += [
-        inputs.START_TIME_SELECTOR.as_form_field(initial_value = "05:30"),
-        inputs.END_TIME_SELECTOR.as_form_field(initial_value = "06:15"),
-
-        forms.make_action_button_row([
-            inputs.make_submit_button(actions.ADD_EVENT_ACTION),
-            inputs.CANCEL_BUTTON
-        ]),
-        {
-        "type": "context",
-        "elements": [
-                {
-                    "type": "mrkdwn",
-                    "text": "Please wait after hitting Submit, and do not hit it more than once"
-                }
-            ]
-        }
-    ]
-
-    try:
-        client.views_publish(
-            user_id=user_id,
-            view={
-                "type": "home",
-                "blocks": blocks
-            }
-        )
-    except Exception as e:
-        logger.error(f"Error publishing home tab: {e}")
-        print(e)
-
 @app.action("edit_event_ao_select")
 def handle_edit_event_ao_select(ack, body, client, logger, context):
     ack()
@@ -979,7 +898,7 @@ def handle_edit_event_ao_select(ack, body, client, logger, context):
                 AND m.ao_channel_id = a.ao_channel_id
             WHERE a.team_id = "{team_id}"
                 AND a.ao_channel_id = "{ao_channel_id}"
-                AND m.event_date > DATE("{date.today()}")
+                AND m.event_date > DATE("{datetime.now(tz=pytz.timezone('US/Central')).strftime('%Y-%m-%d')}")
                 AND m.event_date <= DATE("{date.today() + timedelta(weeks=12)}");
             '''
             logging.info(f'Pulling from db, attempting SQL: {sql_pull}')
@@ -1181,8 +1100,8 @@ def handle_submit_add_ao_button(ack, body, client, logger, context):
 
     home.refresh(client, user_id, logger, top_message, team_id, context)
 
-@app.action(actions.ADD_EVENT_ACTION)
-def handle_submit_add_event_button(ack, body, client, logger, context):
+@app.action(actions.ADD_RECURRING_EVENT_ACTION)
+def handle_submit_add_recurring_event_button(ack, body, client, logger, context):
     ack()
     logger.info(body)
     user_id = context["user_id"]
@@ -1190,12 +1109,12 @@ def handle_submit_add_event_button(ack, body, client, logger, context):
 
     # Gather inputs from form
     input_data = body['view']['state']['values']
-    ao_display_name = safe_get(input_data, 'ao_display_name_select','ao_display_name_select_action','selected_option','value')
-    event_day_of_week = safe_get(input_data, 'event_day_of_week_select','event_day_of_week_select_action','selected_option','value')
+    ao_display_name = safe_get(input_data, 'ao_display_name_select_action','ao_display_name_select_action','selected_option','value')
+    event_day_of_week = safe_get(input_data, 'event_day_of_week_select_action','event_day_of_week_select_action','selected_option','value')
     starting_date = safe_get(input_data, 'add_event_datepicker','add_event_datepicker','selected_date')
     event_time = safe_get(input_data, 'event_start_time_select','event_start_time_select','selected_time').replace(':','')
     event_end_time = safe_get(input_data, 'event_end_time_select','event_end_time_select','selected_time').replace(':','')
-    event_type_select = safe_get(input_data, 'event_type_select','event_type_select_action','selected_option','value')
+    event_type_select = safe_get(input_data, 'event_type_select_action','event_type_select_action','selected_option','value')
     event_type_custom = safe_get(input_data, 'event_type_custom','event_type_custom','value')
 
     # Logic for custom events
@@ -1280,16 +1199,16 @@ def handle_submit_add_single_event_button(ack, body, client, logger, context):
 
     # Gather inputs from form
     input_data = body['view']['state']['values']
-    ao_display_name = input_data['ao_display_name_select']['ao_display_name_select_action']['selected_option']['value']
+    ao_display_name = input_data['ao_display_name_select_action']['ao_display_name_select_action']['selected_option']['value']
     event_date = input_data['add_event_datepicker']['add_event_datepicker']['selected_date']
     event_time = input_data['event_start_time_select']['event_start_time_select']['selected_time'].replace(':','')
     event_end_time = input_data['event_end_time_select']['event_end_time_select']['selected_time'].replace(':','')
 
     # Logic for custom events
-    if input_data['event_type_select']['event_type_select_action']['selected_option']['value'] == 'Custom':
+    if input_data['event_type_select_action']['event_type_select_action']['selected_option']['value'] == 'Custom':
         event_type = input_data['event_type_custom']['event_type_custom']['value']
     else:
-        event_type = input_data['event_type_select']['event_type_select_action']['selected_option']['value']
+        event_type = input_data['event_type_select_action']['event_type_select_action']['selected_option']['value']
 
     # Grab channel id
     try:
@@ -1360,7 +1279,7 @@ def ao_select_slot(ack, client, body, logger, context):
             FROM {mydb.db}.qsignups_master
             WHERE team_id = '{team_id}'
                 AND ao_channel_id = '{ao_channel_id}'
-                AND event_date > DATE('{date.today()}')
+                AND event_date > DATE('{datetime.now(tz=pytz.timezone('US/Central')).strftime('%Y-%m-%d')}')
                 AND event_date <= DATE('{date.today() + timedelta(weeks=10)}');
             """
             logging.info(f'Pulling from db, attempting SQL: {sql_pull}')
@@ -1528,7 +1447,7 @@ def handle_date_select_button(ack, client, body, logger, context):
         # TODO: if selected date was in weinke range (current or next week), update local weinke png
     else:
         if not top_message:
-            top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
+            top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker."
 
     home.refresh(client, user_id, logger, top_message, team_id, context)
 

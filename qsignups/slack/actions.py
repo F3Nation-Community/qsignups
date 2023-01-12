@@ -4,7 +4,7 @@ from qsignups import utilities
 
 CANCEL_BUTTON_ACTION = "cancel_button_select"
 EDIT_EVENT_ACTION = "submit_edit_event_button"
-ADD_EVENT_ACTION = "submit_add_event_button"
+ADD_RECURRING_EVENT_ACTION = "submit_add_recurring_event_button"
 ADD_SINGLE_EVENT_ACTION = "submit_add_single_event_button"
 ADD_AO_ACTION = "submit_add_ao_button"
 EDIT_AO_ACTION = "submit_edit_ao_button"

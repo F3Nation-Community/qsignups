@@ -1,4 +1,5 @@
-from datetime import timedelta, date
+from datetime import timedelta, date, datetime
+import pytz
 import pandas as pd
 from qsignups.database import my_connect, DbManager
 from qsignups.database.orm import AO, Region
@@ -25,7 +26,7 @@ def refresh(client, user_id, logger, top_message, team_id, context):
                 AND m.ao_channel_id = a.ao_channel_id
             WHERE m.team_id = "{team_id}"
                 AND m.q_pax_id = "{user_id}"
-                AND m.event_date > DATE("{date.today()}")
+                AND m.event_date > DATE("{datetime.now(tz=pytz.timezone('US/Central')).strftime('%Y-%m-%d')}")
             ORDER BY m.event_date, m.event_time
             LIMIT 5;
             """
@@ -38,7 +39,7 @@ def refresh(client, user_id, logger, top_message, team_id, context):
             ON m.team_id = a.team_id
                 AND m.ao_channel_id = a.ao_channel_id
             WHERE m.team_id = "{team_id}"
-                AND m.event_date > DATE("{date.today()}")
+                AND m.event_date > DATE("{datetime.now(tz=pytz.timezone('US/Central')).strftime('%Y-%m-%d')}")
                 AND m.event_date <= DATE("{date.today()+timedelta(days=7)}")
             ORDER BY m.event_date, m.event_time
             ;
