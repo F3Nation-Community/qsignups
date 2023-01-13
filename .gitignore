@@ -7,3 +7,4 @@ gcal_testing/token.pickle
 environments/
 generate/
 gcal_data/
+.DS_Store

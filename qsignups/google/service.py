@@ -1,8 +1,6 @@
 from datetime import datetime, timedelta
 import pytz
 
-from googleapiclient.discovery import build
-
 from qsignups.database.orm import Master, Region
 from .authenticate import connect
 from . import GoogleCalendar
@@ -24,8 +22,12 @@ def get_calendars(team_id):
 def get_calendar_service(team_id):
   creds = connect(team_id)
   if creds:
-    service = build('calendar', 'v3', credentials=creds)
-    return service
+    try:
+      from googleapiclient.discovery import build
+      service = build('calendar', 'v3', credentials=creds)
+      return service
+    except Exception as ex:
+      print(f"Unable to load Calendar: {ex}")
   else:
     return None
 
