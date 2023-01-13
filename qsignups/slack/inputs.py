@@ -250,10 +250,11 @@ GOOGLE_CALENDAR_SELECT: ActionSelector = ActionSelector(
 GOOGLE_CONNECT: ActionButton = ActionButton(label = 'Connect Google Calendar', action = "connect_google_calendar", style = 'primary')
 GOOGLE_DISCONNECT: ActionButton = ActionButton(label = 'Disonnect Google Calendar', action = "disconnect_google_calendar", style = 'danger')
 
-ADD_EVENT_FORM: ActionButton = ActionButton(label = 'Add an event', action = "add_event_form")
+ADD_SINGLE_EVENT_FORM: ActionButton = ActionButton(label = 'Add a single event', action = "add_single_event_form")
 EDIT_SINGLE_EVENT_FORM: ActionButton = ActionButton(label = 'Edit a single event', action = "edit_single_event_form")
 DELETE_SINGLE_EVENT_FORM: ActionButton = ActionButton(label = 'Delete a single event', action = "delete_single_event_form")
 
+ADD_RECURRING_EVENT_FORM: ActionButton = ActionButton(label = 'Add a recurring event', action = "add_recurring_event_form")
 SELECT_RECURRING_EVENT_FORM: ActionButton = ActionButton(label = 'Edit a recurring event', action = "edit_recurring_event_form")
 DELETE_RECURRING_EVENT_FORM: ActionButton = ActionButton(label = 'Delete a recurring event', action = "delete_recurring_event_form")
 
@@ -283,7 +284,7 @@ END_TIME_SELECTOR = ActionTimeSelect(label = "Select End Time", action = "event_
 EVENT_TYPE_SELECTOR = ActionSelector(
   label = "Select an event type",
   action = "event_type_select_action",
-  options = as_selector_options(['Beatdown', 'QSource', 'Custom']))
+  options = as_selector_options(['Bootcamp', 'QSource', 'Custom']))
 
 TIMEZONE_SELECT = ActionSelector(
   label = "Select your Timezone",
