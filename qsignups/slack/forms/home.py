@@ -28,7 +28,7 @@ def refresh(client, user_id, logger, top_message, team_id, context):
                 AND m.q_pax_id = "{user_id}"
                 AND m.event_date > DATE("{datetime.now(tz=pytz.timezone('US/Central')).strftime('%Y-%m-%d')}")
             ORDER BY m.event_date, m.event_time
-            LIMIT 5;
+            ;
             """
 
             # list of all upcoming events for the region
