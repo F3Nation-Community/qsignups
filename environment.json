@@ -9,6 +9,8 @@
   "USE_WEINKES": true,
   "AWS_KEY": null,
   "AWS_SECRET": null,
+  "GOOGLE_CLIENT_ID": null,
+  "GOOGLE_CLIENT_SECRET": null,
   "dev": {
     "QLAMBDA_NAME": "qsignup-dev"
   },
