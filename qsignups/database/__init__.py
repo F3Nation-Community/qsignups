@@ -77,6 +77,15 @@ class DbManager:
       finally:
         session.commit()
         close_session(session)
+    
+    def update_records(cls: T, filters, fields):
+      session = get_session()
+      try:
+        session.query(cls).filter(and_(*filters)).update(fields, synchronize_session='fetch')
+        session.flush()
+      finally:
+        session.commit()
+        close_session(session)
 
     def create_record(record: BaseClass) -> int:
       session = get_session()

@@ -1,4 +1,6 @@
 import pandas as pd
+from qsignups.database import DbManager
+from qsignups.database.orm import AO
 
 from qsignups.database import my_connect
 from qsignups.slack import actions, forms, inputs
@@ -138,3 +140,13 @@ def edit_form(team_id, user_id, client, logger):
     except Exception as e:
         logger.error(f"Error publishing home tab: {e}")
         print(e)
+        
+def pull_aos(team_id):
+    aos: list[AO] = DbManager.find_records(AO, [AO.team_id == team_id])
+    aos_list, aos_sort = {}, {}
+    for index, ao in enumerate(aos):
+        aos_list[index] = ao.ao_display_name
+        aos_sort[index] = ao.ao_display_name.replace('The ', '')
+    
+    aos_sort = dict(sorted(aos_sort.items(), key=lambda x:x[1]))
+    return([aos_list[i] for i in aos_sort.keys()])
