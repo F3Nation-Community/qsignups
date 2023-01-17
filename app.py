@@ -182,7 +182,7 @@ def handle_delete_single_event_form(ack, body, client, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
     event.delete_single_form(team_id, user_id, client, logger)
-    
+
 @app.action(inputs.ADD_RECURRING_EVENT_FORM.action)
 def handle_add_event_form(ack, body, client, logger, context):
     ack()
@@ -296,7 +296,9 @@ def handle_edit_recurring_event_slot_select(ack, body, client, logger, context):
         selected_event_type_index = -1
 
     if selected_end_time is None or selected_end_time == 'None':
-        selected_end_time = str(int(selected_start_time[:2]) + 1) + ':' + selected_start_time[2:]
+        end_hour = int(selected_start_time[:2]) + 1
+        end_minute = selected_start_time[2:]
+        selected_end_time = f"{end_hour:02d}{end_minute}"
 
     blocks = [
         {
