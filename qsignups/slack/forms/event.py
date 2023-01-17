@@ -7,16 +7,13 @@ from qsignups.slack import actions, forms, inputs
 
 from qsignups.utilities import list_to_dict
 
+from sqlalchemy import func
+
 def add_single_form(team_id, user_id, client, logger):
 
     # list of AOs for dropdown
-    try:
-        with my_connect(team_id) as mydb:
-            sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-            ao_list = pd.read_sql(sql_ao_list, mydb.conn)
-            ao_list = ao_list['ao_display_name'].values.tolist()
-    except Exception as e:
-        logger.error(f"Error pulling AO list: {e}")
+    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
+    ao_list = [ao.ao_display_name for ao in aos]
 
     ao_selector = inputs.ActionSelector(
         label = "Select an AO",
@@ -85,13 +82,8 @@ def add_single_form(team_id, user_id, client, logger):
 def add_recurring_form(team_id, user_id, client, logger):
 
     # list of AOs for dropdown
-    try:
-        with my_connect(team_id) as mydb:
-            sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-            ao_list = pd.read_sql(sql_ao_list, mydb.conn)
-            ao_list = ao_list['ao_display_name'].values.tolist()
-    except Exception as e:
-        logger.error(f"Error pulling AO list: {e}")
+    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
+    ao_list = [ao.ao_display_name for ao in aos]
 
     ao_selector = inputs.ActionSelector(
         label = "Select an AO",
@@ -145,22 +137,25 @@ def add_recurring_form(team_id, user_id, client, logger):
 def edit_single_form(team_id, user_id, client, logger):
 
     # list of AOs for dropdown
-    try:
-        with my_connect(team_id) as mydb:
-            sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-            ao_df = pd.read_sql(sql_ao_list, mydb.conn)
-    except Exception as e:
-        logger.error(f"Error pulling AO list: {e}")
+    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
+    # ao_list = [ao.ao_display_name for ao in aos]
+    # ao_id_list = [ao.ao_channel_id for ao in aos]
+
+    # This needs to be a true action block, not an input block
+    # ao_selector = inputs.ActionSelector(
+    #     label = "Please select an AO to edit:",
+    #     action = "edit_event_ao_select",
+    #     options = inputs.as_selector_options(ao_list, ao_id_list))
 
     ao_options = []
-    for index, row in ao_df.iterrows():
+    for ao in aos:
         new_option = {
             "text": {
                 "type": "plain_text",
-                "text": row['ao_display_name'],
+                "text": ao.ao_display_name,
                 "emoji": True
             },
-            "value": row['ao_channel_id']
+            "value": ao.ao_channel_id
         }
         ao_options.append(new_option)
 
@@ -199,23 +194,19 @@ def edit_single_form(team_id, user_id, client, logger):
         print(e)
 
 def delete_single_form(team_id, user_id, client, logger):
+    
     # list of AOs for dropdown
-    try:
-        with my_connect(team_id) as mydb:
-            sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-            ao_df = pd.read_sql(sql_ao_list, mydb.conn)
-    except Exception as e:
-        logger.error(f"Error pulling AO list: {e}")
+    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
 
     ao_options = []
-    for index, row in ao_df.iterrows():
+    for ao in aos:
         new_option = {
             "text": {
                 "type": "plain_text",
-                "text": row['ao_display_name'],
+                "text": ao.ao_display_name,
                 "emoji": True
             },
-            "value": row['ao_channel_id']
+            "value": ao.ao_channel_id
         }
         ao_options.append(new_option)
 
@@ -270,6 +261,12 @@ def select_recurring_form_for_edit(team_id, user_id, client, logger):
             results_df = pd.read_sql_query(sql_pull, mydb.conn)
     except Exception as e:
         logger.error(f"Error pulling from schedule_weekly: {e}")
+    
+    events = DbManager.find_records(vwWeeklyEvents, [vwWeeklyEvents.team_id == team_id]).sort(
+        func.REPLACE(vwWeeklyEvents.ao_display_name, 'The ', ''),
+        func.DAYOFWEEK(vwWeeklyEvents.event_date),
+        vwWeeklyEvents.event_time
+    )
 
     # Sort results_df
     day_of_week_map = {'Sunday':0, 'Monday':1, 'Tuesday':2, 'Wednesday':3, 'Thursday':4, 'Friday':5, 'Saturday':6}
