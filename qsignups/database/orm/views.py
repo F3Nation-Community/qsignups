@@ -30,6 +30,7 @@ class vwAOsSort(BaseClass, QSignupClass):
   team_id = Column("team_id", String(100))
   ao_channel_id = Column("ao_channel_id", String(255))
   ao_display_name = Column("ao_display_name", String(255))
+  ao_location_subtitle = Column("ao_location_subtitle", String(255))
   current_month_weinke = Column("current_month_weinke", LONGTEXT)
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)

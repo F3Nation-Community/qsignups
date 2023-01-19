@@ -2,7 +2,6 @@ import logging
 import os
 from datetime import datetime, timedelta, date
 import pytz
-import pandas as pd
 
 from slack_bolt import App
 from slack_bolt.adapter.aws_lambda import SlackRequestHandler
@@ -14,7 +13,7 @@ from qsignups.google import commands
 
 from qsignups.database import DbManager
 from qsignups.database.orm import Region, AO, Master
-from qsignups.database.orm.views import vwAOsSort
+from qsignups.database.orm.views import vwAOsSort, vwMasterEvents
 
 from qsignups.slack import forms
 from qsignups.slack.forms import ao, event, home, settings
@@ -255,25 +254,13 @@ def handle_delete_single_event_ao_select(ack, body, client, logger, context):
     team_id = context["team_id"]
     ao_display_name = body['actions'][0]['selected_option']['text']['text']
     ao_channel_id = body['actions'][0]['selected_option']['value']
-
-    # Pull upcoming schedule from db
-    try:
-        with my_connect(team_id) as mydb:
-            # TODO: make this specific to event type
-            sql_pull = f'''
-            SELECT m.*, a.ao_display_name
-            FROM {mydb.db}.qsignups_master m
-            INNER JOIN {mydb.db}.qsignups_aos a
-            ON m.ao_channel_id = a.ao_channel_id
-            WHERE a.team_id = "{team_id}"
-                AND a.ao_channel_id = "{ao_channel_id}"
-                AND m.event_date > DATE("{datetime.now(tz=pytz.timezone('US/Central')).strftime('%Y-%m-%d')}")
-                AND m.event_date <= DATE("{date.today() + timedelta(weeks=12)}");
-            '''
-            logging.info(f'Pulling from db, attempting SQL: {sql_pull}')
-            results_df = pd.read_sql_query(sql_pull, mydb.conn, parse_dates=['event_date'])
-    except Exception as e:
-        logger.error(f"Error pulling from schedule_master: {e}")
+    
+    events = DbManager.find_records(vwMasterEvents, [
+        vwMasterEvents.team_id == team_id,
+        vwMasterEvents.ao_channel_id == ao_channel_id,
+        vwMasterEvents.event_date > datetime.now(tz=pytz.timezone('US/Central')),
+        vwMasterEvents.event_date <= date.today() + timedelta(weeks=12)
+    ])
 
     # Construct view
     # Top of view
@@ -289,22 +276,19 @@ def handle_delete_single_event_ao_select(ack, body, client, logger, context):
         "type": "divider"
     }]
 
-    # Show next x number of events
-    # TODO: future add: make a "show more" button?
-    results_df['event_date_time'] = pd.to_datetime(results_df['event_date'].dt.strftime('%Y-%m-%d') + ' ' + results_df['event_time'], infer_datetime_format=True)
-    for index, row in results_df.iterrows():
-        # Pretty format date
-        date_fmt = row['event_date_time'].strftime("%a, %m-%d @ %H%M")
-        date_fmt_value = row['event_date_time'].strftime('%Y-%m-%d %H:%M:%S')
+    for event in events:
+        event_date_time = datetime.strptime(event.event_date.strftime('%Y-%m-%d') + ' ' + event.event_time, '%Y-%m-%d %H%M')
+        date_fmt = event_date_time.strftime("%a, %m-%d @ %H%M")
+        date_fmt_value = event_date_time.strftime('%Y-%m-%d %H:%M:%S')
 
         # Build buttons
-        if row['q_pax_id'] is None:
+        if event.q_pax_id is None:
             date_status = "OPEN!"
         else:
-            date_status = row['q_pax_name']
+            date_status = event.q_pax_name
 
         action_id = "delete_single_event_button"
-        value = date_fmt_value + '|' + row['ao_channel_id']
+        value = date_fmt_value + '|' + event.ao_channel_id
         confirm_obj = {
             "title": {
                 "type": "plain_text",
@@ -406,46 +390,26 @@ def handle_edit_ao_select(ack, body, client, logger, context):
 
     selected_channel = body['view']['state']['values']['edit_ao_select']['edit_ao_select']['selected_option']['value']
     selected_channel_name = body['view']['state']['values']['edit_ao_select']['edit_ao_select']['selected_option']['text']['text']
-
-    # pull existing info for this channel
-    try:
-        with my_connect(team_id) as mydb:
-            sql_pull = f"""
-            SELECT ao_display_name, ao_location_subtitle
-            FROM {mydb.db}.qsignups_aos
-            WHERE team_id = '{team_id}'
-                AND ao_channel_id = '{selected_channel}';
-            """
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_pull)
-            results = mycursor.fetchone()
-            if results is None:
-                results = (None, None)
-            ao_display_name, ao_location_subtitle = results
-
-            sql_ao_list = f"SELECT ao_display_name, ao_channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-            ao_list = pd.read_sql(sql_ao_list, mydb.conn)
-    except Exception as e:
-        logger.error(f"Error pulling AO list: {e}")
-
-    if results is None:
+        
+    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
+    
+    if selected_channel not in [ao.ao_channel_id for ao in aos]:
         home.refresh(client, user_id, logger, top_message="Selected channel not found - PAXMiner may not have added it to the aos table yet", team_id=team_id, context=context)
     else:
-        if ao_display_name is None:
-            ao_display_name = ""
-        if ao_location_subtitle is None:
-            ao_location_subtitle = ""
+        ao_index = [ao.ao_channel_id for ao in aos].index(selected_channel)
+        ao_display_name = aos[ao_index].ao_display_name or ""
+        ao_location_subtitle = aos[ao_index].ao_location_subtitle or ""
 
         # rebuild blocks
         ao_options = []
-        for index, row in ao_list.iterrows():
+        for ao in aos:
             new_option = {
                 "text": {
                     "type": "plain_text",
-                    "text": row['ao_display_name'],
+                    "text": ao.ao_display_name,
                     "emoji": True
                 },
-                "value": row['ao_channel_id']
+                "value": ao.ao_channel_id
             }
             ao_options.append(new_option)
 
@@ -520,26 +484,13 @@ def handle_edit_event_ao_select(ack, body, client, logger, context):
     team_id = context["team_id"]
     ao_display_name = body['actions'][0]['selected_option']['text']['text']
     ao_channel_id = body['actions'][0]['selected_option']['value']
-
-    # Pull upcoming schedule from db
-    try:
-        with my_connect(team_id) as mydb:
-            # TODO: make this specific to event type
-            sql_pull = f'''
-            SELECT m.*, a.ao_display_name
-            FROM {mydb.db}.qsignups_master m
-            INNER JOIN {mydb.db}.qsignups_aos a
-            ON m.team_id = a.team_id
-                AND m.ao_channel_id = a.ao_channel_id
-            WHERE a.team_id = "{team_id}"
-                AND a.ao_channel_id = "{ao_channel_id}"
-                AND m.event_date > DATE("{datetime.now(tz=pytz.timezone('US/Central')).strftime('%Y-%m-%d')}")
-                AND m.event_date <= DATE("{date.today() + timedelta(weeks=12)}");
-            '''
-            logging.info(f'Pulling from db, attempting SQL: {sql_pull}')
-            results_df = pd.read_sql_query(sql_pull, mydb.conn, parse_dates=['event_date'])
-    except Exception as e:
-        logger.error(f"Error pulling from schedule_master: {e}")
+        
+    events = DbManager.find_records(vwMasterEvents, [
+        vwMasterEvents.team_id == team_id,
+        vwMasterEvents.ao_channel_id == ao_channel_id,
+        vwMasterEvents.event_date > datetime.now(tz=pytz.timezone('US/Central')),
+        vwMasterEvents.event_date <= date.today() + timedelta(weeks=12)
+    ])
 
     # Construct view
     # Top of view
@@ -554,22 +505,20 @@ def handle_edit_event_ao_select(ack, body, client, logger, context):
     {
         "type": "divider"
     }]
-
-    # Show next x number of events
-    results_df['event_date_time'] = pd.to_datetime(results_df['event_date'].dt.strftime('%Y-%m-%d') + ' ' + results_df['event_time'], infer_datetime_format=True)
-    for index, row in results_df.iterrows():
-        # Pretty format date
-        date_fmt = row['event_date_time'].strftime("%a, %m-%d @ %H%M")
-        date_fmt_value = row['event_date_time'].strftime('%Y-%m-%d %H:%M:%S')
-
+    
+    for event in events:
+        event_date_time = datetime.strptime(event.event_date.strftime('%Y-%m-%d') + ' ' + event.event_time, '%Y-%m-%d %H%M')
+        date_fmt = event_date_time.strftime("%a, %m-%d @ %H%M")
+        date_fmt_value = event_date_time.strftime('%Y-%m-%d %H:%M:%S')
+        
         # Build buttons
-        if row['q_pax_id'] is None:
+        if event.q_pax_id is None:
             date_status = "OPEN!"
         else:
-            date_status = row['q_pax_name']
+            date_status = event.q_pax_name
 
         action_id = "edit_single_event_button"
-        value = date_fmt_value + '|' + row['ao_display_name']
+        value = date_fmt_value + '|' + event.ao_display_name
 
         # Button template
         new_button = {
@@ -579,7 +528,7 @@ def handle_edit_event_ao_select(ack, body, client, logger, context):
                     "type":"button",
                     "text":{
                         "type":"plain_text",
-                        "text":f"{row['event_type']} {date_fmt}: {date_status}",
+                        "text":f"{event.event_type} {date_fmt}: {date_status}",
                         "emoji":True
                     },
                     "action_id":action_id,
@@ -904,24 +853,13 @@ def ao_select_slot(ack, client, body, logger, context):
     team_id = context["team_id"]
     ao_display_name = body['actions'][0]['selected_option']['text']['text']
     ao_channel_id = body['actions'][0]['selected_option']['value']
-
-    # Pull upcoming schedule from db
-    try:
-        with my_connect(team_id) as mydb:
-            # TODO: make this specific to event type
-            sql_pull = f"""
-            SELECT *
-            FROM {mydb.db}.qsignups_master
-            WHERE team_id = '{team_id}'
-                AND ao_channel_id = '{ao_channel_id}'
-                AND event_date > DATE('{datetime.now(tz=pytz.timezone('US/Central')).strftime('%Y-%m-%d')}')
-                AND event_date <= DATE('{date.today() + timedelta(weeks=10)}');
-            """
-            logging.info(f'Pulling from db, attempting SQL: {sql_pull}')
-
-            results_df = pd.read_sql_query(sql_pull, mydb.conn, parse_dates=['event_date'])
-    except Exception as e:
-        logger.error(f"Error pulling from schedule_master: {e}")
+        
+    events = DbManager.find_records(Master, [
+        Master.team_id == team_id,
+        Master.ao_channel_id == ao_channel_id,
+        Master.event_date > datetime.now(tz=pytz.timezone('US/Central')),
+        Master.event_date <= date.today() + timedelta(weeks=12)
+    ])
 
     # Construct view
     # Top of view
@@ -936,40 +874,32 @@ def ao_select_slot(ack, client, body, logger, context):
     {
         "type": "divider"
     }]
-
-    # Show next x number of events
-    results_df['event_date_time'] = pd.to_datetime(results_df['event_date'].dt.strftime('%Y-%m-%d') + ' ' + results_df['event_time'], infer_datetime_format=True)
-    for index, row in results_df.iterrows():
-        # Pretty format date
-        date_fmt = row['event_date_time'].strftime("%a, %m-%d @ %H%M")
-
+    
+    for event in events:
+        event_date_time = datetime.strptime(event.event_date.strftime('%Y-%m-%d') + ' ' + event.event_time, '%Y-%m-%d %H%M')
+        date_fmt = event_date_time.strftime("%a, %m-%d @ %H%M")
+        
         # If slot is empty, show green button with primary (green) style button
-        if row['q_pax_id'] is None:
+        if event.q_pax_id is None:
             date_status = "OPEN!"
             date_style = "primary"
             action_id = "date_select_button"
-            value = str(row['event_date_time'])
+            value = str(event_date_time)
             button_text = "Take slot"
         # Otherwise default (grey) button, listing Qs name
         else:
-            date_status = row['q_pax_name']
+            date_status = event.q_pax_name
             date_style = "default"
             action_id = "taken_date_select_button"
-            value = str(row['event_date_time']) + '|' + row['q_pax_name']
+            value = str(event_date_time) + '|' + event.q_pax_name
             button_text = "Edit Slot"
-
-        # try:
-        #     date_status_format = re.sub('\s\(([\s\S]*?\))','',date_status)
-        #     print(f"formatted: {date_status_format}")
-        # except Exception as e:
-        #     print(e)
 
         # Button template
         new_section = {
             "type":"section",
             "text":{
                 "type":"mrkdwn",
-                "text":f"{row['event_type']} {date_fmt}: {date_status}"
+                "text":f"{event.event_type} {date_fmt}: {date_status}"
             },
             "accessory":{
                 "type":"button",
@@ -987,27 +917,6 @@ def ao_select_slot(ack, client, body, logger, context):
 
         # Append button to list
         blocks.append(new_section)
-
-        # new_button = {
-        #     "type":"actions",
-        #     "elements":[
-        #         {
-        #             "type":"button",
-        #             "text":{
-        #                 "type":"plain_text",
-        #                 "text":f"{row['event_type']} {date_fmt}: {date_status}",
-        #                 "emoji":True
-        #             },
-        #             "action_id":action_id,
-        #             "value":value
-        #         }
-        #     ]
-        # }
-        # if date_style == "primary":
-        #     new_button['elements'][0]["style"] = "primary"
-
-        # # Append button to list
-        # blocks.append(new_button)
 
     # Cancel button
     blocks.append(forms.make_action_button_row([inputs.CANCEL_BUTTON]))
@@ -1108,12 +1017,17 @@ def handle_date_select_button_from_message(ack, client, body, logger, context):
     message_ts = body['message']['ts']
     message_blocks = body['message']['blocks']
 
-    try:
-        with my_connect(team_id) as mydb:
-            sql_channel_pull = f'SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id}" and ao_channel_id = "{ao_channel_id}";'
-            ao_name = pd.read_sql_query(sql_channel_pull, mydb.conn).iloc[0,0]
-    except Exception as e:
-        logger.error(f"Error pulling channel id: {e}")
+    # try:
+    #     with my_connect(team_id) as mydb:
+    #         sql_channel_pull = f'SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id}" and ao_channel_id = "{ao_channel_id}";'
+    #         ao_name = pd.read_sql_query(sql_channel_pull, mydb.conn).iloc[0,0]
+    # except Exception as e:
+    #     logger.error(f"Error pulling channel id: {e}")
+        
+    ao_name = DbManager.find_records(AO, [
+        AO.team_id == team_id,
+        AO.ao_channel_id == ao_channel_id
+    ])[0].ao_display_name
 
     # Build query params
     query_params = {
@@ -1297,29 +1211,18 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
 
     # gather info needed for input form
     ao_display_name = selected_list[1]
+        
+    event = DbManager.find_records(vwMasterEvents, [
+        vwMasterEvents.team_id == team_id,
+        vwMasterEvents.ao_display_name == ao_display_name,
+        vwMasterEvents.event_date == selected_date_dt.date(),
+        vwMasterEvents.event_time == selected_time_db
+    ])[0]
 
-    try:
-        with my_connect(team_id) as mydb:
-            sql_channel_pull = f'''
-            SELECT m.q_pax_id, m.q_pax_name, m.event_special, m.ao_channel_id
-            FROM {mydb.db}.qsignups_master m
-            INNER JOIN {mydb.db}.qsignups_aos a
-            ON m.team_id = a.team_id
-                AND m.ao_channel_id = a.ao_channel_id
-            WHERE a.team_id = "{team_id}"
-                AND a.ao_display_name = "{ao_display_name}"
-                AND m.event_date = DATE("{selected_date_db}")
-                AND m.event_time = "{selected_time_db}"
-            ;
-            '''
-            result_df = pd.read_sql_query(sql_channel_pull, mydb.conn)
-    except Exception as e:
-        logger.error(f"Error pulling event info: {e}")
-
-    q_pax_id = result_df.loc[0,'q_pax_id']
-    q_pax_name = result_df.loc[0,'q_pax_name']
-    event_special = result_df.loc[0,'event_special']
-    ao_channel_id = result_df.loc[0,'ao_channel_id']
+    q_pax_id = event.q_pax_id
+    q_pax_name = event.q_pax_name
+    event_special = event.event_special
+    ao_channel_id = event.ao_channel_id
 
     # build special qualifier
     # TODO: have "other" / freeform option
@@ -1564,13 +1467,11 @@ def handle_clear_slot_button(ack, client, body, logger, context):
 
     # gather info needed for message and SQL
     ao_display_name = selected_list[1]
-
-    try:
-        with my_connect(team_id) as mydb:
-            sql_channel_pull = f'SELECT ao_channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id}" AND ao_display_name = "{ao_display_name}";'
-            ao_channel_id = pd.read_sql_query(sql_channel_pull, mydb.conn).iloc[0,0]
-    except Exception as e:
-        logger.error(f"Error pulling channel id: {e}")
+        
+    ao_channel_id = DbManager.find_records(AO, [
+        AO.team_id == team_id,
+        AO.ao_display_name == ao_display_name
+    ])[0].ao_channel_id
 
     # Build query params
     query_params = {
