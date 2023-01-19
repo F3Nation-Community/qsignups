@@ -1,8 +1,7 @@
-import pandas as pd
 from qsignups.database import DbManager
 from qsignups.database.orm import AO
+from qsignups.database.orm.views import vwAOsSort
 
-from qsignups.database import my_connect
 from qsignups.slack import actions, forms, inputs
 
 def add_form(team_id, user_id, client, logger):
@@ -88,22 +87,18 @@ def add_form(team_id, user_id, client, logger):
 def edit_form(team_id, user_id, client, logger):
 
     # list of AOs for dropdown
-    try:
-        with my_connect(team_id) as mydb:
-            sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-            ao_df = pd.read_sql(sql_ao_list, mydb.conn)
-    except Exception as e:
-        logger.error(f"Error pulling AO list: {e}")
+    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
+    ao_list = [ao.ao_display_name for ao in aos]
 
     ao_options = []
-    for index, row in ao_df.iterrows():
+    for ao in aos:
         new_option = {
             "text": {
                 "type": "plain_text",
-                "text": row['ao_display_name'],
+                "text": ao.ao_display_name,
                 "emoji": True
             },
-            "value": row['ao_channel_id']
+            "value": ao.ao_channel_id
         }
         ao_options.append(new_option)
 

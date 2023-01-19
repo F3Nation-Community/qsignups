@@ -265,7 +265,7 @@ def select_recurring_form_for_edit(team_id, user_id, client, logger):
             if current_ao != '':
                 blocks.append({"type":"divider"})
                 
-            blocks.append(forms.make_header_row(event.ao_display_name))
+            blocks.append(forms.make_section_header_row(event.ao_display_name))
             current_ao = event.ao_display_name
         
         blocks.append(
@@ -352,7 +352,7 @@ def select_recurring_form_for_delete(team_id, user_id, client, logger):
                     "type": "section",
                     "text": {
                         "type":"mrkdwn",
-                        "text":f"{event.ao_display_name} {event.event_day_of_week}s @ {event.event_time}"
+                        "text":f"{event.event_type} {event.event_day_of_week}s @ {event.event_time}"
                     },
                     "accessory": inputs.ActionButton(label = "Delete Event", action = actions.DELETE_RECURRING_SELECT_ACTION, value = str(event.id), style = "danger").as_form_field()
                 }
