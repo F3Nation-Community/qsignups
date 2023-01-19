@@ -34,6 +34,8 @@ environment_variables:
     DATABASE_HOST: ${DATABASE_HOST}
     ADMIN_DATABASE_USER: ${ADMIN_DATABASE_USER}
     ADMIN_DATABASE_PASSWORD: ${ADMIN_DATABASE_PASSWORD}
+    GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+    GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
 
 
 # If `tags` is uncommented then tags will be set at creation or update
@@ -44,5 +46,5 @@ environment_variables:
 #    tag_2: bar
 
 # Build options
-# build:
-  # source_directories: slack_bolt # a comma delimited list of directories in your project root that contains source to package.
+build:
+  source_directories: qsignups
