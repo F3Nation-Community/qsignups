@@ -1,7 +1,6 @@
 from datetime import date
-import pandas as pd
 
-from qsignups.database import my_connect, DbManager
+from qsignups.database import DbManager
 from qsignups.database.orm.views import vwWeeklyEvents, vwAOsSort
 from qsignups.slack import actions, forms, inputs
 
@@ -245,34 +244,8 @@ def delete_single_form(team_id, user_id, client, logger):
         print(e)
 
 def select_recurring_form_for_edit(team_id, user_id, client, logger):
-    results_df = None
-    try:
-        with my_connect(team_id) as mydb:
-            sql_pull = f"""
-            SELECT w.*, a.ao_display_name
-            FROM {mydb.db}.qsignups_weekly w
-            INNER JOIN {mydb.db}.qsignups_aos a
-            ON w.ao_channel_id = a.ao_channel_id
-                AND w.team_id = a.team_id
-            WHERE w.team_id = '{team_id}';
-            """
-            logger.info(f'Pulling from db, attempting SQL: {sql_pull}')
-
-            results_df = pd.read_sql_query(sql_pull, mydb.conn)
-    except Exception as e:
-        logger.error(f"Error pulling from schedule_weekly: {e}")
     
-    events = DbManager.find_records(vwWeeklyEvents, [vwWeeklyEvents.team_id == team_id]).sort(
-        func.REPLACE(vwWeeklyEvents.ao_display_name, 'The ', ''),
-        func.DAYOFWEEK(vwWeeklyEvents.event_date),
-        vwWeeklyEvents.event_time
-    )
-
-    # Sort results_df
-    day_of_week_map = {'Sunday':0, 'Monday':1, 'Tuesday':2, 'Wednesday':3, 'Thursday':4, 'Friday':5, 'Saturday':6}
-    results_df['event_day_of_week_num'] = results_df['event_day_of_week'].map(day_of_week_map)
-    results_df['ao_display_name_sort'] = results_df['ao_display_name'].str.replace('The ','')
-    results_df.sort_values(by=['ao_display_name_sort', 'event_day_of_week_num', 'event_time'], inplace=True)
+    weekly_events = DbManager.find_records(vwWeeklyEvents, [vwWeeklyEvents.team_id == team_id])
 
     # Construct view
     # Top of view
@@ -285,37 +258,35 @@ def select_recurring_form_for_edit(team_id, user_id, client, logger):
         }
     ]
 
-    # Show next x number of events
-    for ao in results_df['ao_display_name'].unique():
-        # Header block
-        blocks.append(forms.make_header_row(ao))
-
-        # Create button blocks for each event for each AO
-        for _, row in results_df[results_df['ao_display_name'] == ao].iterrows():
-            blocks.append(
-                {
-                    "type":"section",
-                    "text":{
-                        "type":"mrkdwn",
-                        "text":f"{row['event_type']} {row['event_day_of_week']}s @ {row['event_time']}"
+    current_ao = ''
+    for event in weekly_events:
+        
+        if event.ao_display_name != current_ao:
+            if current_ao != '':
+                blocks.append({"type":"divider"})
+                
+            blocks.append(forms.make_header_row(event.ao_display_name))
+            current_ao = event.ao_display_name
+        
+        blocks.append(
+            {
+                "type":"section",
+                "text":{
+                    "type":"mrkdwn",
+                    "text":f"{event.event_type} {event.event_day_of_week}s @ {event.event_time}"
+                },
+                "accessory": {
+                    "type":"button",
+                    "text": {
+                        "type":"plain_text",
+                        "text":"Edit Event",
+                        "emoji":True
                     },
-                    "accessory": {
-                        "type":"button",
-                        "text": {
-                            "type":"plain_text",
-                            "text":"Edit Event",
-                            "emoji":True
-                        },
-                        "action_id":actions.SELECT_SLOT_EDIT_RECURRING_EVENT_FORM,
-                        "value":f"{row['ao_display_name']}|{row['event_day_of_week']}|{row['event_type']}|{row['event_time']}|{row['event_end_time']}|{row['ao_channel_id']}"
-                    }
+                    "action_id":actions.SELECT_SLOT_EDIT_RECURRING_EVENT_FORM,
+                    "value":f"{event.ao_display_name}|{event.event_day_of_week}|{event.event_type}|{event.event_time}|{event.event_end_time}|{event.ao_channel_id}"
                 }
-            )
-
-        # Divider block
-        blocks.append({
-            "type":"divider"
-        })
+            }
+        )
 
     # Cancel block
     blocks.append({
