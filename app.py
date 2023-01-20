@@ -8,7 +8,6 @@ from slack_bolt.adapter.aws_lambda import SlackRequestHandler
 from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
 
 from qsignups.utilities import safe_get, get_user, get_user_name
-from qsignups.database import my_connect
 from qsignups.google import commands
 
 from qsignups.database import DbManager
@@ -17,7 +16,7 @@ from qsignups.database.orm.views import vwAOsSort, vwMasterEvents
 
 from qsignups.slack import forms
 from qsignups.slack.forms import ao, event, home, settings
-from qsignups.slack.handlers import settings as settings_handler, weekly as weekly_handler
+from qsignups.slack.handlers import settings as settings_handler, weekly as weekly_handler, master as master_handler, ao as ao_handler
 from qsignups.slack import actions, inputs
 
 def get_oauth_flow():
@@ -335,50 +334,9 @@ def delete_single_event_button(ack, client, body, context):
     logger.info(body)
     user_id = context['user_id']
     team_id = context['team_id']
-    # user_name = get_user_name(user_id, client)
-    # gather and format selected date and time
-    selected_list = str.split(body['actions'][0]['value'],'|')
-    selected_date = selected_list[0]
-    selected_ao_id = selected_list[1]
-    selected_date_dt = datetime.strptime(selected_date, '%Y-%m-%d %H:%M:%S')
-    selected_date_db = datetime.date(selected_date_dt).strftime('%Y-%m-%d')
-    selected_time_db = datetime.time(selected_date_dt).strftime('%H%M')
-
-    # Build query params
-    query_params = {
-        'team_id': team_id,
-        'ao_channel_id': selected_ao_id,
-        'event_date': selected_date_db,
-        'event_time': selected_time_db
-    }
-
-    # attempt delete
-    success_status = False
-    try:
-        with my_connect(team_id) as mydb:
-            sql_delete = f"""-- sql
-            DELETE FROM {mydb.db}.qsignups_master
-            WHERE team_id = %(team_id)s
-                AND ao_channel_id = %(ao_channel_id)s
-                AND event_date = DATE(%(event_date)s)
-                AND event_time = %(event_time)s;
-            """
-            logger.info(f'Attempting SQL: \n{sql_delete}')
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_delete, query_params)
-            mydb.conn.commit()
-            success_status = True
-    except Exception as e:
-        logger.error(f"Error pulling AO list: {e}")
-        error_msg = e
-
-    # Take the user back home
-    if success_status:
-        top_message = f"Success! Deleted event on {selected_date_db} at {selected_time_db}"
-    else:
-        top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
-
-    home.refresh(client, user_id, logger, top_message, team_id, context)
+    input_data = body['actions'][0]['value']
+    response = master_handler.delete(client, user_id, team_id, logger, input_data)
+    home.refresh(client, user_id, logger, response.message, team_id, context)
 
 @app.action("edit_ao_select")
 def handle_edit_ao_select(ack, body, client, logger, context):
@@ -563,48 +521,10 @@ def submit_edit_ao_button(ack, body, client, logger, context):
     print(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-
     page_label = body['view']['blocks'][0]['text']['text']
-    label, ao_display_name, ao_channel_id = page_label.replace('*','').split('\n')
-
     input_data = body['view']['state']['values']
-    ao_display_name = input_data['ao_display_name']['ao_display_name']['value']
-    ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']['value']
-
-    # Update AO table
-    success_status = False
-    try:
-        with my_connect(team_id) as mydb:
-            query_params = {
-                'ao_display_name': ao_display_name,
-                'ao_location_subtitle': ao_location_subtitle,
-                'ao_channel_id': ao_channel_id
-            }
-
-            sql_update = f"""-- sql
-            UPDATE {mydb.db}.qsignups_aos
-            SET ao_display_name = %(ao_display_name)s,
-                ao_location_subtitle = %(ao_location_subtitle)s
-            WHERE ao_channel_id = %(ao_channel_id)s
-            ;
-            """
-            logger.info(f"Attempting SQL UPDATE: {sql_update}")
-
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_update, query_params)
-            mydb.conn.commit()
-            success_status = True
-    except Exception as e:
-        logger.error(f"Error writing to db: {e}")
-        error_msg = e
-
-    # Take the user back home
-    if success_status:
-        top_message = f"Success! Edited info for {ao_display_name}"
-    else:
-        top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
-
-    home.refresh(client, user_id, logger, top_message, team_id, context)
+    response = ao_handler.edit(client, user_id, team_id, logger, page_label, input_data)
+    home.refresh(client, user_id, logger, response.message, team_id, context)
 
 @app.action(actions.EDIT_SETTINGS_ACTION)
 def handle_submit_general_settings_button(ack, body, client, logger, context):
@@ -629,60 +549,9 @@ def handle_submit_add_ao_button(ack, body, client, logger, context):
     print(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-
-    # Gather inputs from form
     input_data = body['view']['state']['values']
-    ao_channel_id = input_data['add_ao_channel_select']['add_ao_channel_select']['selected_channel']
-    ao_display_name = input_data['ao_display_name']['ao_display_name']['value']
-    ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']['value']
-
-    # Gather inputs from form
-    input_data = body['view']['state']['values']
-
-    query_params = {
-        'team_id': team_id
-    }
-
-    query_params['ao_channel_id'] = safe_get(input_data, 'add_ao_channel_select', 'add_ao_channel_select', 'selected_channel')
-    query_params['ao_display_name'] = safe_get(input_data, 'ao_display_name', 'ao_display_name', 'value')
-    query_params['ao_location_subtitle'] = safe_get(input_data, 'ao_location_subtitle','ao_location_subtitle', 'value')
-
-    # replace double quotes with single quotes
-    query_params['ao_display_name'] = query_params['ao_display_name'].replace('"',"'")
-    if query_params['ao_location_subtitle']:
-        query_params['ao_location_subtitle'] = query_params['ao_location_subtitle'].replace('"',"'")
-    else:
-        query_params['ao_location_subtitle'] = '' # TODO: I don't like this, but this field is currently non-nullable
-
-    print("FOUND GPARAMS ", query_params)
-
-    # Update db
-    success_status = False
-    try:
-        with my_connect(team_id) as mydb:
-
-            sql_insert = f"""
-            INSERT INTO {mydb.db}.qsignups_aos (ao_channel_id, ao_display_name, ao_location_subtitle, team_id)
-            VALUES (%(ao_channel_id)s, %(ao_display_name)s, %(ao_location_subtitle)s, %(team_id)s);
-            """
-            print("SQL: ", sql_insert)
-
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_insert, query_params)
-            mydb.conn.commit()
-            success_status = True
-
-    except Exception as e:
-        logger.error(f"Error writing to db: {e}")
-        error_msg = e
-
-    # Take the user back home
-    if success_status:
-        top_message = f"Success! Added {ao_display_name} to the list of AOs on the schedule"
-    else:
-        top_message = f"Sorry, there was a problem of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
-
-    home.refresh(client, user_id, logger, top_message, team_id, context)
+    response = ao_handler.insert(client, user_id, team_id, logger, input_data)
+    home.refresh(client, user_id, logger, response.message, team_id, context)
 
 @app.action(actions.ADD_RECURRING_EVENT_ACTION)
 def handle_submit_add_recurring_event_button(ack, body, client, logger, context):
@@ -693,86 +562,8 @@ def handle_submit_add_recurring_event_button(ack, body, client, logger, context)
 
     # Gather inputs from form
     input_data = body['view']['state']['values']
-    ao_display_name = safe_get(input_data, 'ao_display_name_select_action','ao_display_name_select_action','selected_option','value')
-    event_day_of_week = safe_get(input_data, 'event_day_of_week_select_action','event_day_of_week_select_action','selected_option','value')
-    starting_date = safe_get(input_data, 'add_event_datepicker','add_event_datepicker','selected_date')
-    event_time = safe_get(input_data, 'event_start_time_select','event_start_time_select','selected_time').replace(':','')
-    event_end_time = safe_get(input_data, 'event_end_time_select','event_end_time_select','selected_time').replace(':','')
-    event_type_select = safe_get(input_data, 'event_type_select_action','event_type_select_action','selected_option','value')
-    event_type_custom = safe_get(input_data, 'event_type_custom','event_type_custom','value')
-
-    # Logic for custom events
-    if event_type_select == 'Custom':
-        event_type = event_type_custom
-    else:
-        event_type = event_type_select
-
-    # Grab channel id
-    try:
-        with my_connect(team_id) as mydb:
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(f'SELECT ao_channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id}" AND ao_display_name = "{ao_display_name}";')
-            ao_channel_id = mycursor.fetchone()[0]
-    except Exception as e:
-           logger.error(f"Error pulling from db: {e}")
-
-    # Build query_params
-    query_params = {
-        'team_id': team_id,
-        'ao_channel_id': ao_channel_id,
-        'event_day_of_week': event_day_of_week,
-        'event_time': event_time,
-        'event_end_time': event_end_time,
-        'event_type': event_type,
-        'event_recurring': True
-    }
-
-    # Write to weekly table
-    try:
-        with my_connect(team_id) as mydb:
-
-            sql_insert = f"""
-            INSERT INTO {mydb.db}.qsignups_weekly (ao_channel_id, event_day_of_week, event_time, event_end_time, event_type, team_id)
-            VALUES (%(ao_channel_id)s, %(event_day_of_week)s, %(event_time)s, %(event_end_time)s, %(event_type)s, %(team_id)s);
-            """
-            logger.info(f"Attempting SQL INSERT: {sql_insert}")
-
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_insert, query_params)
-            mydb.conn.commit()
-    except Exception as e:
-           logger.error(f"Error writing to db: {e}")
-
-    # Write to master schedule table
-    logger.info(f"Attempting SQL INSERT into schedule_master")
-    success_status = False
-    try:
-        with my_connect(team_id) as mydb:
-            mycursor = mydb.conn.cursor()
-            iterate_date = datetime.strptime(starting_date, '%Y-%m-%d').date()
-            while iterate_date < (date.today() + timedelta(days=schedule_create_length_days)):
-                if iterate_date.strftime('%A') == event_day_of_week:
-                    query_params['event_date'] = iterate_date
-                    sql_insert = f"""
-                    INSERT INTO {mydb.db}.qsignups_master (ao_channel_id, event_date, event_time, event_end_time, event_day_of_week, event_type, event_recurring, team_id)
-                    VALUES (%(ao_channel_id)s, DATE(%(event_date)s), %(event_time)s, %(event_end_time)s, %(event_day_of_week)s, %(event_type)s, %(event_recurring)s, %(team_id)s)
-                    """
-                    mycursor.execute(sql_insert, query_params)
-                    # print(sql_insert)
-                iterate_date += timedelta(days=1)
-
-            mydb.conn.commit()
-            success_status = True
-    except Exception as e:
-           logger.error(f"Error writing to schedule_master: {e}")
-           error_msg = e
-
-    # Give status message and return to home
-    if success_status:
-        top_message = f"Thanks, I got it! I've added {round(schedule_create_length_days/365)} year's worth of {event_type}s to the schedule for {event_day_of_week}s at {event_time} at {ao_display_name}."
-    else:
-        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
-    home.refresh(client, user_id, logger, top_message, team_id, context)
+    response = weekly_handler.insert(client, user_id, team_id, logger, input_data)
+    home.refresh(client, user_id, logger, response.message, team_id, context)
 
 @app.action(actions.ADD_SINGLE_EVENT_ACTION)
 def handle_submit_add_single_event_button(ack, body, client, logger, context):
@@ -780,67 +571,9 @@ def handle_submit_add_single_event_button(ack, body, client, logger, context):
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-
-    # Gather inputs from form
     input_data = body['view']['state']['values']
-    ao_display_name = input_data['ao_display_name_select_action']['ao_display_name_select_action']['selected_option']['value']
-    event_date = input_data['add_event_datepicker']['add_event_datepicker']['selected_date']
-    event_time = input_data['event_start_time_select']['event_start_time_select']['selected_time'].replace(':','')
-    event_end_time = input_data['event_end_time_select']['event_end_time_select']['selected_time'].replace(':','')
-
-    # Logic for custom events
-    if input_data['event_type_select_action']['event_type_select_action']['selected_option']['value'] == 'Custom':
-        event_type = input_data['event_type_custom']['event_type_custom']['value']
-    else:
-        event_type = input_data['event_type_select_action']['event_type_select_action']['selected_option']['value']
-
-    # Grab channel id
-    try:
-        with my_connect(team_id) as mydb:
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(f'SELECT ao_channel_id FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id}" AND ao_display_name = "{ao_display_name}";')
-            ao_channel_id = mycursor.fetchone()[0]
-    except Exception as e:
-           logger.error(f"Error pulling from db: {e}")
-
-    # Build query_params
-    query_params = {
-        'team_id': team_id,
-        'ao_channel_id': ao_channel_id,
-        'event_date': event_date,
-        'event_day_of_week': datetime.strptime(event_date, '%Y-%m-%d').date().strftime('%A'),
-        'event_time': event_time,
-        'event_end_time': event_end_time,
-        'event_type': event_type,
-        'event_recurring': False
-    }
-
-    # Write to master schedule table
-    logger.info(f"Attempting SQL INSERT into schedule_master")
-    success_status = False
-    try:
-        with my_connect(team_id) as mydb:
-            mycursor = mydb.conn.cursor()
-            sql_insert = f"""
-            INSERT INTO {mydb.db}.qsignups_master (ao_channel_id, event_date, event_time, event_end_time, event_day_of_week, event_type, event_recurring, team_id)
-            VALUES (%(ao_channel_id)s, DATE(%(event_date)s), %(event_time)s, %(event_end_time)s, %(event_day_of_week)s, %(event_type)s, %(event_recurring)s, %(team_id)s);
-            """
-
-            mycursor.execute(sql_insert, query_params)
-            mydb.conn.commit()
-            success_status = True
-
-    except Exception as e:
-           logger.error(f"Error writing to schedule_master: {e}")
-           error_msg = e
-
-    # Give status message and return to home
-    if success_status:
-        top_message = f"Thanks, I got it! I've added your event to the schedule for {event_date} at {event_time} at {ao_display_name}."
-    else:
-        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
-    home.refresh(client, user_id, logger, top_message, team_id, context)
-
+    response = master_handler.insert(client, user_id, team_id, logger, input_data)
+    home.refresh(client, user_id, logger, response.message, team_id, context)
 
 # triggered when user makes an ao selection
 @app.action("ao-select")
@@ -1001,73 +734,30 @@ def handle_date_select_button_from_message(ack, client, body, logger, context):
     # acknowledge action and log payload
     ack()
     logger.info(body)
-    logging.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    user_name = get_user_name(user_id, client)
-
-    # gather and format selected date and time
-    selected_date = body['actions'][0]['value']
-    selected_date_dt = datetime.strptime(selected_date, '%Y-%m-%d %H:%M:%S')
-    selected_date_db = datetime.date(selected_date_dt).strftime('%Y-%m-%d')
-    selected_time_db = datetime.time(selected_date_dt).strftime('%H%M')
-
-    # gather info needed for message and SQL
-    ao_channel_id = body['channel']['id']
-    message_ts = body['message']['ts']
-    message_blocks = body['message']['blocks']
-
-    # try:
-    #     with my_connect(team_id) as mydb:
-    #         sql_channel_pull = f'SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = "{team_id}" and ao_channel_id = "{ao_channel_id}";'
-    #         ao_name = pd.read_sql_query(sql_channel_pull, mydb.conn).iloc[0,0]
-    # except Exception as e:
-    #     logger.error(f"Error pulling channel id: {e}")
-        
+    input_data = body
+    
     ao_name = DbManager.find_records(AO, [
         AO.team_id == team_id,
         AO.ao_channel_id == ao_channel_id
     ])[0].ao_display_name
+    
+    response = master_handler.update_post(client, user_id, team_id, logger, input_data, ao_name)
+    user_name = get_user_name(user_id, client)
 
-    # Build query params
-    query_params = {
-        'team_id': team_id,
-        'user_id': user_id,
-        'user_name': user_name,
-        'ao_channel_id': ao_channel_id,
-        'event_date': selected_date_db,
-        'event_time': selected_time_db
-    }
-
-    # Attempt db update
-    success_status = False
-    try:
-        with my_connect(team_id) as mydb:
-            sql_update = \
-            f"""-- sql
-            UPDATE {mydb.db}.qsignups_master
-            SET q_pax_id = %(user_id)s
-                , q_pax_name = %(user_name)s
-            WHERE team_id = %(team_id)s
-                AND ao_channel_id = %(ao_channel_id)s
-                AND event_date = DATE(%(event_date)s)
-                AND event_time = %(event_time)s
-            ;
-            """
-            logging.info(f'Attempting SQL UPDATE: {sql_update}')
-
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_update, query_params)
-            mydb.conn.commit()
-            success_status = True
-    except Exception as e:
-        logger.error(f"Error updating schedule: {e}")
-        error_msg = e
-
+    # gather info needed for message and SQL
+    selected_date = input_data['actions'][0]['value']
+    ao_channel_id = body['channel']['id']
+    message_ts = body['message']['ts']
+    message_blocks = body['message']['blocks']
+    message_ts = input_data['message']['ts']
+    message_blocks = input_data['message']['blocks']
+ 
     # Update original message
     open_count = 0
     block_num = -1
-    if success_status:
+    if response.success:
         for counter, block in enumerate(message_blocks):
             print(f"comparing {safe_get(block, 'accessory', 'value')} and {selected_date}")
             if safe_get(block, 'accessory', 'value') == selected_date:
@@ -1370,83 +1060,8 @@ def handle_submit_edit_event_button(ack, client, body, logger, context):
     logger.info(body)
     user_id = context['user_id']
     team_id = context['team_id']
-
-    # gather inputs
-    original_info = body['view']['blocks'][0]['text']['text']
-    ignore, event, q_name = original_info.split('\n')
-    original_date, original_time, original_ao_name = event.split(' @ ')
-    original_channel_id = body['actions'][0]['value']
-
-    results = body['view']['state']['values']
-    selected_date = results['edit_event_datepicker']['edit_event_datepicker']['selected_date']
-    selected_time = results['edit_event_timepicker']['edit_event_timepicker']['selected_time'].replace(':','')
-    selected_q_id_list = results['edit_event_q_select']['edit_event_q_select']['selected_users']
-    if len(selected_q_id_list) == 0:
-        selected_q_id_fmt = None
-        selected_q_name_fmt = None
-    else:
-        selected_q_id = selected_q_id_list[0]
-        user_info_dict = client.users_info(user=selected_q_id)
-        selected_q_name = safe_get(user_info_dict, 'user', 'profile', 'display_name') or safe_get(
-            user_info_dict, 'user', 'profile', 'real_name') or None
-
-        selected_q_id_fmt = selected_q_id
-        selected_q_name_fmt = selected_q_name
-    selected_special = results['edit_event_special_select']['edit_event_special_select']['selected_option']['text']['text']
-    if selected_special == 'None':
-        selected_special_fmt = None
-    else:
-        selected_special_fmt = selected_special
-
-    # Build query params
-    query_params = {
-        'q_pax_id': selected_q_id_fmt,
-        'q_pax_name': selected_q_name_fmt,
-        'event_date': selected_date,
-        'event_time': selected_time,
-        'event_special': selected_special_fmt,
-        'team_id': team_id,
-        'og_ao_channel_id': original_channel_id,
-        'og_event_date': original_date,
-        'og_event_time': original_time
-    }
-
-    # Attempt db update
-    success_status = False
-    try:
-        with my_connect(team_id) as mydb:
-            sql_update = \
-            f"""-- sql
-            UPDATE {mydb.db}.qsignups_master
-            SET q_pax_id = %(q_pax_id)s
-                , q_pax_name = %(q_pax_name)s
-                , event_date = DATE(%(event_date)s)
-                , event_time = %(event_time)s
-                , event_special = %(event_special)s
-            WHERE team_id = %(team_id)s
-                AND ao_channel_id = %(og_ao_channel_id)s
-                AND event_date = DATE(%(og_event_date)s)
-                AND event_time = %(og_event_time)s
-            ;
-            """
-            logging.info(f'Attempting SQL UPDATE: {sql_update}')
-
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_update, query_params)
-            mydb.conn.commit()
-            success_status = True
-    except Exception as e:
-        logger.error(f"Error updating schedule: {e}")
-        error_msg = e
-
-    # Generate top message and go back home
-    if success_status:
-        top_message = f"Got it! I've edited this slot with the following values: {selected_date} @ {selected_time} @ {original_ao_name} - Q: {selected_q_name_fmt} - Special: {selected_special}."
-        # TODO: if selected date was in weinke range (current or next week), update local weinke png
-    else:
-        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
-
-    home.refresh(client, user_id, logger, top_message, team_id, context)
+    response = master_handler.update(client, user_id, team_id, logger, body)
+    home.refresh(client, user_id, logger, response.message, team_id, context)
 
 # triggered when user hits cancel or some other button that takes them home
 @app.action("clear_slot_button")
@@ -1456,64 +1071,9 @@ def handle_clear_slot_button(ack, client, body, logger, context):
     logger.info(body)
     user_id = context['user_id']
     team_id = context['team_id']
-    user_name = get_user_name(user_id, client)
-
-    # gather and format selected date and time
-    selected_list = str.split(body['actions'][0]['value'],'|')
-    selected_date = selected_list[0]
-    selected_date_dt = datetime.strptime(selected_date, '%Y-%m-%d %H:%M:%S')
-    selected_date_db = datetime.date(selected_date_dt).strftime('%Y-%m-%d')
-    selected_time_db = datetime.time(selected_date_dt).strftime('%H%M')
-
-    # gather info needed for message and SQL
-    ao_display_name = selected_list[1]
-        
-    ao_channel_id = DbManager.find_records(AO, [
-        AO.team_id == team_id,
-        AO.ao_display_name == ao_display_name
-    ])[0].ao_channel_id
-
-    # Build query params
-    query_params = {
-        'team_id': team_id,
-        'ao_channel_id': ao_channel_id,
-        'event_date': selected_date_db,
-        'event_time': selected_time_db
-    }
-
-    # Attempt db update
-    success_status = False
-    try:
-        with my_connect(team_id) as mydb:
-            sql_update = \
-            f"""-- sql
-            UPDATE {mydb.db}.qsignups_master
-            SET q_pax_id = NULL
-                , q_pax_name = NULL
-            WHERE team_id = %(team_id)s
-                AND ao_channel_id = %(ao_channel_id)s
-                AND event_date = DATE(%(event_date)s)
-                AND event_time = %(event_time)s
-            ;
-            """
-            logging.info(f'Attempting SQL UPDATE: {sql_update}')
-
-            mycursor = mydb.conn.cursor()
-            mycursor.execute(sql_update, query_params)
-            mydb.conn.commit()
-            success_status = True
-    except Exception as e:
-        logger.error(f"Error updating schedule: {e}")
-        error_msg = e
-
-    # Generate top message and go back home
-    if success_status:
-        top_message = f"Got it, {user_name}! I have cleared the Q slot at *{ao_display_name}* on *{selected_date_dt.strftime('%A, %B %-d @ %H%M')}*"
-        # TODO: if selected date was in weinke range (current or next week), update local weinke png
-    else:
-        top_message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Error:\n{error_msg}"
-
-    home.refresh(client, user_id, logger, top_message, team_id, context)
+    input_data = body['actions'][0]['value']
+    response = master_handler.clear(client, user_id, team_id, logger, input_data)
+    home.refresh(client, user_id, logger, response.message, team_id, context)
 
 # triggered when user hits cancel or some other button that takes them home
 @app.action(actions.CANCEL_BUTTON_ACTION)
