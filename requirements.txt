@@ -1,11 +1,12 @@
 slack_sdk
 slack_bolt
 mysql.connector
-mysql-connector-python
 datetime
 pandas
 pymysql
+mysql-connector-python
 pytz
 SQLAlchemy
 google-auth
 google-auth-oauthlib
+protobuf==3.19.5

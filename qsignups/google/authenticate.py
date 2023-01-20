@@ -25,7 +25,8 @@ def __load_region_credentials(team_id):
 
       from google.oauth2.credentials import Credentials
       return Credentials.from_authorized_user_info(region.google_auth_data)
-    except:
+    except Exception as ex:
+      print(f"Unable to get google google.oauth2.credentials: {ex}")
       return None
   else:
     return None
@@ -46,7 +47,7 @@ def __get_refreshed_credentials(team_id):
       })
     return region_credentials
   except Exception as ex:
-    print(f"Unable to get Google credentials: {ex}")
+    print(f"Unable to get Google google.auth.transport.requests: {ex}")
     return None
 
 def is_connected(team_id):
@@ -65,7 +66,8 @@ def connect(team_id):
         client_config = GOOGLE_CREDENTIALS,
         scopes = SCOPES)
       region_credentials = flow.run_local_server(port=0)
-    except:
+    except Exception as ex:
+      print(f"Unable to get google_auth_oauthlib: {ex}")
       pass
 
   if region_credentials:

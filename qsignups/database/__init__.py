@@ -104,7 +104,7 @@ class DbManager:
       finally:
         session.commit()
         close_session(session)
-        
+
     def delete_record(cls: T, id):
       session = get_session()
       try:
@@ -113,7 +113,7 @@ class DbManager:
       finally:
         session.commit()
         close_session(session)
-        
+
     def delete_records(cls: T, filters):
       session = get_session()
       try:

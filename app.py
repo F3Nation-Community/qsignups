@@ -181,7 +181,7 @@ def handle_delete_single_event_form(ack, body, client, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
     event.delete_single_form(team_id, user_id, client, logger)
-    
+
 @app.action(inputs.ADD_RECURRING_EVENT_FORM.action)
 def handle_add_event_form(ack, body, client, logger, context):
     ack()
