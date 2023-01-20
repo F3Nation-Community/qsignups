@@ -1,22 +1,18 @@
 from datetime import date
-import pandas as pd
 
-from qsignups.database import my_connect, DbManager
-from qsignups.database.orm.views import vwWeeklyEvents
+from qsignups.database import DbManager
+from qsignups.database.orm.views import vwWeeklyEvents, vwAOsSort
 from qsignups.slack import actions, forms, inputs
 
 from qsignups.utilities import list_to_dict
 
+from sqlalchemy import func
+
 def add_single_form(team_id, user_id, client, logger):
 
     # list of AOs for dropdown
-    try:
-        with my_connect(team_id) as mydb:
-            sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-            ao_list = pd.read_sql(sql_ao_list, mydb.conn)
-            ao_list = ao_list['ao_display_name'].values.tolist()
-    except Exception as e:
-        logger.error(f"Error pulling AO list: {e}")
+    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
+    ao_list = [ao.ao_display_name for ao in aos]
 
     ao_selector = inputs.ActionSelector(
         label = "Select an AO",
@@ -85,13 +81,8 @@ def add_single_form(team_id, user_id, client, logger):
 def add_recurring_form(team_id, user_id, client, logger):
 
     # list of AOs for dropdown
-    try:
-        with my_connect(team_id) as mydb:
-            sql_ao_list = f"SELECT ao_display_name FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-            ao_list = pd.read_sql(sql_ao_list, mydb.conn)
-            ao_list = ao_list['ao_display_name'].values.tolist()
-    except Exception as e:
-        logger.error(f"Error pulling AO list: {e}")
+    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
+    ao_list = [ao.ao_display_name for ao in aos]
 
     ao_selector = inputs.ActionSelector(
         label = "Select an AO",
@@ -145,22 +136,25 @@ def add_recurring_form(team_id, user_id, client, logger):
 def edit_single_form(team_id, user_id, client, logger):
 
     # list of AOs for dropdown
-    try:
-        with my_connect(team_id) as mydb:
-            sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-            ao_df = pd.read_sql(sql_ao_list, mydb.conn)
-    except Exception as e:
-        logger.error(f"Error pulling AO list: {e}")
+    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
+    # ao_list = [ao.ao_display_name for ao in aos]
+    # ao_id_list = [ao.ao_channel_id for ao in aos]
+
+    # This needs to be a true action block, not an input block
+    # ao_selector = inputs.ActionSelector(
+    #     label = "Please select an AO to edit:",
+    #     action = "edit_event_ao_select",
+    #     options = inputs.as_selector_options(ao_list, ao_id_list))
 
     ao_options = []
-    for index, row in ao_df.iterrows():
+    for ao in aos:
         new_option = {
             "text": {
                 "type": "plain_text",
-                "text": row['ao_display_name'],
+                "text": ao.ao_display_name,
                 "emoji": True
             },
-            "value": row['ao_channel_id']
+            "value": ao.ao_channel_id
         }
         ao_options.append(new_option)
 
@@ -199,23 +193,19 @@ def edit_single_form(team_id, user_id, client, logger):
         print(e)
 
 def delete_single_form(team_id, user_id, client, logger):
+    
     # list of AOs for dropdown
-    try:
-        with my_connect(team_id) as mydb:
-            sql_ao_list = f"SELECT * FROM {mydb.db}.qsignups_aos WHERE team_id = '{team_id}' ORDER BY REPLACE(ao_display_name, 'The ', '');"
-            ao_df = pd.read_sql(sql_ao_list, mydb.conn)
-    except Exception as e:
-        logger.error(f"Error pulling AO list: {e}")
+    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
 
     ao_options = []
-    for index, row in ao_df.iterrows():
+    for ao in aos:
         new_option = {
             "text": {
                 "type": "plain_text",
-                "text": row['ao_display_name'],
+                "text": ao.ao_display_name,
                 "emoji": True
             },
-            "value": row['ao_channel_id']
+            "value": ao.ao_channel_id
         }
         ao_options.append(new_option)
 
@@ -254,28 +244,8 @@ def delete_single_form(team_id, user_id, client, logger):
         print(e)
 
 def select_recurring_form_for_edit(team_id, user_id, client, logger):
-    results_df = None
-    try:
-        with my_connect(team_id) as mydb:
-            sql_pull = f"""
-            SELECT w.*, a.ao_display_name
-            FROM {mydb.db}.qsignups_weekly w
-            INNER JOIN {mydb.db}.qsignups_aos a
-            ON w.ao_channel_id = a.ao_channel_id
-                AND w.team_id = a.team_id
-            WHERE w.team_id = '{team_id}';
-            """
-            logger.info(f'Pulling from db, attempting SQL: {sql_pull}')
-
-            results_df = pd.read_sql_query(sql_pull, mydb.conn)
-    except Exception as e:
-        logger.error(f"Error pulling from schedule_weekly: {e}")
-
-    # Sort results_df
-    day_of_week_map = {'Sunday':0, 'Monday':1, 'Tuesday':2, 'Wednesday':3, 'Thursday':4, 'Friday':5, 'Saturday':6}
-    results_df['event_day_of_week_num'] = results_df['event_day_of_week'].map(day_of_week_map)
-    results_df['ao_display_name_sort'] = results_df['ao_display_name'].str.replace('The ','')
-    results_df.sort_values(by=['ao_display_name_sort', 'event_day_of_week_num', 'event_time'], inplace=True)
+    
+    weekly_events = DbManager.find_records(vwWeeklyEvents, [vwWeeklyEvents.team_id == team_id])
 
     # Construct view
     # Top of view
@@ -288,37 +258,35 @@ def select_recurring_form_for_edit(team_id, user_id, client, logger):
         }
     ]
 
-    # Show next x number of events
-    for ao in results_df['ao_display_name'].unique():
-        # Header block
-        blocks.append(forms.make_header_row(ao))
-
-        # Create button blocks for each event for each AO
-        for _, row in results_df[results_df['ao_display_name'] == ao].iterrows():
-            blocks.append(
-                {
-                    "type":"section",
-                    "text":{
-                        "type":"mrkdwn",
-                        "text":f"{row['event_type']} {row['event_day_of_week']}s @ {row['event_time']}"
+    current_ao = ''
+    for event in weekly_events:
+        
+        if event.ao_display_name != current_ao:
+            if current_ao != '':
+                blocks.append({"type":"divider"})
+                
+            blocks.append(forms.make_section_header_row(event.ao_display_name))
+            current_ao = event.ao_display_name
+        
+        blocks.append(
+            {
+                "type":"section",
+                "text":{
+                    "type":"mrkdwn",
+                    "text":f"{event.event_type} {event.event_day_of_week}s @ {event.event_time}"
+                },
+                "accessory": {
+                    "type":"button",
+                    "text": {
+                        "type":"plain_text",
+                        "text":"Edit Event",
+                        "emoji":True
                     },
-                    "accessory": {
-                        "type":"button",
-                        "text": {
-                            "type":"plain_text",
-                            "text":"Edit Event",
-                            "emoji":True
-                        },
-                        "action_id":"edit_recurring_event_slot_select",
-                        "value":f"{row['ao_display_name']}|{row['event_day_of_week']}|{row['event_type']}|{row['event_time']}|{row['event_end_time']}|{row['ao_channel_id']}"
-                    }
+                    "action_id":actions.SELECT_SLOT_EDIT_RECURRING_EVENT_FORM,
+                    "value":f"{event.ao_display_name}|{event.event_day_of_week}|{event.event_type}|{event.event_time}|{event.event_end_time}|{event.ao_channel_id}"
                 }
-            )
-
-        # Divider block
-        blocks.append({
-            "type":"divider"
-        })
+            }
+        )
 
     # Cancel block
     blocks.append({
@@ -384,7 +352,7 @@ def select_recurring_form_for_delete(team_id, user_id, client, logger):
                     "type": "section",
                     "text": {
                         "type":"mrkdwn",
-                        "text":f"{event.ao_display_name} {event.event_day_of_week}s @ {event.event_time}"
+                        "text":f"{event.event_type} {event.event_day_of_week}s @ {event.event_time}"
                     },
                     "accessory": inputs.ActionButton(label = "Delete Event", action = actions.DELETE_RECURRING_SELECT_ACTION, value = str(event.id), style = "danger").as_form_field()
                 }
@@ -398,6 +366,266 @@ def select_recurring_form_for_delete(team_id, user_id, client, logger):
 
     print(blocks)
     # Publish view
+    try:
+        client.views_publish(
+            user_id=user_id,
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
+        
+def edit_recurring_form(team_id, user_id, client, logger, input_data):
+    selected_ao, selected_day, selected_event_type, selected_start_time, selected_end_time, selected_ao_id = str.split(input_data, '|')
+
+    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
+    ao_list = [ao.ao_display_name for ao in aos]
+    
+    ao_options = []
+    for option in ao_list:
+        new_option = {
+            "text": {
+                "type": "plain_text",
+                "text": option,
+                "emoji": True
+            },
+            "value": option
+        }
+        ao_options.append(new_option)
+    selected_ao_index = ao_list.index(selected_ao)
+
+    day_list = [
+        'Monday',
+        'Tuesday',
+        'Wednesday',
+        'Thursday',
+        'Friday',
+        'Saturday',
+        'Sunday'
+    ]
+    day_options = []
+    for option in day_list:
+        new_option = {
+            "text": {
+                "type": "plain_text",
+                "text": option,
+                "emoji": True
+            },
+            "value": option
+        }
+        day_options.append(new_option)
+    selected_day_index = day_list.index(selected_day)
+
+    event_type_list = ['Bootcamp', 'QSource', 'Custom']
+    event_type_options = []
+    for option in event_type_list:
+        new_option = {
+            "text": {
+                "type": "plain_text",
+                "text": option,
+                "emoji": True
+            },
+            "value": option
+        }
+        event_type_options.append(new_option)
+    try:
+        selected_event_type_index = event_type_list.index(selected_event_type)
+    except ValueError as e:
+        selected_event_type_index = -1
+
+    if selected_end_time is None or selected_end_time == 'None':
+        end_hour = int(selected_start_time[:2]) + 1
+        end_minute = selected_start_time[2:]
+        selected_end_time = f"{end_hour:02d}{end_minute}"
+
+    blocks = [
+        {
+            "type": "input",
+            "block_id": "event_type_select",
+            "element": {
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select an event type",
+                    "emoji": True
+                },
+                "options": event_type_options,
+                "action_id": "event_type_select_action",
+                "initial_option": event_type_options[selected_event_type_index]
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Event Type",
+                "emoji": True
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "event_type_custom",
+            "element": {
+                "type": "plain_text_input",
+                "action_id": "event_type_custom",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Custom Event Name"
+                },
+                "initial_value": selected_event_type
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "If Custom selected, please specify"
+            },
+            "optional": True
+        },
+        {
+            "type": "input",
+            "block_id": "ao_display_name_select",
+            "element": {
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select an AO",
+                    "emoji": True
+                },
+                "options": ao_options,
+                "action_id": "ao_display_name_select_action",
+                "initial_option": ao_options[selected_ao_index]
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "AO",
+                "emoji": True
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "event_day_of_week_select",
+            "element": {
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select a day",
+                    "emoji": True
+                },
+                "options": day_options,
+                "action_id": "event_day_of_week_select_action",
+                "initial_option": day_options[selected_day_index]
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Day of Week",
+                "emoji": True
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "event_start_time_select",
+            "element": {
+                "type": "timepicker",
+                "initial_time": selected_start_time[:2] + ':' + selected_start_time[2:],
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select time",
+                    "emoji": True
+                },
+                "action_id": "event_start_time_select"
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Event Start",
+                "emoji": True
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "event_end_time_select",
+            "element": {
+                "type": "timepicker",
+                "initial_time": selected_end_time[:2] + ':' + selected_end_time[2:],
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select time",
+                    "emoji": True
+                },
+                "action_id": "event_end_time_select"
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Event End",
+                "emoji": True
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "add_event_datepicker",
+            "element": {
+                "type": "datepicker",
+                "initial_date": date.today().strftime('%Y-%m-%d'),
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select date",
+                    "emoji": True
+                },
+                "action_id": "add_event_datepicker"
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Start Date",
+                "emoji": True
+            }
+        },
+        {
+            "type": "actions",
+            "block_id": "submit_cancel_buttons",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Submit",
+                        "emoji": True
+                    },
+                    "value": "submit",
+                    "action_id": actions.EDIT_RECURRING_EVENT_ACTION,
+                    "style": "primary"
+                },
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Cancel",
+                        "emoji": True
+                    },
+                    "value": "cancel",
+                    "action_id": "cancel_button_select",
+                    "style": "danger"
+                }
+            ]
+        },
+        {
+            "type": "context",
+            "elements": [
+                {
+                    "type": "mrkdwn",
+                    "text": "Please wait after hitting Submit, and do not hit it more than once"
+                }
+            ]
+        },
+        {
+            "type": "context",
+            "elements": [
+                {
+                    "type": "mrkdwn",
+                    "text": selected_ao_id + '|' + selected_day + '|' + selected_start_time
+                }
+            ]
+        }
+
+    ]
+
     try:
         client.views_publish(
             user_id=user_id,

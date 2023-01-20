@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from typing import TypeVar, List
 
 import os
-import mysql.connector
 from sqlalchemy import create_engine, pool, and_
 from sqlalchemy.orm import sessionmaker
 from contextlib import ContextDecorator
@@ -77,13 +76,31 @@ class DbManager:
       finally:
         session.commit()
         close_session(session)
-
-    def create_record(record: BaseClass) -> int:
+    
+    def update_records(cls: T, filters, fields):
       session = get_session()
       try:
-          session.add(record)
-          session.flush()
-          return record.get_id()
+        session.query(cls).filter(and_(*filters)).update(fields, synchronize_session='fetch')
+        session.flush()
+      finally:
+        session.commit()
+        close_session(session)
+
+    def create_record(record: BaseClass) -> BaseClass:
+      session = get_session()
+      try:
+        session.add(record)
+        session.flush()
+        return record
+      finally:
+        session.commit()
+        close_session(session)
+        
+    def create_records(records: List[BaseClass]):
+      session = get_session()
+      try:
+        session.add_all(records)
+        session.flush()
       finally:
         session.commit()
         close_session(session)
@@ -106,32 +123,4 @@ class DbManager:
         session.commit()
         close_session(session)
 
-# Construct class for connecting to the db
-# Takes team_id as an input, pulls schema name from paxminer.regions
-class my_connect(ContextDecorator):
-    def __init__(self, team_id):
-        self.conn = ''
-        self.team_id = team_id
-        self.db = ''
 
-    def __enter__(self):
-        self.conn = mysql.connector.connect(
-            host=os.environ[DATABASE_HOST],
-            user=os.environ[ADMIN_DATABASE_USER],
-            passwd=os.environ[ADMIN_DATABASE_PASSWORD],
-            database=os.environ[ADMIN_DATABASE_SCHEMA]
-        )
-
-        # sql_select = f'SELECT schema_name, user, password FROM paxminer.regions WHERE team_id = {self.team_id};'
-
-        # with self.conn.cursor() as mycursor:
-        #     mycursor.execute(sql_select)
-        #     db, user, password = mycursor.fetchone()
-        db = os.environ['ADMIN_DATABASE_SCHEMA']
-
-        self.db = db
-        return self
-
-    def __exit__(self, *exc):
-        self.conn.close()
-        return False

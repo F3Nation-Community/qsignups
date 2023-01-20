@@ -165,8 +165,12 @@ class SelectorOption:
   name: str
   value: str
 
-def as_selector_options(inputs: List[str]) -> List[SelectorOption]:
-  return [SelectorOption(name = x, value = x) for x in inputs]
+def as_selector_options(names: List[str], values: List[str] = []) -> List[SelectorOption]:
+  if values==[]:
+    selectors = [SelectorOption(name = x, value = x) for x in names]
+  else:
+    selectors = [SelectorOption(name = x, value = y) for x, y in zip(names, values)]
+  return selectors
 
 @dataclass
 class ActionSelector(BaseAction):

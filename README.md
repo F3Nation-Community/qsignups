@@ -19,46 +19,8 @@ Further instructions coming for administrators.
 
 ![Alt text](/screens/QSignups_Design_2022_06.PNG?raw=true "QSignups Design")
 
-## Project Status
+## Feature Requests / Roadmap
 
-The app is working and in use by several regions, but we have a lot more planned! I welcome all beta testers and co-developers! Hit me up if you'd like to help out [@Moneyball (F3 St. Charles)] on the Nation space, or feel free to submit pull requests.
-
-If you find bugs, you can reach out on Slack or (even better) add the issue to my github Issues log.
-
-### Working Features
-* AOs can be added and edited via the admin UI
-* Weekly beatdown schedules can be added to the calendar via the admin UI
-  * Single (non-recurring) events can also be added via the admin UI
-* Single events can be deleted
-* Users can take Q slots
-* Users can take themselves off Q slots and edit their events (time, special qualifiers like VQ)
-* Slack admins can also clearn slots and edit event for others
-* Automated creation of a weekly "Weinke" / schedule shown in the app home screen
-* Reminder messages to users about upcoming Qs
-* Conditional formatting of Weinke to highlight open slots, VQs, etc.
-* Support for other event types (QSource, Ruck Beatdowns, etc)
-* Optional weekly AO lineups sent to each AO slack channel
-
-### Feature Requests / Roadmap (link: [Issues](https://github.com/evanpetzoldt/qsignups-lambda/issues))
-* Google Calendar Integration - In Progress (Thanks @Rudy!)
-* More calendar management UI functionality:
-  * Delete recurring events
-  * Edit recurring events
-  * Delete AOs and associated future events
-* Switching to weinke images being posted to specific channel (created by QSignups), just a text-based schedule in QSignups
-  * May not end up doing this, Google Drive hosting should work going forward
-* Creation of monthly AO-specific weinkes, to be posted to AO channels at specified intervals and / or accessed via secondary menu
-* "Other" option for special event qualifiers with a free text input
-  * Addition of programmable region-specific list for commonly used selections?
-* Support for events at the same time on the same date at the same AO - will require a change to the db structure
-* Integration of slackblast
-* Integration of welcomebot
-* Q resources menu (links to Q101, exicon, helpful tips)
-  * Also beatdown wheel of fun 
-* Upcoming Qs on home screen - add an Edit button to each
-* Site Q - have a way to store these in the table (even support for multiple Site Qs per AO?)
-* Optional missing backblast alerts
-* Upcoming region events listed on QSignups home page
-* Under the hood - code reorgnization
-
-Any other ideas you have are welcomed! Feel free to add an Issue with the tag 'enhancement'.
+Any feedback and ideas you have for the app are welcomed! Please leave feature requests as an Issue with the tag 'enhancement'
+- [Issues / Feature Requests](https://github.com/evanpetzoldt/qsignups-lambda/issues)
+- [Development Board](https://github.com/users/evanpetzoldt/projects/1/views/1)
