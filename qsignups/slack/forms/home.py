@@ -1,4 +1,5 @@
-from datetime import timedelta, date, datetime, traceback
+from datetime import timedelta, date, datetime
+import traceback
 import pytz
 from qsignups.database import DbManager
 from qsignups.database.orm import AO, Region

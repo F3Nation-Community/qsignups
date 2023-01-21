@@ -51,7 +51,8 @@ class DbManager:
       session = get_session()
       try:
         x = session.query(cls).filter(cls.get_id() == id).first()
-        session.expunge(x)
+        if x:
+          session.expunge(x)
         return x
       finally:
         session.rollback()
@@ -91,10 +92,11 @@ class DbManager:
       try:
         session.add(record)
         session.flush()
-        return record
+        session.expunge(record)
       finally:
         session.commit()
         close_session(session)
+        return record
         
     def create_records(records: List[BaseClass]):
       session = get_session()
