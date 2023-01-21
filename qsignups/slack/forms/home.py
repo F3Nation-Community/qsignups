@@ -1,4 +1,4 @@
-from datetime import timedelta, date, datetime
+from datetime import timedelta, date, datetime, traceback
 import pytz
 from qsignups.database import DbManager
 from qsignups.database.orm import AO, Region
@@ -68,6 +68,7 @@ def refresh(client, user_id, logger, top_message, team_id, context):
         print(sMsg)
 
     except Exception as e:
+        traceback.print_exc()
         logger.error(f"Error pulling user db info: {e}")
 
     # Extend top message with upcoming qs list
@@ -197,4 +198,4 @@ def refresh(client, user_id, logger, top_message, team_id, context):
         )
     except Exception as e:
         logger.error(f"Error publishing home tab: {e}")
-        print(e)
+        traceback.print_exc()
