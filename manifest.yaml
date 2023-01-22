@@ -28,10 +28,6 @@ features:
       description: Test saying hello
       usage_hint: /hello open mailbox
       url: __HOSTNAME__/slack/events
-    - command: /google
-      description: Interact with Google
-      usage_hint: /google [list|connected|connect|disconnect]
-      url: __HOSTNAME__/slack/events
     - command: /schedule
       description: Query for upcoming schedule
       usage_hint: /schedule tomorrow

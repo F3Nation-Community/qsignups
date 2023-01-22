@@ -7,9 +7,10 @@ from qsignups.database.orm.views import vwMasterEvents
 from qsignups import constants
 from qsignups.slack import actions, forms, inputs
 from qsignups import google
-from qsignups.google import commands
+from qsignups.google import authenticate
+from qsignups.utilities import User
 
-def refresh(client, user_id, logger, top_message, team_id, context):
+def refresh(client, user: User, logger, top_message, team_id, context):
     sMsg = ""
     current_week_weinke_url = None
     ao_list = None
@@ -24,7 +25,7 @@ def refresh(client, user_id, logger, top_message, team_id, context):
         # Event pulls
         upcoming_qs = DbManager.find_records(vwMasterEvents, [
             vwMasterEvents.team_id == team_id,
-            vwMasterEvents.q_pax_id == user_id,
+            vwMasterEvents.q_pax_id == user.id,
             vwMasterEvents.event_date > datetime.now(tz=pytz.timezone('US/Central'))
         ])
         upcoming_events = DbManager.find_records(vwMasterEvents, [
@@ -174,7 +175,7 @@ def refresh(client, user_id, logger, top_message, team_id, context):
 
     # Optionally add admin button
     user_info_dict = client.users_info(
-        user=user_id
+        user=user.id
     )
     if user_info_dict['user']['is_admin']:
         button = forms.make_action_button_row([inputs.ActionButton("Manage Region Calendar", action = actions.MANAGE_SCHEDULE_ACTION)])
@@ -182,7 +183,7 @@ def refresh(client, user_id, logger, top_message, team_id, context):
         blocks.append(forms.make_action_button_row([inputs.GENERAL_SETTINGS]))
 
     if google.is_enabled():
-        if commands.is_connected(team_id):
+        if authenticate.is_connected(team_id):
             blocks.append(forms.make_action_button_row([inputs.GOOGLE_DISCONNECT]))
         else:
             blocks.append(forms.make_action_button_row([inputs.GOOGLE_CONNECT]))
@@ -191,7 +192,7 @@ def refresh(client, user_id, logger, top_message, team_id, context):
     try:
         logger.debug(blocks)
         client.views_publish(
-            user_id=user_id,
+            user_id=user.id,
             view={
                 "type": "home",
                 "blocks":blocks

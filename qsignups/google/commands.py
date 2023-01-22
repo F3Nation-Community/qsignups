@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import List
-from . import authenticate, service
-from . import GoogleCalendar
+from . import authenticate, calendar
 
 @dataclass
 class GoogleResponse:
@@ -22,7 +21,7 @@ class GoogleCommand:
 
 class ListCommand(GoogleCommand):
   def execute(self, context, respond):
-    calendars = service.get_calendars(self.team_id)
+    calendars = calendar.get_calendars(self.team_id)
     entries = [x['summary'] for x in calendars['items']]
     response = GoogleResponse(
       success = True,
@@ -84,15 +83,3 @@ def get_command(action, team_id):
 
 def execute_command(action, team_id, context = None, respond = None) -> GoogleResponse:
   return get_command(action, team_id).execute(context, respond)
-
-def is_connected(team_id):
-  return execute_command(CONNECTED_COMMAND, team_id).context
-
-def is_enabled(team_id):
-  return execute_command(CONNECTED_COMMAND, team_id).context
-
-def get_calendars(team_id) -> List[GoogleCalendar]:
-  return service.get_calendars(team_id)
-
-def schedule_event(team_id, user, region, event):
-  return service.schedule_event(team_id, user, region, event)

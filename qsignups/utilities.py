@@ -21,6 +21,7 @@ def list_to_dict(l, fn):
 
 @dataclass
 class User:
+  id: str
   name: str
   email: str
 
@@ -31,12 +32,9 @@ def get_user(user_id, client) -> User:
               safe_get(user_info_dict, 'user', 'profile', 'real_name') or None
   if user_name:
     return User(
+      id = user_id,
       name = user_name,
       email = safe_get(user_info_dict, 'user', 'profile', 'email')
     )
   else:
     return None
-
-def get_user_name(user_id, client) -> str:
-  return get_user(user_id, client).name
-
