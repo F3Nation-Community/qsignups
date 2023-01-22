@@ -3,7 +3,19 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from qsignups.database import DbManager
-from qsignups.database.orm import Master, AO
+from qsignups.database.orm import Master, AO, Region, SignupFeature, Feature
+
+def feature_enabled(team_id, feature: SignupFeature) -> bool:
+  region: Region = DbManager.get_record(Region, team_id)
+  if region:
+    features = DbManager.find_records(Feature, filters = [
+      Feature.region_id == region.id,
+      Feature.enabled == True,
+      Feature.feature == f"{feature}"
+    ])
+    return len(features) == 1
+  else:
+    return False
 
 def find_ao(team_id, ao_channel_id = None, ao_display_name = None) -> AO:
   aos = []

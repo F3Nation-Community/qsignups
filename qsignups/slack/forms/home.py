@@ -15,6 +15,8 @@ def refresh(client, user: User, logger, top_message, team_id, context):
     current_week_weinke_url = None
     ao_list = None
 
+    upcoming_qs = []
+
     try:
         # list of AOs for dropdown
         ao_list = DbManager.find_records(AO, [
@@ -182,7 +184,7 @@ def refresh(client, user: User, logger, top_message, team_id, context):
         blocks.append(button)
         blocks.append(forms.make_action_button_row([inputs.GENERAL_SETTINGS]))
 
-    if google.is_enabled():
+    if google.is_available(team_id):
         if authenticate.is_connected(team_id):
             blocks.append(forms.make_action_button_row([inputs.GOOGLE_DISCONNECT]))
         else:

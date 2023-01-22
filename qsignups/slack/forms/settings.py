@@ -30,7 +30,7 @@ def general_form(team_id, user_id, client, logger):
         inputs.Q_REMINDER_RADIO.as_form_field(initial_value = initial_q_reminder),
         inputs.AO_REMINDER_RADIO.as_form_field(initial_value = initial_ao_reminder)
     ]
-    if google.is_enabled() and authenticate.is_connected(team_id):
+    if google.is_available(team_id) and authenticate.is_connected(team_id):
         input = inputs.GOOGLE_CALENDAR_SELECT
         calendars = calendar.get_calendars(team_id)
         input.options = [ inputs.SelectorOption(name = x.name, value = x.id) for x in calendars]
