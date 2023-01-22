@@ -210,6 +210,49 @@ class ActionSelector(BaseAction):
               },
               "value": option.value
             }
+    
+@dataclass
+class ActionSelectorSection(BaseAction):
+  options: List[SelectorOption]
+  placeholder: str = None
+
+  def as_form_field(self, initial_value: str = None):
+    if not self.options:
+      self.options = as_selector_options(["Default"])
+
+    option_elements = [self.__make_option(o) for o in self.options]
+    j = {
+          "type": "section",
+          "block_id": self.action,
+          "text": self.make_label_field(),
+          "accessory": {
+              "type": "static_select",
+              "placeholder": self.make_label_field(self.placeholder),
+              "options": option_elements,
+              "action_id": self.action
+          }
+      }
+    if initial_value:
+      initial_option = next((x for x in option_elements if x["value"] == initial_value), None )
+      if initial_option:
+        j['accessory']['initial_option'] = initial_option
+    return j
+
+  def get_selected_value(self, input_data):
+    return {
+      'label': utilities.safe_get(input_data, 'selected_option', 'text', 'text'), 
+      'value': utilities.safe_get(input_data, 'selected_option', 'value')
+    }
+
+  def __make_option(self, option: SelectorOption):
+    return  {
+              "text": {
+                  "type": "plain_text",
+                  "text": option.name,
+                  "emoji": True
+              },
+              "value": option.value
+            }
 
 Q_REMINDER_ENABLED = ActionRadioButton(label = "Enable Q reminders", action = None, value = "enabled")
 Q_REMINDER_DISABLED = ActionRadioButton(label = "Disable Q reminders", action = None, value = "disabled")

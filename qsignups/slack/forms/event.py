@@ -137,46 +137,16 @@ def edit_single_form(team_id, user_id, client, logger):
 
     # list of AOs for dropdown
     aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
-    # ao_list = [ao.ao_display_name for ao in aos]
-    # ao_id_list = [ao.ao_channel_id for ao in aos]
-
-    # This needs to be a true action block, not an input block
-    # ao_selector = inputs.ActionSelector(
-    #     label = "Please select an AO to edit:",
-    #     action = "edit_event_ao_select",
-    #     options = inputs.as_selector_options(ao_list, ao_id_list))
-
-    ao_options = []
-    for ao in aos:
-        new_option = {
-            "text": {
-                "type": "plain_text",
-                "text": ao.ao_display_name,
-                "emoji": True
-            },
-            "value": ao.ao_channel_id
-        }
-        ao_options.append(new_option)
-
-    # Build blocks
     blocks = [
-        {
-            "type": "section",
-            "block_id": "ao_select_block",
-            "text": {
-                "type": "mrkdwn",
-                "text": "Please select an AO to edit:"
-            },
-            "accessory": {
-                "action_id": "edit_event_ao_select",
-                "type": "static_select",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Select an AO"
-            },
-            "options": ao_options
-            }
-        }
+        inputs.ActionSelectorSection(
+            label = "Please select an AO to delete an event from:",
+            action = actions.EDIT_SINGLE_AO_SELECT_ACTION,
+            options = inputs.as_selector_options(
+                names = [ao.ao_display_name for ao in aos],
+                values = [ao.ao_channel_id for ao in aos]
+            ),
+            placeholder = "Select an AO"
+        ).as_form_field()
     ]
 
     # Publish view
@@ -194,40 +164,17 @@ def edit_single_form(team_id, user_id, client, logger):
 
 def delete_single_form(team_id, user_id, client, logger):
     
-    # list of AOs for dropdown
     aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
-
-    ao_options = []
-    for ao in aos:
-        new_option = {
-            "text": {
-                "type": "plain_text",
-                "text": ao.ao_display_name,
-                "emoji": True
-            },
-            "value": ao.ao_channel_id
-        }
-        ao_options.append(new_option)
-
-    # Build blocks
     blocks = [
-        {
-            "type": "section",
-            "block_id": "delete_single_event_ao_select",
-            "text": {
-                "type": "mrkdwn",
-                "text": "Please select an AO to delete an event from:"
-            },
-            "accessory": {
-                "action_id": "delete_single_event_ao_select",
-                "type": "static_select",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Select an AO"
-            },
-            "options": ao_options
-            }
-        }
+        inputs.ActionSelectorSection(
+            label = "Please select an AO to delete an event from:",
+            action = actions.DELETE_SINGLE_EVENT_AO_SELECT_ACTION,
+            options = inputs.as_selector_options(
+                names = [ao.ao_display_name for ao in aos],
+                values = [ao.ao_channel_id for ao in aos]
+            ),
+            placeholder = "Select an AO"
+        ).as_form_field()
     ]
 
     # Publish view

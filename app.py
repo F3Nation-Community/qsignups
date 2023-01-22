@@ -245,7 +245,7 @@ def handle_edit_recurring_event(ack, body, client, logger, context):
     response = weekly_handler.edit(client, user_id, team_id, logger, input_data, input_data2)
     home.refresh(client, user_id, logger, response.message, team_id, context)
 
-@app.action("delete_single_event_ao_select")
+@app.action(actions.DELETE_SINGLE_EVENT_AO_SELECT_ACTION)
 def handle_delete_single_event_ao_select(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -434,7 +434,7 @@ def handle_edit_ao_select(ack, body, client, logger, context):
             logger.error(f"Error publishing home tab: {e}")
             print(e)
 
-@app.action("edit_event_ao_select")
+@app.action(actions.EDIT_SINGLE_AO_SELECT_ACTION)
 def handle_edit_event_ao_select(ack, body, client, logger, context):
     ack()
     logger.info(body)
