@@ -31,9 +31,9 @@ def general_form(team_id, user_id, client, logger):
         inputs.AO_REMINDER_RADIO.as_form_field(initial_value = initial_ao_reminder)
     ]
     if google.is_available(team_id) and authenticate.is_connected(team_id):
-        input = inputs.GOOGLE_CALENDAR_SELECT
         calendars = calendar.get_calendars(team_id)
-        input.options = [ inputs.SelectorOption(name = x.name, value = x.id) for x in calendars]
+        options = [ inputs.SelectorOption(name = x.name, value = x.id) for x in calendars]
+        input = inputs.GOOGLE_CALENDAR_SELECT.with_options(options)
         blocks.append(input.as_form_field(initial_value = region.google_calendar_id))
 
         blocks.append(inputs.TIMEZONE_SELECT.as_form_field(initial_value = region.timezone))

@@ -246,8 +246,7 @@ def handle_edit_recurring_event(ack, body, client, logger, context):
     user = get_user(user_id, client)
     team_id = context["team_id"]
     input_data = body['view']['state']['values']
-    input_data2 = body['view']['blocks'][-1]['elements'][0]['text']
-    response = weekly_handler.edit(client, user_id, team_id, logger, input_data, input_data2)
+    response = weekly_handler.edit(client, user_id, team_id, logger, input_data)
     home.refresh(client, user, logger, response.message, team_id, context)
 
 @app.action("delete_single_event_ao_select")

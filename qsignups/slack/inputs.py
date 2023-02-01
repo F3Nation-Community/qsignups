@@ -27,7 +27,7 @@ class ActionButton(BaseAction):
 
   def as_form_field(self, initial_value = None):
     j = {
-      "type":"button",
+      "type": "button",
       "text": self.make_label_field(),
       "action_id": self.action,
       "value": self.value or self.label
@@ -78,6 +78,10 @@ class ActionDateSelect(BaseAction):
       j["element"]["initial_date"] = initial_value
 
     return j
+
+  def get_selected_value(self, input_data):
+    return utilities.safe_get(input_data, self.action, self.action, "selected_date")
+
 @dataclass
 class ActionTimeSelect(BaseAction):
   optional: bool = True
@@ -101,6 +105,9 @@ class ActionTimeSelect(BaseAction):
     if initial_value:
       j["element"]["initial_time"] = initial_value
     return j
+
+  def get_selected_value(self, input_data):
+    return utilities.safe_get(input_data, self.action, self.action, "selected_time")
 
 @dataclass
 class ActionChannelInput(BaseAction):
@@ -175,6 +182,9 @@ def as_selector_options(names: List[str], values: List[str] = []) -> List[Select
 @dataclass
 class ActionSelector(BaseAction):
   options: List[SelectorOption]
+
+  def with_options(self, options: List[SelectorOption]):
+    return ActionSelector(self.label, self.action, options)
 
   def as_form_field(self, initial_value: str = None):
     if not self.options:
@@ -280,6 +290,7 @@ WEEKDAY_SELECTOR = ActionSelector(
             'Saturday',
             'Sunday'
         ]))
+
 START_DATE_SELECTOR = ActionDateSelect(label = "Select Start Date", action = "add_event_datepicker")
 EVENT_DATE_SELECTOR = ActionDateSelect(label = "Select Event Date", action = "add_event_datepicker")
 START_TIME_SELECTOR = ActionTimeSelect(label = "Select Start Time", action = "event_start_time_select", optional = True)
@@ -289,6 +300,11 @@ EVENT_TYPE_SELECTOR = ActionSelector(
   label = "Select an event type",
   action = "event_type_select_action",
   options = as_selector_options(['Bootcamp', 'QSource', 'Custom']))
+
+AO_SELECTOR = ActionSelector(
+  label = "Select an AO",
+  action = "ao_display_name_select_action",
+  options = [])
 
 TIMEZONE_SELECT = ActionSelector(
   label = "Select your Timezone",
