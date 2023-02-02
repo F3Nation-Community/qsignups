@@ -4,6 +4,7 @@ from qsignups.database.orm.views import vwWeeklyEvents
 from . import UpdateResponse
 import ast
 from datetime import date, datetime, timedelta
+import pytz
 from sqlalchemy import func
 from qsignups.slack import inputs
 from qsignups.utilities import safe_get
@@ -34,15 +35,17 @@ def delete(client, user_id, team_id, logger, input_data) -> UpdateResponse:
 def edit(client, user_id, team_id, logger, body) -> UpdateResponse:
 
     input_data = body['view']['state']['values']
-    event_id = body['view']['blocks'][-1]['elements'][0]['text']
+    event_id = int(body['view']['blocks'][-1]['elements'][0]['text'])
 
     # Gather inputs from form
     ao_display_name = inputs.AO_SELECTOR.get_selected_value(input_data)
     event_day_of_week = inputs.WEEKDAY_SELECTOR.get_selected_value(input_data)
-    event_time = inputs.START_TIME_SELECTOR.get_selected_value(input_data)
+    event_time = inputs.START_TIME_SELECTOR.get_selected_value(input_data).replace(":", "")
     event_end_time = inputs.END_TIME_SELECTOR.get_selected_value(input_data)
+    if event_end_time:
+        event_end_time = event_end_time.replace(":", "")
     event_type = inputs.EVENT_TYPE_SELECTOR.get_selected_value(input_data)
-    starting_date = inputs.START_DATE_SELECTOR.get_selected_value(input_data)
+    starting_date = inputs.START_DATE_SELECTOR.get_selected_value(input_data) or datetime.now(tz=pytz.timezone('US/Central'))
 
     event_recurring = True
 

@@ -251,7 +251,7 @@ def select_recurring_form_for_edit(team_id, user_id, client, logger):
         button = inputs.ActionButton(
             "Edit Event",
             actions.SELECT_SLOT_EDIT_RECURRING_EVENT_FORM,
-            value = event.id)
+            value = str(event.id))
         blocks.append(
           forms.make_header_row(
             f"{event.event_type} {event.event_day_of_week}s @ {event.event_time}",
@@ -326,22 +326,22 @@ def select_recurring_form_for_delete(team_id, user_id, client, logger):
         print(e)
 
 def edit_recurring_form(team_id, user_id, client, logger, input_data):
-    event_id = input_data
+    event_id = int(input_data)
     event: vwWeeklyEvents = DbManager.find_records(vwWeeklyEvents, [vwWeeklyEvents.id == event_id])[0]
 
     aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
     ao_list = [ao.ao_display_name for ao in aos]
 
-    event_start_time = event.event_time[:2] + ':' + event.event_time[2:],
+    event_start_time = event.event_time[:2] + ':' + event.event_time[2:]
     if event.event_end_time:
-        event_end_time = event.event_end_time[:2] + ':' + event.event_end_time[2:],
+        event_end_time = event.event_end_time[:2] + ':' + event.event_end_time[2:]
     else:
         event_end_time = None
 
     selector_input: inputs.ActionSelector = inputs.AO_SELECTOR.with_options(inputs.as_selector_options(ao_list))
     blocks = [
         inputs.EVENT_TYPE_SELECTOR.as_form_field(initial_value = event.event_type),
-        selector_input,
+        selector_input.as_form_field(initial_value = event.ao_display_name),
         inputs.WEEKDAY_SELECTOR.as_form_field(initial_value = event.event_day_of_week),
         inputs.START_DATE_SELECTOR.as_form_field(),
         inputs.START_TIME_SELECTOR.as_form_field(initial_value = event_start_time),
@@ -351,7 +351,7 @@ def edit_recurring_form(team_id, user_id, client, logger, input_data):
             inputs.CANCEL_BUTTON
         ]),
         forms.make_header_row("Please wait after hitting Submit, and do not hit it more than once"),
-        forms.make_context_row(event_id)
+        forms.make_context_row(str(event_id))
     ]
 
     try:
