@@ -121,46 +121,18 @@ def edit_single_form(team_id, user_id, client, logger):
 
     # list of AOs for dropdown
     aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
-    # ao_list = [ao.ao_display_name for ao in aos]
-    # ao_id_list = [ao.ao_channel_id for ao in aos]
-
-    # This needs to be a true action block, not an input block
-    # ao_selector = inputs.ActionSelector(
-    #     label = "Please select an AO to edit:",
-    #     action = "edit_event_ao_select",
-    #     options = inputs.as_selector_options(ao_list, ao_id_list))
-
-    ao_options = []
-    for ao in aos:
-        new_option = {
-            "text": {
-                "type": "plain_text",
-                "text": ao.ao_display_name,
-                "emoji": True
-            },
-            "value": ao.ao_channel_id
-        }
-        ao_options.append(new_option)
-
-    # Build blocks
+    ao_list = [ao.ao_display_name for ao in aos]
+    ao_id_list = [ao.ao_channel_id for ao in aos]
+    
     blocks = [
-        {
-            "type": "section",
-            "block_id": "ao_select_block",
-            "text": {
-                "type": "mrkdwn",
-                "text": "Please select an AO to edit:"
-            },
-            "accessory": {
-                "action_id": "edit_event_ao_select",
-                "type": "static_select",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Select an AO"
-            },
-            "options": ao_options
-            }
-        }
+        inputs.SectionBlock(
+            label = "Please select an AO to edit:",
+            action = actions.EDIT_SINGLE_EVENT_AO_SELECT,
+            element = inputs.SelectorElement(
+                placeholder = "Select an AO",
+                options = inputs.as_selector_options(ao_list, ao_id_list)
+            )
+        ).as_form_field()
     ]
 
     # Publish view
@@ -227,9 +199,14 @@ def delete_single_form(team_id, user_id, client, logger):
         logger.error(f"Error publishing home tab: {e}")
         print(e)
 
-def select_recurring_form_for_edit(team_id, user_id, client, logger):
+def select_recurring_form_for_edit(team_id, user_id, client, logger, input_data):
 
-    weekly_events: list[vwWeeklyEvents] = DbManager.find_records(vwWeeklyEvents, [vwWeeklyEvents.team_id == team_id])
+    ao_channel_id = inputs.SECTION_SELECTOR.get_selected_value(input_data)
+
+    weekly_events: list[vwWeeklyEvents] = DbManager.find_records(vwWeeklyEvents, [
+        vwWeeklyEvents.team_id == team_id, 
+        vwWeeklyEvents.ao_channel_id == ao_channel_id
+    ])
 
     # Construct view
     # Top of view
@@ -354,6 +331,33 @@ def edit_recurring_form(team_id, user_id, client, logger, input_data):
         forms.make_context_row(str(event_id))
     ]
 
+    try:
+        client.views_publish(
+            user_id=user_id,
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
+
+def make_ao_section_selector(team_id, user_id, client, logger, label, action):
+    # list of AOs for dropdown
+    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
+    ao_list = [ao.ao_display_name for ao in aos]
+    ao_id_list = [ao.ao_channel_id for ao in aos]
+    
+    blocks = [inputs.SectionBlock(
+        label=label,
+        action=action,
+        element=inputs.SelectorElement(
+            placeholder="Select an AO",
+            options=inputs.as_selector_options(ao_list, ao_id_list)
+        )
+    ).as_form_field()]
+    
     try:
         client.views_publish(
             user_id=user_id,

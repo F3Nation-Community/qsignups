@@ -125,7 +125,7 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
         forms.make_header_row("Choose an option to manage your AOs:"),
         forms.make_action_button_row([inputs.ADD_AO_FORM, inputs.EDIT_AO_FORM]),
         forms.make_header_row("Choose an option to manage your Recurring Events:"),
-        forms.make_action_button_row([inputs.ADD_RECURRING_EVENT_FORM, inputs.SELECT_RECURRING_EVENT_FORM, inputs.DELETE_RECURRING_EVENT_FORM]),
+        forms.make_action_button_row([inputs.ADD_RECURRING_EVENT_FORM, inputs.EDIT_RECURRING_EVENT_FORM, inputs.DELETE_RECURRING_EVENT_FORM]),
         forms.make_header_row("Choose an option to manage your Single Events:"),
         forms.make_action_button_row([inputs.ADD_SINGLE_EVENT_FORM, inputs.EDIT_SINGLE_EVENT_FORM, inputs.DELETE_SINGLE_EVENT_FORM]),
         forms.make_header_row("Return to the Home Page:"),
@@ -193,15 +193,32 @@ def handle_add_event_form(ack, body, client, logger, context):
     team_id = context["team_id"]
     event.add_recurring_form(team_id, user_id, client, logger)
 
-@app.action(inputs.SELECT_RECURRING_EVENT_FORM.action)
+@app.action(inputs.EDIT_RECURRING_EVENT_FORM.action)
 def handle_edit_event_form(ack, body, client, logger, context):
     ack()
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    event.select_recurring_form_for_edit(team_id, user_id, client, logger)
+    event.make_ao_section_selector(team_id, user_id, client, logger, label="Please select an AO to edit:", action=actions.EDIT_RECURRING_EVENT_AO_SELECT)
+    
+@app.action(actions.EDIT_RECURRING_EVENT_AO_SELECT)
+def handle_edit_event_form(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    input_data = body
+    event.select_recurring_form_for_edit(team_id, user_id, client, logger, input_data)
 
 @app.action(inputs.DELETE_RECURRING_EVENT_FORM.action)
+def handle_edit_event_form(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    event.make_ao_section_selector(team_id, user_id, client, logger, label="Please select an AO to edit:", action=actions.DELETE_RECURRING_EVENT_AO_SELECT)
+
+@app.action(actions.DELETE_RECURRING_EVENT_AO_SELECT)
 def handle_delete_single_event_form(ack, body, client, logger, context):
     ack()
     logger.info(body)
@@ -440,14 +457,13 @@ def handle_edit_ao_select(ack, body, client, logger, context):
             logger.error(f"Error publishing home tab: {e}")
             print(e)
 
-@app.action("edit_event_ao_select")
+@app.action(actions.EDIT_SINGLE_EVENT_AO_SELECT)
 def handle_edit_event_ao_select(ack, body, client, logger, context):
     ack()
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    ao_display_name = body['actions'][0]['selected_option']['text']['text']
-    ao_channel_id = body['actions'][0]['selected_option']['value']
+    ao_channel_id, ao_display_name = inputs.SECTION_SELECTOR.get_selected_value(input_data=body, text_too=True)
 
     events = DbManager.find_records(vwMasterEvents, [
         vwMasterEvents.team_id == team_id,
