@@ -166,7 +166,7 @@ def refresh(client, user: User, logger, top_message, team_id, context):
             "type": "section",
             "text": {
                 "type": "mrkdwn",
-                "text": sMsg
+                "text": sMsg[:3000]
             }
         }
         blocks.append(upcoming_schedule_block)

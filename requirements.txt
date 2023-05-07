@@ -3,7 +3,7 @@ slack_bolt
 datetime
 pymysql
 pytz
-SQLAlchemy
+SQLAlchemy==1.4.15
 google-auth
 google-auth-oauthlib
 google-api-python-client
