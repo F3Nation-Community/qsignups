@@ -253,9 +253,9 @@ def select_recurring_form_for_edit(team_id, user_id, client, logger, input_data)
         logger.error(f"Error publishing home tab: {e}")
         print(e)
 
-def select_recurring_form_for_delete(team_id, user_id, client, logger):
-
-    events = DbManager.find_records(vwWeeklyEvents, [ vwWeeklyEvents.team_id == team_id])
+def select_recurring_form_for_delete(team_id, user_id, client, logger, input_data):
+    ao_channel_id = inputs.SECTION_SELECTOR.get_selected_value(input_data)
+    events = DbManager.find_records(vwWeeklyEvents, [ vwWeeklyEvents.team_id == team_id, vwWeeklyEvents.ao_channel_id == ao_channel_id])
 
     # Sort results_df
     day_of_week_map = {'Sunday':0, 'Monday':1, 'Tuesday':2, 'Wednesday':3, 'Thursday':4, 'Friday':5, 'Saturday':6}

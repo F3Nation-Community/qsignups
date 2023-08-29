@@ -219,7 +219,7 @@ def handle_edit_event_form(ack, body, client, logger, context):
     event.select_recurring_form_for_edit(team_id, user_id, client, logger, input_data)
 
 @app.action(inputs.DELETE_RECURRING_EVENT_FORM.action)
-def handle_edit_event_form(ack, body, client, logger, context):
+def handle_delete_event_form(ack, body, client, logger, context):
     ack()
     logger.info(body)
     user_id = context["user_id"]
@@ -232,7 +232,8 @@ def handle_delete_single_event_form(ack, body, client, logger, context):
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    event.select_recurring_form_for_delete(team_id, user_id, client, logger)
+    input_data = body
+    event.select_recurring_form_for_delete(team_id, user_id, client, logger, input_data)
 
 @app.action(inputs.GENERAL_SETTINGS.action)
 def handle_general_settings_form(ack, body, client, logger, context):
