@@ -27,7 +27,7 @@ class ActionButton(BaseAction):
 
   def as_form_field(self, initial_value = None):
     j = {
-      "type":"button",
+      "type": "button",
       "text": self.make_label_field(),
       "action_id": self.action,
       "value": self.value or self.label
@@ -78,6 +78,10 @@ class ActionDateSelect(BaseAction):
       j["element"]["initial_date"] = initial_value
 
     return j
+
+  def get_selected_value(self, input_data):
+    return utilities.safe_get(input_data, self.action, self.action, "selected_date")
+
 @dataclass
 class ActionTimeSelect(BaseAction):
   optional: bool = True
@@ -101,6 +105,9 @@ class ActionTimeSelect(BaseAction):
     if initial_value:
       j["element"]["initial_time"] = initial_value
     return j
+
+  def get_selected_value(self, input_data):
+    return utilities.safe_get(input_data, self.action, self.action, "selected_time")
 
 @dataclass
 class ActionChannelInput(BaseAction):
@@ -175,6 +182,9 @@ def as_selector_options(names: List[str], values: List[str] = []) -> List[Select
 @dataclass
 class ActionSelector(BaseAction):
   options: List[SelectorOption]
+
+  def with_options(self, options: List[SelectorOption]):
+    return ActionSelector(self.label, self.action, options)
 
   def as_form_field(self, initial_value: str = None):
     if not self.options:
@@ -259,6 +269,7 @@ EDIT_SINGLE_EVENT_FORM: ActionButton = ActionButton(label = 'Edit a single event
 DELETE_SINGLE_EVENT_FORM: ActionButton = ActionButton(label = 'Delete a single event', action = "delete_single_event_form")
 
 ADD_RECURRING_EVENT_FORM: ActionButton = ActionButton(label = 'Add a recurring event', action = "add_recurring_event_form")
+EDIT_RECURRING_EVENT_FORM: ActionButton = ActionButton(label = 'Edit a recurring event', action = "edit_recurring_event_form")
 SELECT_RECURRING_EVENT_FORM: ActionButton = ActionButton(label = 'Edit a recurring event', action = "edit_recurring_event_form")
 DELETE_RECURRING_EVENT_FORM: ActionButton = ActionButton(label = 'Delete a recurring event', action = "delete_recurring_event_form")
 
@@ -280,6 +291,7 @@ WEEKDAY_SELECTOR = ActionSelector(
             'Saturday',
             'Sunday'
         ]))
+
 START_DATE_SELECTOR = ActionDateSelect(label = "Select Start Date", action = "add_event_datepicker")
 EVENT_DATE_SELECTOR = ActionDateSelect(label = "Select Event Date", action = "add_event_datepicker")
 START_TIME_SELECTOR = ActionTimeSelect(label = "Select Start Time", action = "event_start_time_select", optional = True)
@@ -289,6 +301,11 @@ EVENT_TYPE_SELECTOR = ActionSelector(
   label = "Select an event type",
   action = "event_type_select_action",
   options = as_selector_options(['Bootcamp', 'QSource', 'Custom']))
+
+AO_SELECTOR = ActionSelector(
+  label = "Select an AO",
+  action = "ao_display_name_select_action",
+  options = [])
 
 TIMEZONE_SELECT = ActionSelector(
   label = "Select your Timezone",
@@ -305,3 +322,173 @@ TIMEZONE_SELECT = ActionSelector(
     'Pacific/Honolulu',
   ])
 )
+
+@dataclass
+class BaseBlock:
+  label: str
+  action: str
+  label_style: str = "plain_text"
+
+  def make_label_field(self, text = None):
+    if self.label_style == "plain_text":
+      return {
+        "type": "plain_text",
+        "text": text or self.label,
+        "emoji":True
+      }
+    elif self.label_style == "mrkdwn":
+      return {
+        "type": "mrkdwn",
+        "text": text or self.label
+      }
+
+  def as_form_field(self, initial_value = None):
+    raise Exception("Not Implemented")
+
+@dataclass
+class BaseElement():
+  placeholder: str = None
+  initial: str = None
+  
+  def make_placeholder_field(self):
+    return {
+      "placeholder": {
+        "type": "plain_text",
+        "text": self.placeholder,
+        "emoji": True
+      }
+    }
+  
+  def get_selected_value():
+    return "Not yet implemented"
+
+@dataclass
+class InputBlock(BaseBlock):
+  optional: bool = True
+  element: BaseElement = None
+
+  def get_selected_value(self, input_data):
+    # return utilities.safe_get(input_data, self.action, self.action, "value")
+    return self.element.get_selected_value(input_data, self.action)
+
+  def as_form_field(self):
+    block = {
+      "type": "input",
+      "block_id": self.action,
+      "optional": self.optional,
+      "label": self.make_label_field()
+    }
+    block.update({"element": self.element.as_form_field(action=self.action)})
+    return block
+    
+@dataclass
+class SectionBlock(BaseBlock):
+  element: BaseElement = None
+
+  def get_selected_value(self, input_data, **kwargs):
+    # return utilities.safe_get(input_data, self.action, self.action, "value")
+    return self.element.get_selected_value(input_data, **kwargs)
+
+  def as_form_field(self):
+    block = {
+      "type": "section",
+      "block_id": self.action,
+      "text": self.make_label_field()
+    }
+    block.update({"accessory": self.element.as_form_field(action=self.action)})
+    return block
+
+@dataclass
+class ButtonElement(BaseAction):
+  style: str = None
+  value: str = None
+  confirm: object = None
+
+  def as_form_field(self):
+    j = {
+      "type": "button",
+      "text": self.make_label_field(),
+      "action_id": self.action,
+      "value": self.value or self.label
+    }
+    if self.style:
+      j['style'] = self.style
+    if self.confirm:
+      j['confirm'] = self.confirm
+    return j
+
+@dataclass
+class SelectorElement(BaseElement):
+  options: List[SelectorOption] = None
+
+  # def with_options(self, options: List[SelectorOption]):
+  #   return SelectorElement(self.label, self.action, options)
+
+  def as_form_field(self, action: str, initial_value: str = None):
+    if not self.options:
+      self.options = as_selector_options(["Default"])
+
+    option_elements = [self.__make_option(o) for o in self.options]
+    j = {
+        "type": "static_select",
+        "options": option_elements,
+        "action_id": action
+    }
+    if self.placeholder:
+      j.update(self.make_placeholder_field())
+    
+    initial_option = None
+    if initial_value:
+      initial_option = next((x for x in option_elements if x["value"] == initial_value), None )
+      if initial_option:
+        j['initial_option'] = initial_option
+    return j
+
+  def get_selected_value(self, input_data, text_too: bool = False):
+    if text_too:
+      return utilities.safe_get(input_data['actions'][0], 'selected_option', 'value'), utilities.safe_get(input_data['actions'][0], 'selected_option', 'text', 'text')
+    else:
+      return utilities.safe_get(input_data['actions'][0], 'selected_option', 'value')
+
+  def __make_option(self, option: SelectorOption):
+    return  {
+              "text": {
+                  "type": "plain_text",
+                  "text": option.name,
+                  "emoji": True
+              },
+              "value": option.value
+            }
+
+SECTION_SELECTOR = SectionBlock(
+  label = "temp",
+  action = "temp",
+  element = SelectorElement()
+)
+ 
+# options = as_selector_options(['brent', 'evan'], ['35', '32'])
+# selector = SelectorElement(options=options, placeholder="Please select a name")
+
+# block = InputBlock(label='This is a different one', action='different_action')
+# block.as_form_field(selector)
+
+# block = InputBlock(
+#   label="Hello, world!",
+#   action="cool_action",
+#   element=SelectorElement(
+#     placeholder="Please select a name",
+#     options=as_selector_options(['brent', 'evan'], ['35', '32'])
+#   )
+# )
+# block.as_form_field()
+
+# block2 = SectionBlock(
+#   label="*Hello, world!*",
+#   label_style="mrkdwn",
+#   action="cool_action",
+#   element=SelectorElement(
+#     placeholder="Please select a name",
+#     options=as_selector_options(['brent', 'evan'], ['35', '32'])
+#   )
+# )
+# block2.as_form_field()

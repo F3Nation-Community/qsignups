@@ -1,9 +1,11 @@
 from datetime import datetime
+from enum import Enum
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import *
 from sqlalchemy.types import JSON
 from sqlalchemy.dialects.mysql import LONGTEXT
+from sqlalchemy.orm import relationship
 
 BaseClass = declarative_base(mapper=sqlalchemy.orm.mapper)
 
@@ -28,9 +30,11 @@ class QSignupClass:
 
 class Region(BaseClass, QSignupClass):
   __tablename__ = "qsignups_regions"
+  # TODO: Convert all of the ID for Region to id, not team_id
+  team_id = Column("team_id", String(100),  primary_key = True)
+  id = Column("id", Integer)
   current_week_weinke = Column("current_week_weinke", LONGTEXT)
   next_week_weinke = Column("next_week_weinke", LONGTEXT)
-  team_id = Column("team_id", String(100),  primary_key = True)
   bot_token = Column("bot_token", String(100))
   signup_reminders = Column("signup_reminders", Integer)
   weekly_weinke_channel = Column("weekly_weinke_channel", String(100))
@@ -38,7 +42,7 @@ class Region(BaseClass, QSignupClass):
   current_week_weinke_updated = Column("current_week_weinke_updated", String(100))
   next_week_weinke_updated = Column("next_week_weinke_updated", String(100))
   weekly_ao_reminders = Column("weekly_ao_reminders", Integer)
-  google_calendar_id = Column("google_calendar_id", String(45))
+  google_calendar_id = Column("google_calendar_id", String(100))
   google_auth_data = Column("google_auth_data", JSON)
   timezone = Column("timezone", String(45), default = 'America/New_York')
   created = Column('created', DateTime, default = datetime.utcnow)
@@ -76,6 +80,7 @@ class Weekly(BaseClass, QSignupClass):
   event_end_time = Column("event_end_time", String(255))
   event_type = Column("event_type", String(255))
   team_id = Column("team_id", String(100))
+  google_calendar_id = Column("google_calendar_id", String(100))
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
 
@@ -108,3 +113,21 @@ class Master(BaseClass, QSignupClass):
 
   def get_id():
     return Master.id
+
+class Feature(BaseClass, QSignupClass):
+  __tablename__ = "qsignups_features"
+  id = Column("id", Integer, primary_key = True)
+  region_id = Column("region_id", Integer)
+  feature = Column("feature", String(45))
+  enabled = Column("enabled", Boolean)
+  created = Column('created', DateTime, default = datetime.utcnow)
+  updated = Column('updated', DateTime, default = datetime.utcnow)
+
+  def get_id(self):
+    return self.id
+
+  def get_id():
+    return Weekly.id
+
+class SignupFeature(str, Enum):
+  GOOGLE = 'google'
