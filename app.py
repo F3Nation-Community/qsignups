@@ -494,7 +494,7 @@ def handle_delete_ao_select(ack, body, client, logger, context):
             view={
                 "type": "home",
                 "blocks": blocks,
-                "private_metadata": body["actions"][0]["value"]
+                "private_metadata": body["actions"][0]["selected_option"]["value"]
             }
         )
     except Exception as e:
@@ -600,9 +600,10 @@ def submit_delete_ao_button(ack, body, client, logger, context):
     print(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
+    user = get_user(user_id, client)
     ao_channel_id = body['view']['private_metadata']
     response = ao_handler.delete(client, user_id, team_id, logger, ao_channel_id)
-    home.refresh(client, user_id, logger, response.message, team_id, context)
+    home.refresh(client, user, logger, response.message, team_id, context)
 
 @app.action(actions.EDIT_SETTINGS_ACTION)
 def handle_submit_general_settings_button(ack, body, client, logger, context):
