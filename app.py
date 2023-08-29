@@ -120,7 +120,7 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
 
     blocks = [
         forms.make_header_row("Choose an option to manage your AOs:"),
-        forms.make_action_button_row([inputs.ADD_AO_FORM, inputs.EDIT_AO_FORM]),
+        forms.make_action_button_row([inputs.ADD_AO_FORM, inputs.EDIT_AO_FORM, inputs.DELETE_AO_FORM]),
         forms.make_header_row("Choose an option to manage your Recurring Events:"),
         forms.make_action_button_row([inputs.ADD_RECURRING_EVENT_FORM, inputs.SELECT_RECURRING_EVENT_FORM, inputs.DELETE_RECURRING_EVENT_FORM]),
         forms.make_header_row("Choose an option to manage your Single Events:"),
@@ -157,6 +157,14 @@ def handle_edit_ao_form(ack, body, client, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
     ao.edit_form(team_id, user_id, client, logger)
+    
+@app.action(inputs.DELETE_AO_FORM.action)
+def handle_delete_ao_form(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    ao.delete_form(team_id, user_id, client, logger)
 
 @app.action(inputs.ADD_SINGLE_EVENT_FORM.action)
 def handle_add_event_form(ack, body, client, logger, context):
@@ -433,6 +441,41 @@ def handle_edit_ao_select(ack, body, client, logger, context):
         except Exception as e:
             logger.error(f"Error publishing home tab: {e}")
             print(e)
+            
+@app.action(actions.DELETE_AO_SELECT_ACTION)
+def handle_delete_ao_select(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    print(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    
+    blocks = [
+        {
+            "type": "section",
+            "block_id": "page_label",
+            "text": {
+                "type": "mrkdwn",
+                "text": f"Are you sure you want to delete this AO from QSignups? This will also delete all associated events."
+            }
+        },
+        forms.make_action_button_row([
+            inputs.make_submit_button(actions.DELETE_AO_ACTION),
+            inputs.CANCEL_BUTTON
+        ]),
+    ]
+    try:
+        client.views_publish(
+            user_id=user_id,
+            view={
+                "type": "home",
+                "blocks": blocks,
+                "private_metadata": body["actions"][0]["value"]
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
 
 @app.action("edit_event_ao_select")
 def handle_edit_event_ao_select(ack, body, client, logger, context):
@@ -524,6 +567,17 @@ def submit_edit_ao_button(ack, body, client, logger, context):
     page_label = body['view']['blocks'][0]['text']['text']
     input_data = body['view']['state']['values']
     response = ao_handler.edit(client, user_id, team_id, logger, page_label, input_data)
+    home.refresh(client, user_id, logger, response.message, team_id, context)
+
+@app.action(actions.DELETE_AO_ACTION)
+def submit_delete_ao_button(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    print(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    ao_channel_id = body['view']['private_metadata']
+    response = ao_handler.delete(client, user_id, team_id, logger, ao_channel_id)
     home.refresh(client, user_id, logger, response.message, team_id, context)
 
 @app.action(actions.EDIT_SETTINGS_ACTION)

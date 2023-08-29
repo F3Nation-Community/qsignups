@@ -25,6 +25,24 @@ def edit(client, user_id, team_id, logger, page_label, input_data) -> UpdateResp
     except Exception as e:
         logger.error(f"Error updating: {e}")
         return UpdateResponse(success = False, message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Errors:\n{e}")
+
+def delete(client, user_id, team_id, logger, ao_channel_id) -> UpdateResponse:
+
+    # Attempt deletion
+    try:
+        DbManager.delete_records(cls=AO, filters=[
+            AO.ao_channel_id == ao_channel_id
+        ])
+        DbManager.delete_records(cls=Weekly, filters=[
+            Weekly.ao_channel_id == ao_channel_id
+        ])
+        DbManager.delete_records(cls=Master, filters=[
+            Master.ao_channel_id == ao_channel_id
+        ])
+        return UpdateResponse(success = True, message=f"Got it - I've made your updates!")
+    except Exception as e:
+        logger.error(f"Error deleting AO: {e}")
+        return UpdateResponse(success = False, message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Errors:\n{e}")
     
 def insert(client, user_id, team_id, logger, input_data) -> UpdateResponse:
     
