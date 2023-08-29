@@ -964,7 +964,9 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
         'VQ',
         'F3versary',
         'Birthday Q',
-        'AO Launch'
+        'AO Launch',
+        'IronPAX',
+        'Convergence',
     ]
     special_options = []
     for option in special_list:
