@@ -6,6 +6,7 @@ import pytz
 from slack_bolt import App
 from slack_bolt.adapter.aws_lambda import SlackRequestHandler
 from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
+from slack_bolt.oauth.oauth_settings import OAuthSettings
 
 from qsignups.utilities import safe_get, get_user
 from qsignups.google import authenticate, commands
@@ -19,11 +20,21 @@ from qsignups.slack.forms import ao, event, home, settings
 from qsignups.slack.handlers import settings as settings_handler, weekly as weekly_handler, master as master_handler, ao as ao_handler
 from qsignups.slack import actions, inputs
 
+from qsignups import constants
+
 def get_oauth_flow():
-    if os.environ.get("SLACK_BOT_TOKEN"):
+    if constants.LOCAL_DEVELOPMENT:
         return None
     else:
-        return LambdaS3OAuthFlow()
+        return LambdaS3OAuthFlow(
+            oauth_state_bucket_name=os.environ[constants.SLACK_STATE_S3_BUCKET_NAME],
+            installation_bucket_name=os.environ[constants.SLACK_INSTALLATION_S3_BUCKET_NAME],
+            settings=OAuthSettings(
+                client_id=os.environ[constants.SLACK_CLIENT_ID],
+                client_secret=os.environ[constants.SLACK_CLIENT_SECRET],
+                scopes=os.environ[constants.SLACK_SCOPES].split(","),
+            ),
+        )
 
 # process_before_response must be True when running on FaaS
 app = App(

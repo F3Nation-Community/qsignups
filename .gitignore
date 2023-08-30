@@ -9,3 +9,4 @@ generate/
 gcal_data/
 .DS_Store
 env.json
+.aws-sam/
