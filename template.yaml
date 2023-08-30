@@ -27,7 +27,7 @@ Parameters:
   SlackOauthScopes:
     Description: Auth token used to pass to the controller to get the commands
     Type: String
-    Default: "app_mentions:read,channels:history,channels:join,channels:read,chat:write,chat:write.customize:chat:write.public,commands,files:read,files:write,im:history,im:read,im:write,reactions:read,reactions:write,team:read,users:read,users:read.email"
+    Default: "app_mentions:read,channels:history,channels:join,channels:read,chat:write,chat:write.customize,chat:write.public,commands,files:read,files:write,im:history,im:read,im:write,reactions:read,reactions:write,team:read,users:read,users:read.email"
   Stage:
     Description: Parameter for getting the deployment stage
     Type: String
@@ -64,12 +64,12 @@ Parameters:
 Mappings:
   StagesMap:
     staging:
-      SlackClientID: "3135457248691.4852586913543"
+      SlackClientID: "1966318390773.5843549611120"
       SlackStateS3Bucket: "slack-state-bucket"
       SlackInstallS3Bucket: "slack-installation-bucket"
       KeepWarmName: "QSignupsKeepWarmTest"
     prod:
-      SlackClientID: "3135457248691.3241841713426"
+      SlackClientID: "1966318390773.5843549611120"
       SlackStateS3Bucket: "slack-state-bucket"
       SlackInstallS3Bucket: "slack-installation-bucket"
       KeepWarmName: "QSignupsKeepWarmProd"
