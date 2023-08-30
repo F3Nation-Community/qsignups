@@ -1,6 +1,6 @@
-from qsignups.database import DbManager
-from qsignups.database.orm import Weekly, Master, AO
-from qsignups.utilities import safe_get
+from database import DbManager
+from database.orm import Weekly, Master, AO
+from utilities import safe_get
 from . import UpdateResponse
 import ast
 from datetime import date, datetime

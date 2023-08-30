@@ -1,10 +1,10 @@
 from datetime import date
 
-from qsignups.database import DbManager
-from qsignups.database.orm.views import vwWeeklyEvents, vwAOsSort
-from qsignups.slack import actions, forms, inputs
+from database import DbManager
+from database.orm.views import vwWeeklyEvents, vwAOsSort
+from slack import actions, forms, inputs
 
-from qsignups.utilities import list_to_dict
+from utilities import list_to_dict
 
 from sqlalchemy import func
 

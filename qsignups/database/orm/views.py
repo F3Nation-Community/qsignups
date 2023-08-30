@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import *
-from qsignups.database.orm import AO
+from database.orm import AO
 from sqlalchemy.dialects.mysql import LONGTEXT
 
 from . import BaseClass, QSignupClass

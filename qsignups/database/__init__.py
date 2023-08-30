@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, pool, and_
 from sqlalchemy.orm import sessionmaker
 from contextlib import ContextDecorator
 
-from qsignups.database.orm import BaseClass
+from database.orm import BaseClass
 
 @dataclass
 class DatabaseField:

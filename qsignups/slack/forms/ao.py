@@ -1,8 +1,8 @@
-from qsignups.database import DbManager
-from qsignups.database.orm import AO
-from qsignups.database.orm.views import vwAOsSort
+from database import DbManager
+from database.orm import AO
+from database.orm.views import vwAOsSort
 
-from qsignups.slack import actions, forms, inputs
+from slack import actions, forms, inputs
 
 def add_form(team_id, user_id, client, logger):
     logger.info('gather input data')

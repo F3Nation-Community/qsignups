@@ -1,8 +1,8 @@
 from datetime import datetime, timedelta
 import pytz
 
-from qsignups.utilities import User
-from qsignups.database.orm import Master, Region, AO
+from utilities import User
+from database.orm import Master, Region, AO
 from .authenticate import connect
 from . import GoogleCalendar
 

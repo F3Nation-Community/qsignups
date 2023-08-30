@@ -1,7 +1,7 @@
 import pytz
 from typing import List
 from dataclasses import dataclass
-from qsignups import utilities
+import utilities
 from . import actions
 
 @dataclass

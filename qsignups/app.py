@@ -8,19 +8,19 @@ from slack_bolt.adapter.aws_lambda import SlackRequestHandler
 from slack_bolt.adapter.aws_lambda.lambda_s3_oauth_flow import LambdaS3OAuthFlow
 from slack_bolt.oauth.oauth_settings import OAuthSettings
 
-from qsignups.utilities import safe_get, get_user
-from qsignups.google import authenticate, commands
+from utilities import safe_get, get_user
+# from google import authenticate, commands
 
-from qsignups.database import DbManager
-from qsignups.database.orm import Region, AO, Master, helper
-from qsignups.database.orm.views import vwAOsSort, vwMasterEvents
+from database import DbManager
+from database.orm import Region, AO, Master, helper
+from database.orm.views import vwAOsSort, vwMasterEvents
 
-from qsignups.slack import forms
-from qsignups.slack.forms import ao, event, home, settings
-from qsignups.slack.handlers import settings as settings_handler, weekly as weekly_handler, master as master_handler, ao as ao_handler
-from qsignups.slack import actions, inputs
+from slack import forms
+from slack.forms import ao, event, home, settings
+from slack.handlers import settings as settings_handler, weekly as weekly_handler, master as master_handler, ao as ao_handler
+from slack import actions, inputs
 
-from qsignups import constants
+import constants
 
 def get_oauth_flow():
     if constants.LOCAL_DEVELOPMENT:
@@ -65,11 +65,11 @@ def respond_to_slack_within_3_seconds(ack):
     # This method is for synchronous communication with the Slack API server
     ack("Thanks!")
 
-@app.command("/google")
-def connect_google_calendar(ack, respond, command):
-    # This method is for synchronous communication with the Slack API server
-    ack()
-    commands.execute_command(command["text"], command["team_id"], command, respond)
+# @app.command("/google")
+# def connect_google_calendar(ack, respond, command):
+#     # This method is for synchronous communication with the Slack API server
+#     ack()
+#     commands.execute_command(command["text"], command["team_id"], command, respond)
 
 @app.command("/schedule")
 def display_upcoming_schedule(ack):
@@ -85,33 +85,33 @@ def update_home_tab(client, event, logger, context):
     top_message = f'Welcome to QSignups, {user.name}!'
     home.refresh(client, user, logger, top_message, team_id, context)
 
-@app.action(inputs.GOOGLE_DISCONNECT.action)
-def handle_google_disconnect(ack, body, client, logger, context):
-    ack()
-    team_id = context["team_id"]
-    user_id = context["user_id"]
-    user = get_user(user_id, client)
-    result = authenticate.disconnect(team_id)
-    if result.success:
-        top_message = f'You have disconnected from Google!'
-        home.refresh(client, user, logger, top_message, team_id, context)
-    else:
-        top_message = f'Something went wrong trying to disconnect!'
-        home.refresh(client, user, logger, top_message, team_id, context)
+# @app.action(inputs.GOOGLE_DISCONNECT.action)
+# def handle_google_disconnect(ack, body, client, logger, context):
+#     ack()
+#     team_id = context["team_id"]
+#     user_id = context["user_id"]
+#     user = get_user(user_id, client)
+#     result = authenticate.disconnect(team_id)
+#     if result.success:
+#         top_message = f'You have disconnected from Google!'
+#         home.refresh(client, user, logger, top_message, team_id, context)
+#     else:
+#         top_message = f'Something went wrong trying to disconnect!'
+#         home.refresh(client, user, logger, top_message, team_id, context)
 
-@app.action(inputs.GOOGLE_CONNECT.action)
-def handle_google_connect(ack, body, client, logger, context):
-    ack()
-    team_id = context["team_id"]
-    user_id = context["user_id"]
-    user = get_user(user_id, client)
-    result = authenticate.connect(team_id)
-    if result.success:
-        top_message = f'You have connected from Google!'
-        home.refresh(client, user, logger, top_message, team_id, context)
-    else:
-        top_message = f'Something went wrong trying to connect!'
-        home.refresh(client, user, logger, top_message, team_id, context)
+# @app.action(inputs.GOOGLE_CONNECT.action)
+# def handle_google_connect(ack, body, client, logger, context):
+#     ack()
+#     team_id = context["team_id"]
+#     user_id = context["user_id"]
+#     user = get_user(user_id, client)
+#     result = authenticate.connect(team_id)
+#     if result.success:
+#         top_message = f'You have connected from Google!'
+#         home.refresh(client, user, logger, top_message, team_id, context)
+#     else:
+#         top_message = f'Something went wrong trying to connect!'
+#         home.refresh(client, user, logger, top_message, team_id, context)
 
 
 # triggers when user chooses to schedule a q

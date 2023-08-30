@@ -1,4 +1,4 @@
-from qsignups.slack import inputs
+from slack import inputs
 
 def make_action_button_row(buttons):
   return {
