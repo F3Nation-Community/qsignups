@@ -1,4 +1,4 @@
-from qsignups.utilities import safe_get
+from utilities import safe_get
 
 def get_channel_id_and_name(body, logger):
     # returns channel_iid, channel_name if it exists as an escaped parameter of slashcommand

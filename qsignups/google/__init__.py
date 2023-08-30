@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass
-from qsignups.database.orm import SignupFeature, helper
+from database.orm import SignupFeature, helper
 
 @dataclass
 class GoogleCalendar:

@@ -1,7 +1,7 @@
 import json, os
 
-from qsignups.database import DbManager
-from qsignups.database.orm import Region, SignupFeature, helper
+from database import DbManager
+from database.orm import Region, SignupFeature, helper
 
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request

@@ -1,14 +1,14 @@
-from qsignups.database import DbManager
-from qsignups.database.orm import Weekly, Master, AO
-from qsignups.database.orm.views import vwWeeklyEvents
+from database import DbManager
+from database.orm import Weekly, Master, AO
+from database.orm.views import vwWeeklyEvents
 from . import UpdateResponse
 import ast
 from datetime import date, datetime, timedelta
 import pytz
 from sqlalchemy import func
-from qsignups.slack import inputs
-from qsignups.utilities import safe_get
-from qsignups.constants import SCHEDULE_CREATE_LENGTH_DAYS
+from slack import inputs
+from utilities import safe_get
+from constants import SCHEDULE_CREATE_LENGTH_DAYS
 
 def delete(client, user_id, team_id, logger, input_data) -> UpdateResponse:
 

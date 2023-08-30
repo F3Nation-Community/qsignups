@@ -2,8 +2,8 @@
 from dataclasses import dataclass
 from datetime import datetime
 
-from qsignups.database import DbManager
-from qsignups.database.orm import Master, AO, Region, SignupFeature, Feature
+from database import DbManager
+from database.orm import Master, AO, Region, SignupFeature, Feature
 
 def feature_enabled(team_id, feature: SignupFeature) -> bool:
   region: Region = DbManager.get_record(Region, team_id)

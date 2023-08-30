@@ -1,6 +1,6 @@
-from qsignups.database import DbManager
-from qsignups.database.orm import Region
-from qsignups.slack import inputs
+from database import DbManager
+from database.orm import Region
+from slack import inputs
 from . import UpdateResponse
 
 def update(client, user_id, team_id, logger, input_data) -> UpdateResponse:
