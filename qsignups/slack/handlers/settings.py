@@ -4,8 +4,6 @@ from qsignups.slack import inputs
 from . import UpdateResponse
 
 def update(client, user_id, team_id, logger, input_data) -> UpdateResponse:
-    print("INPUT_DATA", input_data)
-    print("SELECTED", inputs.GOOGLE_CALENDAR_SELECT.get_selected_value(input_data))
     updates = {
         Region.weekly_weinke_channel: inputs.WEINKIE_INPUT.get_selected_value(input_data),
         Region.signup_reminders: inputs.Q_REMINDER_RADIO.get_selected_value(input_data) == inputs.Q_REMINDER_ENABLED.value,

@@ -135,7 +135,58 @@ def edit_form(team_id, user_id, client, logger):
     except Exception as e:
         logger.error(f"Error publishing home tab: {e}")
         print(e)
-        
+
+def delete_form(team_id, user_id, client, logger):
+
+    # list of AOs for dropdown
+    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
+
+    ao_options = []
+    for ao in aos:
+        new_option = {
+            "text": {
+                "type": "plain_text",
+                "text": ao.ao_display_name,
+                "emoji": True
+            },
+            "value": ao.ao_channel_id
+        }
+        ao_options.append(new_option)
+
+    # Build blocks
+    blocks = [
+        {
+            "type": "section",
+            "block_id": actions.DELETE_AO_SELECT_ACTION,
+            "text": {
+                "type": "mrkdwn",
+                "text": "Please select an AO to delete:"
+            },
+            "accessory": {
+                "action_id": actions.DELETE_AO_SELECT_ACTION,
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select an AO"
+                },
+                "options": ao_options
+            }
+        }
+    ]
+
+    # Publish view
+    try:
+        client.views_publish(
+            user_id=user_id,
+            view={
+                "type": "home",
+                "blocks": blocks
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error publishing home tab: {e}")
+        print(e)
+
 def pull_aos(team_id):
     aos: list[AO] = DbManager.find_records(AO, [AO.team_id == team_id])
     aos_list, aos_sort = {}, {}

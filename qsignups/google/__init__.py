@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from qsignups.database.orm import SignupFeature, helper
 
 @dataclass
 class GoogleCalendar:
@@ -9,5 +10,9 @@ class GoogleCalendar:
   def __str__(self) -> str:
     return self.name
 
-def is_enabled():
-  return os.environ.get("GOOGLE_CLIENT_ID")
+def is_available(team_id):
+  if os.environ.get("GOOGLE_CLIENT_ID"):
+    return helper.feature_enabled(team_id, SignupFeature.GOOGLE)
+  else:
+    return False
+

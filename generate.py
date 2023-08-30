@@ -11,11 +11,17 @@ parser.add_argument('--qlambda_name', '-l', help='Deployment lambda name')
 parser.add_argument('--generate', '-g', choices=["environment", "manifest", "config", "all"], default="all", help='What to generate')
 parser.add_argument('--clean', '-c', action="store_true")
 
-def format_environment(key, value, env):
-  if env == "windows":
-    return f"[SetItem]"
+def enviromnet_file(os):
+  if os == "windows":
+    return "setup.ps1"
   else:
-    return f"export {key}={value or ''}"
+    return "setup"
+
+def format_environment(key, value, os):
+  if os == "windows":
+    return f'$env:{key}="{value}"'
+  else:
+    return f'export {key}={value or ""}'
 
 def load_environment(env, user_env_file):
   with open("environment.json", "r") as stream:
@@ -65,7 +71,7 @@ def generate_environment(outfolder, env, user_env_file, op_system):
   environment["SLACK_SCOPES"] = ','.join(manifest_yaml['oauth_config']['scopes']['bot'])
   env_lines = [ format_environment(k,v,op_system) for (k,v) in environment.items()]
 
-  output_environment = f"{outfolder}/setup"
+  output_environment = f"{outfolder}/{enviromnet_file(op_system)}"
   with open(output_environment, "w") as stream:
     stream.writelines('\n'.join(env_lines))
     stream.write('\n')
