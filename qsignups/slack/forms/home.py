@@ -37,23 +37,23 @@ def refresh(client, user: User, logger, top_message, team_id, context):
         ])
 
         current_week_weinke_url = None
-        if constants.use_weinkes():
-            region_record = DbManager.get_record(Region, team_id)
+        
+        region_record = DbManager.get_record(Region, team_id)
 
-            if region_record is None:
-                # team_id not on region table, so we insert it
-                region_record = DbManager.create_record(Region(
-                    team_id = team_id,
-                    bot_token = context['bot_token']
-                ))
-            else:
-                current_week_weinke_url = region_record.current_week_weinke
-                next_week_weinke_url = region_record.next_week_weinke
+        if region_record is None:
+            # team_id not on region table, so we insert it
+            region_record = DbManager.create_record(Region(
+                team_id = team_id,
+                bot_token = context['bot_token']
+            ))
+        else:
+            current_week_weinke_url = region_record.current_week_weinke
+            next_week_weinke_url = region_record.next_week_weinke
 
-            if region_record.bot_token != context['bot_token']:
-                DbManager.update_record(Region, team_id, {
-                    Region.bot_token: context['bot_token']
-                })
+        if region_record.bot_token != context['bot_token']:
+            DbManager.update_record(Region, team_id, {
+                Region.bot_token: context['bot_token']
+            })
 
         # Create upcoming schedule message
         sMsg = '*Upcoming Schedule:*'
@@ -121,7 +121,7 @@ def refresh(client, user: User, logger, top_message, team_id, context):
         }
         blocks.append(new_block)
 
-    if (constants.use_weinkes()) and (current_week_weinke_url != None) and (next_week_weinke_url != None):
+    if (current_week_weinke_url != None) and (next_week_weinke_url != None):
         weinke_blocks = [
             {
                 "type": "image",

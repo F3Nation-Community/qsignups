@@ -1,9 +1,5 @@
 import os
 
-USE_WEINKES = 'USE_WEINKES'
-def use_weinkes() -> bool:
-  return os.environ.get(USE_WEINKES)
-
 SCHEDULE_CREATE_LENGTH_DAYS = 365
 SLACK_BOT_TOKEN = "SLACK_BOT_TOKEN"
 LOCAL_DEVELOPMENT = os.environ.get(SLACK_BOT_TOKEN, "123") != "123"
