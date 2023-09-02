@@ -1010,6 +1010,9 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
     }
     if q_pax_id is not None:
         user_select_element['initial_users'] = [q_pax_id]
+        
+    if not event.event_end_time:
+        end_time_default = datetime.strftime(selected_date_dt + timedelta(minutes=45), "%H%M")
 
     # Build blocks
     blocks = [
@@ -1063,7 +1066,7 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
             "block_id": "edit_event_end_timepicker",
 			"element": {
 				"type": "timepicker",
-				"initial_time": datetime.strptime(event.event_end_time, '%H%M').strftime('%H:%M'),
+				"initial_time": datetime.strptime(event.event_end_time or end_time_default, '%H%M').strftime('%H:%M'),
 				"placeholder": {
 					"type": "plain_text",
 					"text": "Select time",

@@ -69,7 +69,7 @@ Mappings:
       SlackInstallS3Bucket: "slack-installation-bucket"
       KeepWarmName: "QSignupsKeepWarmTest"
     prod:
-      SlackClientID: "1966318390773.5843549611120"
+      SlackClientID: "3135457248691.3137775183364"
       SlackStateS3Bucket: "slack-state-bucket"
       SlackInstallS3Bucket: "slack-installation-bucket"
       KeepWarmName: "QSignupsKeepWarmProd"
