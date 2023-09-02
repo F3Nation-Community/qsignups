@@ -302,6 +302,12 @@ EVENT_TYPE_SELECTOR = ActionSelector(
   action = "event_type_select_action",
   options = as_selector_options(['Bootcamp', 'QSource', 'Custom']))
 
+CUSTOM_EVENT_INPUT = ActionInput(
+  label = "Custom Event Name",
+  action = "event_type_custom",
+  placeholder = "If custom is selected, specify a name",
+  optional = True)
+
 AO_SELECTOR = ActionSelector(
   label = "Select an AO",
   action = "ao_display_name_select_action",

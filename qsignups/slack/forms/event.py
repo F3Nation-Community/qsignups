@@ -326,11 +326,7 @@ def edit_recurring_form(team_id, user_id, client, logger, input_data):
     selector_input: inputs.ActionSelector = inputs.AO_SELECTOR.with_options(inputs.as_selector_options(ao_list))
     blocks = [
         inputs.EVENT_TYPE_SELECTOR.as_form_field(initial_value = initial_type_select),
-        inputs.ActionInput(
-            label = "Custom Event Name",
-            action = "event_type_custom",
-            placeholder = "If custom is selected, specify a name",
-            optional = True).as_form_field(initial_value = initial_type_manual),
+        inputs.CUSTOM_EVENT_INPUT.as_form_field(initial_value = initial_type_manual),
         selector_input.as_form_field(initial_value = event.ao_display_name),
         inputs.WEEKDAY_SELECTOR.as_form_field(initial_value = event.event_day_of_week),
         inputs.START_DATE_SELECTOR.as_form_field(),

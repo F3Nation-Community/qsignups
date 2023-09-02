@@ -48,6 +48,9 @@ def edit(client, user_id, team_id, logger, body) -> UpdateResponse:
     starting_date = inputs.START_DATE_SELECTOR.get_selected_value(input_data) or datetime.now(tz=pytz.timezone('US/Central'))
 
     event_recurring = True
+    
+    if event_type == 'Custom':
+        event_type = inputs.CUSTOM_EVENT_INPUT.get_selected_value(input_data) or 'Custom'
 
     try:
         # Grab channel id
