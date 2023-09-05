@@ -44,7 +44,7 @@ def edit_form(team_id, user_id, client, logger, body):
     ao: vwAOsSort = aos[0]
 
     blocks = [
-        forms.make_header_row(f"*Edit AO:*\n*{ao_display_name}*\n{ao_channel_id}"),
+        forms.make_header_row(f"*Edit AO:*"),
         inputs.AO_TITLE_INPUT.as_form_field(initial_value = ao_display_name),
         inputs.AO_SUBTITLE_INPUT.as_form_field(initial_value = ao.ao_location_subtitle),
     ]
