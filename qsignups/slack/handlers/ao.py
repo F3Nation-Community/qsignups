@@ -9,17 +9,15 @@ def get_context_value(body):
 
 def edit(client, user_id, team_id, logger, ao_channel_id, input_data) -> UpdateResponse:
 
-    ao_display_name = inputs.AO_TITLE_INPUT.get_selected_value(input_data)
-    ao_location_subtitle = inputs.AO_SUBTITLE_INPUT.get_selected_value(input_data)
-
     # Attempt updates
     try:
         DbManager.update_records(cls=AO, filters=[
             AO.ao_channel_id == ao_channel_id
         ], fields={
-            AO.ao_display_name: ao_display_name,
-            AO.ao_location_subtitle: ao_location_subtitle,
+            AO.ao_display_name: inputs.AO_TITLE_INPUT.get_selected_value(input_data),
+            AO.ao_location_subtitle: inputs.AO_SUBTITLE_INPUT.get_selected_value(input_data),
             AO.google_calendar_id: inputs.GOOGLE_CALENDAR_SELECT.get_selected_value(input_data),
+            AO.map_url: inputs.MAP_URL_INPUT.get_selected_value(input_data)
         })
         return UpdateResponse(success = True, message=f"Got it - I've made your updates!")
     except Exception as e:

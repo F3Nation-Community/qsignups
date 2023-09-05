@@ -347,6 +347,12 @@ AO_SUBTITLE_INPUT = ActionInput(
             multiline = True,
             optional = True)
 
+MAP_URL_INPUT = ActionInput(
+    label = "Map URL - link to the location",
+    action = "ao_map_url",
+    placeholder = "")
+
+
 @dataclass
 class BaseBlock:
   label: str

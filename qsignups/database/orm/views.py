@@ -33,6 +33,7 @@ class vwAOsSort(BaseClass, QSignupClass):
   ao_location_subtitle = Column("ao_location_subtitle", String(255))
   current_month_weinke = Column("current_month_weinke", LONGTEXT)
   google_calendar_id = Column("google_calendar_id", String(100))
+  map_url = Column("map_url", String(256))
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
 

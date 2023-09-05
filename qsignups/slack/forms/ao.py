@@ -55,6 +55,8 @@ def edit_form(team_id, user_id, client, logger, body):
         input = input.with_label("If your AO has a different google calendar, please select it here.  Leave it empty to use the region calendar.")
         blocks.append(input.as_form_field(ao.google_calendar_id))
 
+        blocks.append(inputs.MAP_URL_INPUT.as_form_field(initial_value = ao.map_url))
+
     blocks.append(forms.make_action_button_row([
         inputs.make_submit_button(actions.EDIT_AO_ACTION),
         inputs.CANCEL_BUTTON
