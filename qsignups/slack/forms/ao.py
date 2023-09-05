@@ -52,7 +52,7 @@ def edit_form(team_id, user_id, client, logger, body):
         calendars = calendar.get_calendars(team_id)
         options = [ inputs.SelectorOption(name = x.name, value = x.id) for x in calendars]
         input = inputs.GOOGLE_CALENDAR_SELECT.with_options(options)
-        input.label = "If your AO has a different google calendar, please select it here.  Leave it empty to use the region calendar."
+        input = input.with_label("If your AO has a different google calendar, please select it here.  Leave it empty to use the region calendar.")
         blocks.append(input.as_form_field(ao.google_calendar_id))
 
     blocks.append(forms.make_action_button_row([

@@ -185,6 +185,9 @@ def as_selector_options(names: List[str], values: List[str] = []) -> List[Select
 class ActionSelector(BaseAction):
   options: List[SelectorOption]
 
+  def with_label(self, label):
+    return ActionSelector(label, self.action, self.options)
+
   def with_options(self, options: List[SelectorOption]):
     return ActionSelector(self.label, self.action, options)
 
