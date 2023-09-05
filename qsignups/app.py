@@ -549,13 +549,12 @@ def handle_submit_general_settings_button(ack, body, client, logger, context):
 @app.action(actions.ADD_AO_ACTION)
 def handle_submit_add_ao_button(ack, body, client, logger, context):
     ack()
-    logger.info(body)
-    print(body)
     user_id = context["user_id"]
-    user = get_user(user_id, client)
     team_id = context["team_id"]
     input_data = body['view']['state']['values']
     response = ao_handler.insert(client, user_id, team_id, logger, input_data)
+
+    user = get_user(user_id, client)
     home.refresh(client, user, logger, response.message, team_id, context)
 
 @app.action(actions.ADD_RECURRING_EVENT_ACTION)

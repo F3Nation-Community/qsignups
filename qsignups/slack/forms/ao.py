@@ -80,65 +80,20 @@ def edit_form(team_id, user_id, client, logger, body):
 def add_form(team_id, user_id, client, logger):
     logger.info('gather input data')
     blocks = [
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": "*Select an AO channel:*"
-      }
-        },
-        {
-            "type": "input",
-            "block_id": "add_ao_channel_select",
-            "element": {
-                "type": "channels_select",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Select a channel",
-                    "emoji": True
-                },
-                "action_id": "add_ao_channel_select"
-            },
-            "label": {
-                "type": "plain_text",
-                "text": "Channel associated with AO",
-                "emoji": True
-            }
-        },
-        {
-            "type": "input",
-            "block_id": "ao_display_name",
-            "element": {
-                "type": "plain_text_input",
-                "action_id": "ao_display_name",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Weasel's Ridge"
-                }
-            },
-            "label": {
-                "type": "plain_text",
-                "text": "AO Title"
-            }
-        },
-        {
-            "type": "input",
-            "block_id": "ao_location_subtitle",
-            "element": {
-                "type": "plain_text_input",
-                "multiline": True,
-                "action_id": "ao_location_subtitle",
-                "placeholder": {
-                    "type": "plain_text",
-                    "text": "Oompa Loompa Kingdom"
-                }
-            },
-            "label": {
-                "type": "plain_text",
-                "text": "Location (township, park, etc.)"
-            }
-        }
+        inputs.AO_CHANNEL_SELECT.as_form_field(),
+        inputs.AO_TITLE_INPUT.as_form_field(),
+        inputs.AO_SUBTITLE_INPUT.as_form_field()
     ]
+
+    if q_google.is_available(team_id) and authenticate.is_connected(team_id):
+        calendars = calendar.get_calendars(team_id)
+        options = [ inputs.SelectorOption(name = x.name, value = x.id) for x in calendars]
+        input = inputs.GOOGLE_CALENDAR_SELECT.with_options(options)
+        input = input.with_label("If your AO has a different google calendar, please select it here.  Leave it empty to use the region calendar.")
+        blocks.append(input.as_form_field())
+
+        blocks.append(inputs.MAP_URL_INPUT.as_form_field())
+
 
     blocks.append(forms.make_action_button_row([
         inputs.make_submit_button(actions.ADD_AO_ACTION),

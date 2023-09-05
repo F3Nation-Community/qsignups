@@ -4,9 +4,6 @@ from utilities import safe_get
 from . import UpdateResponse
 from slack import inputs
 
-def get_context_value(body):
-    print(body)
-
 def edit(client, user_id, team_id, logger, ao_channel_id, input_data) -> UpdateResponse:
 
     # Attempt updates
@@ -45,9 +42,9 @@ def delete(client, user_id, team_id, logger, ao_channel_id) -> UpdateResponse:
 def insert(client, user_id, team_id, logger, input_data) -> UpdateResponse:
 
     # Parse inputs
-    ao_channel_id = safe_get(input_data, 'add_ao_channel_select', 'add_ao_channel_select', 'selected_channel')
-    ao_display_name = safe_get(input_data, 'ao_display_name', 'ao_display_name', 'value')
-    ao_location_subtitle = safe_get(input_data, 'ao_location_subtitle','ao_location_subtitle', 'value')
+    ao_channel_id = inputs.AO_CHANNEL_SELECT.get_selected_value(input_data)
+    ao_display_name = inputs.AO_TITLE_INPUT.get_selected_value(input_data)
+    ao_location_subtitle = inputs.AO_SUBTITLE_INPUT.get_selected_value(input_data)
 
     # replace double quotes with single quotes
     ao_display_name = ao_display_name.replace('"',"'")
@@ -58,11 +55,13 @@ def insert(client, user_id, team_id, logger, input_data) -> UpdateResponse:
 
     # Attempt insert
     try:
-        ao_record = DbManager.create_record(AO(
+        DbManager.create_record(AO(
             ao_channel_id = ao_channel_id,
             ao_display_name = ao_display_name,
             ao_location_subtitle = ao_location_subtitle,
-            team_id = team_id
+            team_id = team_id,
+            map_url = inputs.MAP_URL_INPUT.get_selected_value(input_data),
+            google_calendar_id = inputs.GOOGLE_CALENDAR_SELECT.get_selected_value(input_data)
         ))
         return UpdateResponse(success = True, message=f"Got it - I've made your updates!")
     except Exception as e:

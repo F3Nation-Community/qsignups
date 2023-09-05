@@ -261,6 +261,12 @@ WEINKIE_INPUT = ActionChannelInput(
   label = "Public channel for posting weekly schedules:"
 )
 
+AO_CHANNEL_SELECT = ActionChannelInput(
+  action = "ao_channel_select",
+  placeholder = "Select a channel",
+  label = "Channel for sending AO notifications:"
+)
+
 GOOGLE_CALENDAR_SELECT: ActionSelector = ActionSelector(
   action = 'google_calendar_select',
   label = 'Select your Google Calendar',
