@@ -62,6 +62,8 @@ class AO(BaseClass, QSignupClass):
   ao_display_name = Column("ao_display_name", String(255))
   ao_location_subtitle = Column("ao_location_subtitle", String(255))
   current_month_weinke = Column("current_month_weinke", LONGTEXT)
+  ao_location_subtitle = Column("ao_location_subtitle", String(255))
+  google_calendar_id = Column("google_calendar_id", String(100))
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
 

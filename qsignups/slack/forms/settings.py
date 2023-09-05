@@ -1,8 +1,8 @@
 from database import DbManager
 from database.orm import Region
 from slack import actions, forms, inputs
-import google
-# from google import calendar, authenticate
+import q_google
+from q_google import calendar, authenticate
 
 def general_form(team_id, user_id, client, logger):
     # Pull current settings
@@ -30,13 +30,13 @@ def general_form(team_id, user_id, client, logger):
         inputs.Q_REMINDER_RADIO.as_form_field(initial_value = initial_q_reminder),
         inputs.AO_REMINDER_RADIO.as_form_field(initial_value = initial_ao_reminder)
     ]
-    # if google.is_available(team_id) and authenticate.is_connected(team_id):
-    #     calendars = calendar.get_calendars(team_id)
-    #     options = [ inputs.SelectorOption(name = x.name, value = x.id) for x in calendars]
-    #     input = inputs.GOOGLE_CALENDAR_SELECT.with_options(options)
-    #     blocks.append(input.as_form_field(initial_value = region.google_calendar_id))
+    if q_google.is_available(team_id) and authenticate.is_connected(team_id):
+        calendars = calendar.get_calendars(team_id)
+        options = [ inputs.SelectorOption(name = x.name, value = x.id) for x in calendars]
+        input = inputs.GOOGLE_CALENDAR_SELECT.with_options(options)
+        blocks.append(input.as_form_field(initial_value = region.google_calendar_id))
 
-    #     blocks.append(inputs.TIMEZONE_SELECT.as_form_field(initial_value = region.timezone))
+    blocks.append(inputs.TIMEZONE_SELECT.as_form_field(initial_value = region.timezone))
     blocks.append(
         forms.make_action_button_row([
             inputs.make_submit_button(actions.EDIT_SETTINGS_ACTION),
