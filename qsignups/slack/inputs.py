@@ -42,6 +42,7 @@ class ActionButton(BaseAction):
 class ActionInput(BaseAction):
   placeholder: str
   optional: bool = True
+  multiline: bool = False
 
   def get_selected_value(self, input_data):
     return utilities.safe_get(input_data, self.action, self.action, "value")
@@ -53,6 +54,7 @@ class ActionInput(BaseAction):
         "element": {
           "type": "plain_text_input",
           "placeholder": self.make_label_field(self.placeholder),
+          "multiline": self.multiline,
           "action_id": self.action,
           "initial_value": initial_value or '',
         },
@@ -329,6 +331,19 @@ TIMEZONE_SELECT = ActionSelector(
   ])
 )
 
+
+AO_TITLE_INPUT = ActionInput(
+    label = "AO Title",
+    action = "ao_location_title",
+    placeholder = "Weasel's Ridge")
+
+AO_SUBTITLE_INPUT = ActionInput(
+            label = "Location (township, park, etc.)",
+            action = "ao_location_subtitle",
+            placeholder = "Oompa Loompa Kingdom",
+            multiline = True,
+            optional = True)
+
 @dataclass
 class BaseBlock:
   label: str
@@ -355,7 +370,7 @@ class BaseBlock:
 class BaseElement():
   placeholder: str = None
   initial: str = None
-  
+
   def make_placeholder_field(self):
     return {
       "placeholder": {
@@ -364,7 +379,7 @@ class BaseElement():
         "emoji": True
       }
     }
-  
+
   def get_selected_value():
     return "Not yet implemented"
 
@@ -386,13 +401,12 @@ class InputBlock(BaseBlock):
     }
     block.update({"element": self.element.as_form_field(action=self.action)})
     return block
-    
+
 @dataclass
 class SectionBlock(BaseBlock):
   element: BaseElement = None
 
   def get_selected_value(self, input_data, **kwargs):
-    # return utilities.safe_get(input_data, self.action, self.action, "value")
     return self.element.get_selected_value(input_data, **kwargs)
 
   def as_form_field(self):
@@ -442,7 +456,7 @@ class SelectorElement(BaseElement):
     }
     if self.placeholder:
       j.update(self.make_placeholder_field())
-    
+
     initial_option = None
     if initial_value:
       initial_option = next((x for x in option_elements if x["value"] == initial_value), None )
@@ -471,7 +485,7 @@ SECTION_SELECTOR = SectionBlock(
   action = "temp",
   element = SelectorElement()
 )
- 
+
 # options = as_selector_options(['brent', 'evan'], ['35', '32'])
 # selector = SelectorElement(options=options, placeholder="Please select a name")
 

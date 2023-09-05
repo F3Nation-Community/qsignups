@@ -37,7 +37,7 @@ def refresh(client, user: User, logger, top_message, team_id, context):
         ])
 
         current_week_weinke_url = None
-        
+
         region_record = DbManager.get_record(Region, team_id)
 
         if region_record is None:

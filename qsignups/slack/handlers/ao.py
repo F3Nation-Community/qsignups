@@ -2,16 +2,15 @@ from database import DbManager
 from database.orm import Weekly, Master, AO
 from utilities import safe_get
 from . import UpdateResponse
-import ast
-from datetime import date, datetime
-from sqlalchemy import func
+from slack import inputs
 
-def edit(client, user_id, team_id, logger, page_label, input_data) -> UpdateResponse:
-    
-    # Parse inputs
-    label, ao_display_name, ao_channel_id = page_label.replace('*','').split('\n')
-    ao_display_name = input_data['ao_display_name']['ao_display_name']['value']
-    ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']['value']
+def get_context_value(body):
+    print(body)
+
+def edit(client, user_id, team_id, logger, ao_channel_id, input_data) -> UpdateResponse:
+
+    ao_display_name = inputs.AO_TITLE_INPUT.get_selected_value(input_data=input_data)
+    ao_location_subtitle = inputs.AO_SUBTITLE_INPUT.get_selected_value(input_data=input_data)
 
     # Attempt updates
     try:
@@ -43,14 +42,14 @@ def delete(client, user_id, team_id, logger, ao_channel_id) -> UpdateResponse:
     except Exception as e:
         logger.error(f"Error deleting AO: {e}")
         return UpdateResponse(success = False, message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Errors:\n{e}")
-    
+
 def insert(client, user_id, team_id, logger, input_data) -> UpdateResponse:
-    
+
     # Parse inputs
     ao_channel_id = safe_get(input_data, 'add_ao_channel_select', 'add_ao_channel_select', 'selected_channel')
     ao_display_name = safe_get(input_data, 'ao_display_name', 'ao_display_name', 'value')
     ao_location_subtitle = safe_get(input_data, 'ao_location_subtitle','ao_location_subtitle', 'value')
-    
+
     # replace double quotes with single quotes
     ao_display_name = ao_display_name.replace('"',"'")
     if ao_location_subtitle:
