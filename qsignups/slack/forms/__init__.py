@@ -2,7 +2,7 @@ from slack import inputs
 
 def make_action_button_row(buttons):
   return {
-      "type":"actions",
+      "type": "actions",
       "elements":[ b.as_form_field() for b in buttons ]
   }
 

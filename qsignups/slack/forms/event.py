@@ -306,13 +306,11 @@ def edit_recurring_form(team_id, user_id, client, logger, input_data):
     ]
 
     if q_google.is_available(team_id) and authenticate.is_connected(team_id):
-        calendars = calendar.get_calendars(team_id)
-        options = [ inputs.SelectorOption(name = x.name, value = x.id) for x in calendars]
-        input = inputs.GOOGLE_CALENDAR_SELECT.with_options(options)
-        input = input.with_label("If this event has a different google calendar, please select it here.  Leave it empty to use the region calendar.")
-        blocks.append(input.as_form_field(initial_value = None))
-        input = inputs.MAP_URL_INPUT.with_label("If this event has a unique location URL, please enter it here.  Leave it empty to use the same MapURL as the AO")
-        blocks.append(input.as_form_field(initial_value=event.map_url))
+        blocks.append(forms.make_divider())
+        blocks.append(forms.make_header_row("*Google Calendar Information*"))
+        blocks.append(forms.make_header_row("Provide the lat/lon (if different than the AO), which will be used in the Google calendar event.."))
+        blocks.append(inputs.LATITUDE_INPUT.as_form_field())
+        blocks.append(inputs.LONGITUDE_INPUT.as_form_field())
 
     blocks += [
         forms.make_action_button_row([

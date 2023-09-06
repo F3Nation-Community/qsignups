@@ -14,7 +14,9 @@ def edit(client, user_id, team_id, logger, ao_channel_id, input_data) -> UpdateR
             AO.ao_display_name: inputs.AO_TITLE_INPUT.get_selected_value(input_data),
             AO.ao_location_subtitle: inputs.AO_SUBTITLE_INPUT.get_selected_value(input_data),
             AO.google_calendar_id: inputs.GOOGLE_CALENDAR_SELECT.get_selected_value(input_data),
-            AO.map_url: inputs.MAP_URL_INPUT.get_selected_value(input_data)
+            AO.map_url: inputs.MAP_URL_INPUT.get_selected_value(input_data),
+            AO.latitude: inputs.LATITUDE_INPUT.get_selected_value(input_data),
+            AO.longitude: inputs.LONGITUDE_INPUT.get_selected_value(input_data)
         })
         return UpdateResponse(success = True, message=f"Got it - I've made your updates!")
     except Exception as e:
@@ -61,7 +63,9 @@ def insert(client, user_id, team_id, logger, input_data) -> UpdateResponse:
             ao_location_subtitle = ao_location_subtitle,
             team_id = team_id,
             map_url = inputs.MAP_URL_INPUT.get_selected_value(input_data),
-            google_calendar_id = inputs.GOOGLE_CALENDAR_SELECT.get_selected_value(input_data)
+            google_calendar_id = inputs.GOOGLE_CALENDAR_SELECT.get_selected_value(input_data),
+            latitude = inputs.LATITUDE_INPUT.get_selected_value(input_data),
+            longitude = inputs.LONGITUDE_INPUT.get_selected_value(input_data)
         ))
         return UpdateResponse(success = True, message=f"Got it - I've made your updates!")
     except Exception as e:

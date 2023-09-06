@@ -16,6 +16,8 @@ class vwWeeklyEvents(BaseClass, QSignupClass):
   team_id = Column("team_id", String(100))
   google_calendar_id = Column("google_calendar_id", String(100))
   map_url = Column("map_url", String(256))
+  latitude = Column("latitude", DECIMAL(9,6))
+  longitude = Column("longitude", DECIMAL(9,6))
   ao_display_name = Column("ao_display_name", String(255))
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
@@ -36,6 +38,8 @@ class vwAOsSort(BaseClass, QSignupClass):
   current_month_weinke = Column("current_month_weinke", LONGTEXT)
   google_calendar_id = Column("google_calendar_id", String(100))
   map_url = Column("map_url", String(256))
+  latitude = Column("latitude", DECIMAL(9,6))
+  longitude = Column("longitude", DECIMAL(9,6))
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
 

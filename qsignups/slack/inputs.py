@@ -71,6 +71,32 @@ class ActionInput(BaseAction):
     }
 
 @dataclass
+class ActionNumericInput(BaseAction):
+  optional: bool = True
+  placeholder: str = None
+  is_decimal_allowed: bool = True
+
+  def get_selected_value(self, input_data):
+    return utilities.safe_get(input_data, self.action, self.action, "value")
+
+  def as_form_field(self, initial_value = None):
+    data = {
+        "type": "input",
+        "block_id": self.action,
+        "element": {
+          "type": "number_input",
+          "placeholder": self.make_label_field(self.placeholder),
+          "action_id": self.action,
+          "is_decimal_allowed": self.is_decimal_allowed
+        },
+        "optional": self.optional,
+        "label": self.make_label_field()
+    }
+    if initial_value:
+      data['element']['initial_value'] = int(initial_value)
+    return data
+
+@dataclass
 class ActionDateSelect(BaseAction):
 
   def as_form_field(self, initial_value = None):
@@ -370,6 +396,16 @@ MAP_URL_INPUT = ActionInput(
     label = "Map URL - link to the location",
     action = "ao_map_url",
     placeholder = "https://maps.google.com/maps?hl=en&q=29.986162%2C%20-90.092895")
+
+LATITUDE_INPUT = ActionNumericInput(
+    label = "Latitude",
+    action = "ao_latitude",
+    placeholder = "30.0000")
+
+LONGITUDE_INPUT = ActionNumericInput(
+    label = "Longitude",
+    action = "ao_longitude",
+    placeholder = "-90.0000")
 
 @dataclass
 class BaseBlock:

@@ -65,7 +65,9 @@ def edit(client, user_id, team_id, logger,event_id, body) -> UpdateResponse:
             Weekly.event_time: event_time,
             Weekly.event_end_time: event_end_time,
             Weekly.event_type: event_type,
-            Weekly.team_id: team_id
+            Weekly.team_id: team_id,
+            Weekly.latitude: inputs.LATITUDE_INPUT.get_selected_value(input_data),
+            Weekly.longitude: inputs.LONGITUDE_INPUT.get_selected_value(input_data)
         })
 
         # Support for changing day of week

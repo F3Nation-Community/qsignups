@@ -3,7 +3,7 @@ from enum import Enum
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import *
-from sqlalchemy.types import JSON
+from sqlalchemy.types import JSON, DECIMAL
 from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.orm import relationship
 
@@ -65,6 +65,8 @@ class AO(BaseClass, QSignupClass):
   ao_location_subtitle = Column("ao_location_subtitle", String(255))
   google_calendar_id = Column("google_calendar_id", String(100))
   map_url = Column("map_url", String(256))
+  latitude = Column("latitude", DECIMAL(9,6))
+  longitude = Column("longitude", DECIMAL(9,6))
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
 
@@ -85,6 +87,8 @@ class Weekly(BaseClass, QSignupClass):
   team_id = Column("team_id", String(100))
   google_calendar_id = Column("google_calendar_id", String(100))
   map_url = Column("map_url", String(256))
+  latitude = Column("latitude", DECIMAL(9,6))
+  longitude = Column("longitude", DECIMAL(9,6))
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
 

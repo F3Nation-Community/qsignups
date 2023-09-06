@@ -49,12 +49,16 @@ def edit_form(team_id, user_id, client, logger, body):
         inputs.AO_SUBTITLE_INPUT.as_form_field(initial_value = ao.ao_location_subtitle),
     ]
     if q_google.is_available(team_id) and authenticate.is_connected(team_id):
+        blocks.append(forms.make_divider())
+        blocks.append(forms.make_header_row("*Google Calendar Information*"))
+        blocks.append(forms.make_header_row("If your AO has a different google calendar, please select it here.  Leave it empty to use the region calendar."))
         calendars = calendar.get_calendars(team_id)
         options = [ inputs.SelectorOption(name = x.name, value = x.id) for x in calendars]
         input = inputs.GOOGLE_CALENDAR_SELECT.with_options(options)
-        input = input.with_label("If your AO has a different google calendar, please select it here.  Leave it empty to use the region calendar.")
         blocks.append(input.as_form_field(initial_value = ao.google_calendar_id))
-        blocks.append(inputs.MAP_URL_INPUT.as_form_field(initial_value = ao.map_url))
+        blocks.append(forms.make_header_row("Provide the lat/lon, which will be used in the Google calendar event.."))
+        blocks.append(inputs.LATITUDE_INPUT.as_form_field(initial_value = ao.latitude))
+        blocks.append(inputs.LONGITUDE_INPUT.as_form_field(initial_value = ao.latitude))
 
     blocks.append(forms.make_action_button_row([
         inputs.make_submit_button(actions.EDIT_AO_ACTION),
@@ -85,13 +89,17 @@ def add_form(team_id, user_id, client, logger):
     ]
 
     if q_google.is_available(team_id) and authenticate.is_connected(team_id):
+        blocks.append(forms.make_divider())
+        blocks.append(forms.make_header_row("*Google Calendar Information*"))
+        blocks.append(forms.make_header_row("If your AO has a different google calendar, please select it here.  Leave it empty to use the region calendar."))
+
         calendars = calendar.get_calendars(team_id)
         options = [ inputs.SelectorOption(name = x.name, value = x.id) for x in calendars]
         input = inputs.GOOGLE_CALENDAR_SELECT.with_options(options)
-        input = input.with_label("If your AO has a different google calendar, please select it here.  Leave it empty to use the region calendar.")
         blocks.append(input.as_form_field())
-
-        blocks.append(inputs.MAP_URL_INPUT.as_form_field())
+        blocks.append(forms.make_header_row("Provide the lat/lon, which will be used in the Google calendar event.."))
+        blocks.append(inputs.LATITUDE_INPUT.as_form_field())
+        blocks.append(inputs.LONGITUDE_INPUT.as_form_field())
 
 
     blocks.append(forms.make_action_button_row([

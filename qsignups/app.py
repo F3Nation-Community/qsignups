@@ -170,7 +170,7 @@ def handle_edit_ao_form(ack, body, client, logger, context):
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    ao.make_ao_selector(team_id, user_id, client, logger, label="Please select an AO to edit:", action = actions.actions.EDIT_SINGLE_EVENT_AO_SELECT)
+    ao.make_ao_selector(team_id, user_id, client, logger, label="Please select an AO to edit:", action = actions.EDIT_AO_AO_SELECT)
 
 @app.action(actions.EDIT_AO_AO_SELECT)
 def handle_edit_ao_select(ack, body, client, logger, context):
