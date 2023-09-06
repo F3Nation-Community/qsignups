@@ -170,7 +170,7 @@ def handle_edit_ao_form(ack, body, client, logger, context):
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    ao.make_ao_selector(team_id, user_id, client, logger, label="Please select an AO to edit:", action = actions.EDIT_AO_AO_SELECT)
+    ao.make_ao_selector(team_id, user_id, client, logger, label="Please select an AO to edit:", action = actions.actions.EDIT_SINGLE_EVENT_AO_SELECT)
 
 @app.action(actions.EDIT_AO_AO_SELECT)
 def handle_edit_ao_select(ack, body, client, logger, context):
@@ -205,7 +205,7 @@ def handle_edit_event_form(ack, body, client, logger, context):
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    event.edit_single_form(team_id, user_id, client, logger)
+    ao.make_ao_selector(team_id, user_id, client, logger, label="Please select an AO to edit:", action = actions.EDIT_SINGLE_EVENT_AO_SELECT)
 
 @app.action(inputs.DELETE_SINGLE_EVENT_FORM.action)
 def handle_delete_single_event_form(ack, body, client, logger, context):
@@ -238,7 +238,7 @@ def handle_edit_event_form(ack, body, client, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
     input_data = body
-    event.select_recurring_form_for_edit(team_id, user_id, client, logger, input_data)
+    event.select_recurring_for_edit_form(team_id, user_id, client, logger, input_data)
 
 @app.action(inputs.DELETE_RECURRING_EVENT_FORM.action)
 def handle_delete_event_form(ack, body, client, logger, context):
@@ -294,7 +294,8 @@ def handle_edit_recurring_event(ack, body, client, logger, context):
     user = get_user(user_id, client)
     team_id = context["team_id"]
     input_data = body
-    response = weekly_handler.edit(client, user_id, team_id, logger, input_data)
+    event_id = input_data['view']['private_metadata']
+    response = weekly_handler.edit(client, user_id, team_id, logger, event_id, input_data)
     home.refresh(client, user, logger, response.message, team_id, context)
 
 @app.action("delete_single_event_ao_select")

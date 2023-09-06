@@ -14,6 +14,8 @@ class vwWeeklyEvents(BaseClass, QSignupClass):
   event_end_time = Column("event_end_time", String(255))
   event_type = Column("event_type", String(255))
   team_id = Column("team_id", String(100))
+  google_calendar_id = Column("google_calendar_id", String(100))
+  map_url = Column("map_url", String(256))
   ao_display_name = Column("ao_display_name", String(255))
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)

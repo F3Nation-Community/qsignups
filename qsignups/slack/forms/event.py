@@ -5,6 +5,8 @@ from database.orm.views import vwWeeklyEvents, vwAOsSort
 from slack import actions, forms, inputs
 
 from utilities import list_to_dict
+import q_google
+from q_google import calendar, authenticate
 
 from sqlalchemy import func
 
@@ -118,37 +120,6 @@ def add_recurring_form(team_id, user_id, client, logger):
         logger.error(f"Error publishing home tab: {e}")
         print(e)
 
-def edit_single_form(team_id, user_id, client, logger):
-
-    # list of AOs for dropdown
-    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
-    ao_list = [ao.ao_display_name for ao in aos]
-    ao_id_list = [ao.ao_channel_id for ao in aos]
-
-    blocks = [
-        inputs.SectionBlock(
-            label = "Please select an AO to edit:",
-            action = actions.EDIT_SINGLE_EVENT_AO_SELECT,
-            element = inputs.SelectorElement(
-                placeholder = "Select an AO",
-                options = inputs.as_selector_options(ao_list, ao_id_list)
-            )
-        ).as_form_field()
-    ]
-
-    # Publish view
-    try:
-        client.views_publish(
-            user_id=user_id,
-            view={
-                "type": "home",
-                "blocks": blocks
-            }
-        )
-    except Exception as e:
-        logger.error(f"Error publishing home tab: {e}")
-        print(e)
-
 def delete_single_form(team_id, user_id, client, logger):
 
     # list of AOs for dropdown
@@ -200,7 +171,7 @@ def delete_single_form(team_id, user_id, client, logger):
         logger.error(f"Error publishing home tab: {e}")
         print(e)
 
-def select_recurring_form_for_edit(team_id, user_id, client, logger, input_data):
+def select_recurring_for_edit_form(team_id, user_id, client, logger, input_data):
 
     ao_channel_id = inputs.SECTION_SELECTOR.get_selected_value(input_data)
 
@@ -332,12 +303,23 @@ def edit_recurring_form(team_id, user_id, client, logger, input_data):
         inputs.START_DATE_SELECTOR.as_form_field(),
         inputs.START_TIME_SELECTOR.as_form_field(initial_value = event_start_time),
         inputs.END_TIME_SELECTOR.as_form_field(initial_value = event_end_time),
+    ]
+
+    if q_google.is_available(team_id) and authenticate.is_connected(team_id):
+        calendars = calendar.get_calendars(team_id)
+        options = [ inputs.SelectorOption(name = x.name, value = x.id) for x in calendars]
+        input = inputs.GOOGLE_CALENDAR_SELECT.with_options(options)
+        input = input.with_label("If this event has a different google calendar, please select it here.  Leave it empty to use the region calendar.")
+        blocks.append(input.as_form_field(initial_value = None))
+        input = inputs.MAP_URL_INPUT.with_label("If this event has a unique location URL, please enter it here.  Leave it empty to use the same MapURL as the AO")
+        blocks.append(input.as_form_field(initial_value=event.map_url))
+
+    blocks += [
         forms.make_action_button_row([
             inputs.make_submit_button(actions.EDIT_RECURRING_EVENT_ACTION),
             inputs.CANCEL_BUTTON
         ]),
         forms.make_header_row("Please wait after hitting Submit, and do not hit it more than once"),
-        forms.make_context_row(str(event_id))
     ]
 
     try:
@@ -345,8 +327,9 @@ def edit_recurring_form(team_id, user_id, client, logger, input_data):
             user_id=user_id,
             view={
                 "type": "home",
-                "blocks": blocks
-            }
+                "blocks": blocks,
+                "private_metadata": str(event_id)
+            },
         )
     except Exception as e:
         logger.error(f"Error publishing home tab: {e}")

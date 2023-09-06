@@ -13,9 +13,9 @@ def make_ao_selector(team_id, user_id, client, logger, label, action):
     ao_id_list = [ao.ao_channel_id for ao in aos]
 
     blocks = [inputs.SectionBlock(
-        label=label,
-        action=action,
-        element=inputs.SelectorElement(
+        label = label,
+        action = action,
+        element = inputs.SelectorElement(
             placeholder="Select an AO",
             options=inputs.as_selector_options(ao_list, ao_id_list)
         )
@@ -53,8 +53,7 @@ def edit_form(team_id, user_id, client, logger, body):
         options = [ inputs.SelectorOption(name = x.name, value = x.id) for x in calendars]
         input = inputs.GOOGLE_CALENDAR_SELECT.with_options(options)
         input = input.with_label("If your AO has a different google calendar, please select it here.  Leave it empty to use the region calendar.")
-        blocks.append(input.as_form_field(ao.google_calendar_id))
-
+        blocks.append(input.as_form_field(initial_value = ao.google_calendar_id))
         blocks.append(inputs.MAP_URL_INPUT.as_form_field(initial_value = ao.map_url))
 
     blocks.append(forms.make_action_button_row([

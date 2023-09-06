@@ -44,6 +44,14 @@ class ActionInput(BaseAction):
   optional: bool = True
   multiline: bool = False
 
+  def with_label(self, label):
+    return ActionInput(
+      label = label,
+      action = self.action,
+      placeholder = self.placeholder,
+      optional = self.optional,
+      multiline = self.multiline)
+
   def get_selected_value(self, input_data):
     return utilities.safe_get(input_data, self.action, self.action, "value")
 
@@ -184,12 +192,13 @@ def as_selector_options(names: List[str], values: List[str] = []) -> List[Select
 @dataclass
 class ActionSelector(BaseAction):
   options: List[SelectorOption]
+  placeholder: str = None
 
   def with_label(self, label):
-    return ActionSelector(label, self.action, self.options)
+    return ActionSelector(label, self.action, options = self.options, placeholder = self.placeholder)
 
   def with_options(self, options: List[SelectorOption]):
-    return ActionSelector(self.label, self.action, options)
+    return ActionSelector(self.label, self.action, options = options, placeholder = self.placeholder)
 
   def as_form_field(self, initial_value: str = None):
     if not self.options:
@@ -201,16 +210,19 @@ class ActionSelector(BaseAction):
           "block_id": self.action,
           "element": {
               "type": "static_select",
-              "placeholder": self.make_label_field(),
+              "placeholder": self.make_label_field(self.placeholder),
               "options": option_elements,
               "action_id": self.action
           },
           "label": self.make_label_field()
       }
+
+    initial_option = None
     if initial_value:
       initial_option = next((x for x in option_elements if x["value"] == initial_value), None )
       if initial_option:
         j['element']['initial_option'] = initial_option
+
     return j
 
   def get_selected_value(self, input_data):
@@ -270,6 +282,7 @@ AO_CHANNEL_SELECT = ActionChannelInput(
 GOOGLE_CALENDAR_SELECT: ActionSelector = ActionSelector(
   action = 'google_calendar_select',
   label = 'Select your Google Calendar',
+  placeholder = 'Select a calendar',
   options = as_selector_options([]))
 
 GOOGLE_CONNECT: ActionButton = ActionButton(label = 'Connect Google Calendar', action = "connect_google_calendar", style = 'primary')
@@ -356,8 +369,7 @@ AO_SUBTITLE_INPUT = ActionInput(
 MAP_URL_INPUT = ActionInput(
     label = "Map URL - link to the location",
     action = "ao_map_url",
-    placeholder = "")
-
+    placeholder = "https://maps.google.com/maps?hl=en&q=29.986162%2C%20-90.092895")
 
 @dataclass
 class BaseBlock:

@@ -84,6 +84,7 @@ class Weekly(BaseClass, QSignupClass):
   event_type = Column("event_type", String(255))
   team_id = Column("team_id", String(100))
   google_calendar_id = Column("google_calendar_id", String(100))
+  map_url = Column("map_url", String(256))
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
 

@@ -31,14 +31,3 @@ def make_divider():
   return  {
       "type": "divider"
   }
-
-def make_context_row(context):
-  return {
-            "type": "context",
-            "elements": [
-                {
-                    "type": "mrkdwn",
-                    "text": context
-                }
-            ]
-        }
