@@ -41,7 +41,8 @@ def schedule_event(team_id, user: User, region: Region, event: Master, ao: AO):
     return None
 
 def __create_event(svc, user: User, region: Region, event: Master, ao: AO):
-  if not region.google_calendar_id:
+  calendar_id = ao.google_calendar_id or region.google_calendar_id
+  if not calendar_id:
     return None
 
   if not event.event_end_time:
@@ -50,9 +51,16 @@ def __create_event(svc, user: User, region: Region, event: Master, ao: AO):
   if not event.google_event_id and __is_too_far_in_the_future(region, event):
     return None
 
+  if event.weekly:
+    lat = event.weekly.latitude or ao.latitude
+    lon = event.weekly.longitude or ao.latitude
+  else:
+    lat = ao.latitude
+    lon = ao.longitude
+
   body = {
     'summary': __event_title(user, event, ao),
-    'description': __event_description(user, event, ao),
+    'description': __event_description(user, event, ao, lat, lon),
     'start': {
       'dateTime': __google_date_time(region, event.event_date, event.event_time),
       'timeZone': region.timezone
@@ -76,15 +84,15 @@ def __create_event(svc, user: User, region: Region, event: Master, ao: AO):
     body['attendees'].append({
       'email': user.email
     })
-  if ao.latitude and ao.longitude:
+  if lat and lon:
     body['location'] = f"{ao.latitude},{ao.longitude}"
 
   if event.google_event_id:
     print("UPDATING", body)
-    return svc.events().patch(calendarId = region.google_calendar_id, eventId = event.google_event_id, body = body).execute()
+    return svc.events().patch(calendarId = calendar_id, eventId = event.google_event_id, body = body).execute()
   else:
     print("CREATING", body)
-    return svc.events().insert(calendarId = region.google_calendar_id, body = body).execute()
+    return svc.events().insert(calendarId = calendar_id, body = body).execute()
 
 def __is_too_far_in_the_future(region: Region, event: Master) -> bool:
   event_time = __event_date_time(region, event.event_date, event.event_time)
@@ -98,13 +106,14 @@ def __event_title(user: User, event: Master, ao: AO):
   else:
     return f"{ao.ao_display_name} - Needs a Q"
 
-def __event_description(user: User, event: Master, ao: AO):
+def __event_description(user: User, event: Master, ao: AO, lat, lon):
   parts = [
     f"<strong>{ao.ao_display_name}</strong> {event.event_type}"
   ]
   parts.append(ao.ao_location_subtitle)
-  if ao.latitude and ao.longitude:
-    map_url = f"https://maps.google.com?q={ao.latitude},{ao.longitude}"
+
+  if lat and lon:
+    map_url = f"https://maps.google.com?q={lat},{lon}"
     parts.append(f"<a href='{map_url}'>Map</a>")
 
   parts.append(f"From {__clock_time(event.event_time)} to {__clock_time(event.event_end_time)}")

@@ -126,7 +126,7 @@ def insert(client, user_id, team_id, logger, input_data) -> UpdateResponse:
     ])[0].ao_channel_id
 
     try:
-        DbManager.create_record(Weekly(
+        weekly: Weekly = DbManager.create_record(Weekly(
             ao_channel_id = ao_channel_id,
             event_day_of_week = event_day_of_week,
             event_time = event_time,
@@ -149,7 +149,8 @@ def insert(client, user_id, team_id, logger, input_data) -> UpdateResponse:
                     event_day_of_week = event_day_of_week,
                     event_type = event_type,
                     event_recurring = event_recurring,
-                    team_id = team_id
+                    team_id = team_id,
+                    weekly_id = weekly.id
                 ))
             iterate_date += timedelta(days=1)
 

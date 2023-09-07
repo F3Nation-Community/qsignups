@@ -102,6 +102,7 @@ class Master(BaseClass, QSignupClass):
   __tablename__ = "qsignups_master"
   id = Column("id", Integer, primary_key = True)
   ao_channel_id = Column("ao_channel_id", String(255))
+  weekly_id = Column("weekly_id", Integer, ForeignKey("qsignups_weekly.id"), nullable = True)
   event_date = Column("event_date", Date)
   event_time = Column("event_time", String(255))
   event_end_time = Column("event_end_time", String(255))
@@ -115,6 +116,8 @@ class Master(BaseClass, QSignupClass):
   google_event_id = Column("google_event_id", String(45))
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
+
+  weekly = relationship("qsignups_weekly")
 
   def get_id(self):
     return self.id
