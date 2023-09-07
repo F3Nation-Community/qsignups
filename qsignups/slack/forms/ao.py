@@ -58,7 +58,7 @@ def edit_form(team_id, user_id, client, logger, body):
         blocks.append(input.as_form_field(initial_value = ao.google_calendar_id))
         blocks.append(forms.make_header_row("Provide the lat/lon, which will be used in the Google calendar event.."))
         blocks.append(inputs.LATITUDE_INPUT.as_form_field(initial_value = ao.latitude))
-        blocks.append(inputs.LONGITUDE_INPUT.as_form_field(initial_value = ao.latitude))
+        blocks.append(inputs.LONGITUDE_INPUT.as_form_field(initial_value = ao.longitude))
 
     blocks.append(forms.make_action_button_row([
         inputs.make_submit_button(actions.EDIT_AO_ACTION),

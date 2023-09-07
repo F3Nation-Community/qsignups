@@ -93,7 +93,7 @@ class ActionNumericInput(BaseAction):
         "label": self.make_label_field()
     }
     if initial_value:
-      data['element']['initial_value'] = int(initial_value)
+      data['element']['initial_value'] = str(float(initial_value))
     return data
 
 @dataclass
