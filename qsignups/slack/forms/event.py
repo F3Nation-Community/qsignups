@@ -100,6 +100,16 @@ def add_recurring_form(team_id, user_id, client, logger):
     blocks += [
         inputs.START_TIME_SELECTOR.as_form_field(initial_value = "05:30"),
         inputs.END_TIME_SELECTOR.as_form_field(initial_value = "06:15"),
+    ]
+
+    if q_google.is_available(team_id) and authenticate.is_connected(team_id):
+        blocks.append(forms.make_divider())
+        blocks.append(forms.make_header_row("*Google Calendar Information*"))
+        blocks.append(forms.make_header_row("Provide the lat/lon (if different than the AO), which will be used in the Google calendar event.."))
+        blocks.append(inputs.LATITUDE_INPUT.as_form_field())
+        blocks.append(inputs.LONGITUDE_INPUT.as_form_field())
+
+    blocks += [
 
         forms.make_action_button_row([
             inputs.make_submit_button(actions.ADD_RECURRING_EVENT_ACTION),
@@ -309,8 +319,8 @@ def edit_recurring_form(team_id, user_id, client, logger, input_data):
         blocks.append(forms.make_divider())
         blocks.append(forms.make_header_row("*Google Calendar Information*"))
         blocks.append(forms.make_header_row("Provide the lat/lon (if different than the AO), which will be used in the Google calendar event.."))
-        blocks.append(inputs.LATITUDE_INPUT.as_form_field())
-        blocks.append(inputs.LONGITUDE_INPUT.as_form_field())
+        blocks.append(inputs.LATITUDE_INPUT.as_form_field(initial_value=event.latitude))
+        blocks.append(inputs.LONGITUDE_INPUT.as_form_field(initial_value=event.longitude))
 
     blocks += [
         forms.make_action_button_row([
