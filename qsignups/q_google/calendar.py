@@ -76,6 +76,8 @@ def __create_event(svc, user: User, region: Region, event: Master, ao: AO):
     body['attendees'].append({
       'email': user.email
     })
+  if ao.latitude and ao.longitude:
+    body['location'] = f"{ao.latitude},{ao.longitude}"
 
   if event.google_event_id:
     print("UPDATING", body)
@@ -101,6 +103,10 @@ def __event_description(user: User, event: Master, ao: AO):
     f"<strong>{ao.ao_display_name}</strong> {event.event_type}"
   ]
   parts.append(ao.ao_location_subtitle)
+  if ao.latitude and ao.longitude:
+    map_url = f"https://maps.google.com?q={ao.latitude},{ao.longitude}"
+    parts.append(f"<a href='{map_url}'>Map</a>")
+
   parts.append(f"From {__clock_time(event.event_time)} to {__clock_time(event.event_end_time)}")
   if user:
     parts.append(f"Q'd by {user.name}")
