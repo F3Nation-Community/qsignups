@@ -6,8 +6,8 @@ from database.orm import AO, Region
 from database.orm.views import vwMasterEvents
 import constants
 from slack import actions, forms, inputs
-import google
-# from google import authenticate
+import q_google
+from q_google import authenticate
 from utilities import User
 
 def refresh(client, user: User, logger, top_message, team_id, context):
@@ -37,7 +37,7 @@ def refresh(client, user: User, logger, top_message, team_id, context):
         ])
 
         current_week_weinke_url = None
-        
+
         region_record = DbManager.get_record(Region, team_id)
 
         if region_record is None:
@@ -184,11 +184,11 @@ def refresh(client, user: User, logger, top_message, team_id, context):
         blocks.append(button)
         blocks.append(forms.make_action_button_row([inputs.GENERAL_SETTINGS]))
 
-    # if google.is_available(team_id):
-    #     if authenticate.is_connected(team_id):
-    #         blocks.append(forms.make_action_button_row([inputs.GOOGLE_DISCONNECT]))
-    #     else:
-    #         blocks.append(forms.make_action_button_row([inputs.GOOGLE_CONNECT]))
+    if q_google.is_available(team_id):
+        if authenticate.is_connected(team_id):
+            blocks.append(forms.make_action_button_row([inputs.GOOGLE_DISCONNECT]))
+        else:
+            blocks.append(forms.make_action_button_row([inputs.GOOGLE_CONNECT]))
 
     # Attempt to publish view
     try:

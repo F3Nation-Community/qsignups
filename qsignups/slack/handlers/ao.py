@@ -2,24 +2,21 @@ from database import DbManager
 from database.orm import Weekly, Master, AO
 from utilities import safe_get
 from . import UpdateResponse
-import ast
-from datetime import date, datetime
-from sqlalchemy import func
+from slack import inputs
 
-def edit(client, user_id, team_id, logger, page_label, input_data) -> UpdateResponse:
-    
-    # Parse inputs
-    label, ao_display_name, ao_channel_id = page_label.replace('*','').split('\n')
-    ao_display_name = input_data['ao_display_name']['ao_display_name']['value']
-    ao_location_subtitle = input_data['ao_location_subtitle']['ao_location_subtitle']['value']
+def edit(client, user_id, team_id, logger, ao_channel_id, input_data) -> UpdateResponse:
 
     # Attempt updates
     try:
         DbManager.update_records(cls=AO, filters=[
             AO.ao_channel_id == ao_channel_id
         ], fields={
-            AO.ao_display_name: ao_display_name,
-            AO.ao_location_subtitle: ao_location_subtitle
+            AO.ao_display_name: inputs.AO_TITLE_INPUT.get_selected_value(input_data),
+            AO.ao_location_subtitle: inputs.AO_SUBTITLE_INPUT.get_selected_value(input_data),
+            AO.google_calendar_id: inputs.GOOGLE_CALENDAR_SELECT.get_selected_value(input_data),
+            AO.map_url: inputs.MAP_URL_INPUT.get_selected_value(input_data),
+            AO.latitude: inputs.LATITUDE_INPUT.get_selected_value(input_data),
+            AO.longitude: inputs.LONGITUDE_INPUT.get_selected_value(input_data)
         })
         return UpdateResponse(success = True, message=f"Got it - I've made your updates!")
     except Exception as e:
@@ -43,14 +40,14 @@ def delete(client, user_id, team_id, logger, ao_channel_id) -> UpdateResponse:
     except Exception as e:
         logger.error(f"Error deleting AO: {e}")
         return UpdateResponse(success = False, message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Errors:\n{e}")
-    
+
 def insert(client, user_id, team_id, logger, input_data) -> UpdateResponse:
-    
+
     # Parse inputs
-    ao_channel_id = safe_get(input_data, 'add_ao_channel_select', 'add_ao_channel_select', 'selected_channel')
-    ao_display_name = safe_get(input_data, 'ao_display_name', 'ao_display_name', 'value')
-    ao_location_subtitle = safe_get(input_data, 'ao_location_subtitle','ao_location_subtitle', 'value')
-    
+    ao_channel_id = inputs.AO_CHANNEL_SELECT.get_selected_value(input_data)
+    ao_display_name = inputs.AO_TITLE_INPUT.get_selected_value(input_data)
+    ao_location_subtitle = inputs.AO_SUBTITLE_INPUT.get_selected_value(input_data)
+
     # replace double quotes with single quotes
     ao_display_name = ao_display_name.replace('"',"'")
     if ao_location_subtitle:
@@ -60,11 +57,15 @@ def insert(client, user_id, team_id, logger, input_data) -> UpdateResponse:
 
     # Attempt insert
     try:
-        ao_record = DbManager.create_record(AO(
+        DbManager.create_record(AO(
             ao_channel_id = ao_channel_id,
             ao_display_name = ao_display_name,
             ao_location_subtitle = ao_location_subtitle,
-            team_id = team_id
+            team_id = team_id,
+            map_url = inputs.MAP_URL_INPUT.get_selected_value(input_data),
+            google_calendar_id = inputs.GOOGLE_CALENDAR_SELECT.get_selected_value(input_data),
+            latitude = inputs.LATITUDE_INPUT.get_selected_value(input_data),
+            longitude = inputs.LONGITUDE_INPUT.get_selected_value(input_data)
         ))
         return UpdateResponse(success = True, message=f"Got it - I've made your updates!")
     except Exception as e:

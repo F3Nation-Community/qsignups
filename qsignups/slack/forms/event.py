@@ -5,6 +5,8 @@ from database.orm.views import vwWeeklyEvents, vwAOsSort
 from slack import actions, forms, inputs
 
 from utilities import list_to_dict
+import q_google
+from q_google import calendar, authenticate
 
 from sqlalchemy import func
 
@@ -98,6 +100,16 @@ def add_recurring_form(team_id, user_id, client, logger):
     blocks += [
         inputs.START_TIME_SELECTOR.as_form_field(initial_value = "05:30"),
         inputs.END_TIME_SELECTOR.as_form_field(initial_value = "06:15"),
+    ]
+
+    if q_google.is_available(team_id) and authenticate.is_connected(team_id):
+        blocks.append(forms.make_divider())
+        blocks.append(forms.make_header_row("*Google Calendar Information*"))
+        blocks.append(forms.make_header_row("Provide the lat/lon (if different than the AO), which will be used in the Google calendar event.."))
+        blocks.append(inputs.LATITUDE_INPUT.as_form_field())
+        blocks.append(inputs.LONGITUDE_INPUT.as_form_field())
+
+    blocks += [
 
         forms.make_action_button_row([
             inputs.make_submit_button(actions.ADD_RECURRING_EVENT_ACTION),
@@ -106,37 +118,6 @@ def add_recurring_form(team_id, user_id, client, logger):
         forms.make_header_row("Please wait after hitting Submit, and do not hit it more than once")
     ]
 
-    try:
-        client.views_publish(
-            user_id=user_id,
-            view={
-                "type": "home",
-                "blocks": blocks
-            }
-        )
-    except Exception as e:
-        logger.error(f"Error publishing home tab: {e}")
-        print(e)
-
-def edit_single_form(team_id, user_id, client, logger):
-
-    # list of AOs for dropdown
-    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
-    ao_list = [ao.ao_display_name for ao in aos]
-    ao_id_list = [ao.ao_channel_id for ao in aos]
-    
-    blocks = [
-        inputs.SectionBlock(
-            label = "Please select an AO to edit:",
-            action = actions.EDIT_SINGLE_EVENT_AO_SELECT,
-            element = inputs.SelectorElement(
-                placeholder = "Select an AO",
-                options = inputs.as_selector_options(ao_list, ao_id_list)
-            )
-        ).as_form_field()
-    ]
-
-    # Publish view
     try:
         client.views_publish(
             user_id=user_id,
@@ -200,12 +181,12 @@ def delete_single_form(team_id, user_id, client, logger):
         logger.error(f"Error publishing home tab: {e}")
         print(e)
 
-def select_recurring_form_for_edit(team_id, user_id, client, logger, input_data):
+def select_recurring_for_edit_form(team_id, user_id, client, logger, input_data):
 
     ao_channel_id = inputs.SECTION_SELECTOR.get_selected_value(input_data)
 
     weekly_events: list[vwWeeklyEvents] = DbManager.find_records(vwWeeklyEvents, [
-        vwWeeklyEvents.team_id == team_id, 
+        vwWeeklyEvents.team_id == team_id,
         vwWeeklyEvents.ao_channel_id == ao_channel_id
     ])
 
@@ -315,7 +296,7 @@ def edit_recurring_form(team_id, user_id, client, logger, input_data):
         event_end_time = event.event_end_time[:2] + ':' + event.event_end_time[2:]
     else:
         event_end_time = None
-        
+
     if event.event_type in ['Bootcamp', 'QSource', 'Custom']:
         initial_type_select = event.event_type
         initial_type_manual = ''
@@ -332,12 +313,21 @@ def edit_recurring_form(team_id, user_id, client, logger, input_data):
         inputs.START_DATE_SELECTOR.as_form_field(),
         inputs.START_TIME_SELECTOR.as_form_field(initial_value = event_start_time),
         inputs.END_TIME_SELECTOR.as_form_field(initial_value = event_end_time),
+    ]
+
+    if q_google.is_available(team_id) and authenticate.is_connected(team_id):
+        blocks.append(forms.make_divider())
+        blocks.append(forms.make_header_row("*Google Calendar Information*"))
+        blocks.append(forms.make_header_row("Provide the lat/lon (if different than the AO), which will be used in the Google calendar event.."))
+        blocks.append(inputs.LATITUDE_INPUT.as_form_field(initial_value=event.latitude))
+        blocks.append(inputs.LONGITUDE_INPUT.as_form_field(initial_value=event.longitude))
+
+    blocks += [
         forms.make_action_button_row([
             inputs.make_submit_button(actions.EDIT_RECURRING_EVENT_ACTION),
             inputs.CANCEL_BUTTON
         ]),
         forms.make_header_row("Please wait after hitting Submit, and do not hit it more than once"),
-        forms.make_context_row(str(event_id))
     ]
 
     try:
@@ -345,35 +335,9 @@ def edit_recurring_form(team_id, user_id, client, logger, input_data):
             user_id=user_id,
             view={
                 "type": "home",
-                "blocks": blocks
-            }
-        )
-    except Exception as e:
-        logger.error(f"Error publishing home tab: {e}")
-        print(e)
-
-def make_ao_section_selector(team_id, user_id, client, logger, label, action):
-    # list of AOs for dropdown
-    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
-    ao_list = [ao.ao_display_name for ao in aos]
-    ao_id_list = [ao.ao_channel_id for ao in aos]
-    
-    blocks = [inputs.SectionBlock(
-        label=label,
-        action=action,
-        element=inputs.SelectorElement(
-            placeholder="Select an AO",
-            options=inputs.as_selector_options(ao_list, ao_id_list)
-        )
-    ).as_form_field()]
-    
-    try:
-        client.views_publish(
-            user_id=user_id,
-            view={
-                "type": "home",
-                "blocks": blocks
-            }
+                "blocks": blocks,
+                "private_metadata": str(event_id)
+            },
         )
     except Exception as e:
         logger.error(f"Error publishing home tab: {e}")

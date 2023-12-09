@@ -42,6 +42,15 @@ class ActionButton(BaseAction):
 class ActionInput(BaseAction):
   placeholder: str
   optional: bool = True
+  multiline: bool = False
+
+  def with_label(self, label):
+    return ActionInput(
+      label = label,
+      action = self.action,
+      placeholder = self.placeholder,
+      optional = self.optional,
+      multiline = self.multiline)
 
   def get_selected_value(self, input_data):
     return utilities.safe_get(input_data, self.action, self.action, "value")
@@ -53,12 +62,39 @@ class ActionInput(BaseAction):
         "element": {
           "type": "plain_text_input",
           "placeholder": self.make_label_field(self.placeholder),
+          "multiline": self.multiline,
           "action_id": self.action,
           "initial_value": initial_value or '',
         },
         "optional": self.optional,
         "label": self.make_label_field()
     }
+
+@dataclass
+class ActionNumericInput(BaseAction):
+  optional: bool = True
+  placeholder: str = None
+  is_decimal_allowed: bool = True
+
+  def get_selected_value(self, input_data):
+    return utilities.safe_get(input_data, self.action, self.action, "value")
+
+  def as_form_field(self, initial_value = None):
+    data = {
+        "type": "input",
+        "block_id": self.action,
+        "element": {
+          "type": "number_input",
+          "placeholder": self.make_label_field(self.placeholder),
+          "action_id": self.action,
+          "is_decimal_allowed": self.is_decimal_allowed
+        },
+        "optional": self.optional,
+        "label": self.make_label_field()
+    }
+    if initial_value:
+      data['element']['initial_value'] = str(float(initial_value))
+    return data
 
 @dataclass
 class ActionDateSelect(BaseAction):
@@ -182,9 +218,13 @@ def as_selector_options(names: List[str], values: List[str] = []) -> List[Select
 @dataclass
 class ActionSelector(BaseAction):
   options: List[SelectorOption]
+  placeholder: str = None
+
+  def with_label(self, label):
+    return ActionSelector(label, self.action, options = self.options, placeholder = self.placeholder)
 
   def with_options(self, options: List[SelectorOption]):
-    return ActionSelector(self.label, self.action, options)
+    return ActionSelector(self.label, self.action, options = options, placeholder = self.placeholder)
 
   def as_form_field(self, initial_value: str = None):
     if not self.options:
@@ -196,16 +236,19 @@ class ActionSelector(BaseAction):
           "block_id": self.action,
           "element": {
               "type": "static_select",
-              "placeholder": self.make_label_field(),
+              "placeholder": self.make_label_field(self.placeholder),
               "options": option_elements,
               "action_id": self.action
           },
           "label": self.make_label_field()
       }
+
+    initial_option = None
     if initial_value:
       initial_option = next((x for x in option_elements if x["value"] == initial_value), None )
       if initial_option:
         j['element']['initial_option'] = initial_option
+
     return j
 
   def get_selected_value(self, input_data):
@@ -256,9 +299,16 @@ WEINKIE_INPUT = ActionChannelInput(
   label = "Public channel for posting weekly schedules:"
 )
 
+AO_CHANNEL_SELECT = ActionChannelInput(
+  action = "ao_channel_select",
+  placeholder = "Select a channel",
+  label = "Channel for sending AO notifications:"
+)
+
 GOOGLE_CALENDAR_SELECT: ActionSelector = ActionSelector(
   action = 'google_calendar_select',
   label = 'Select your Google Calendar',
+  placeholder = 'Select a calendar',
   options = as_selector_options([]))
 
 GOOGLE_CONNECT: ActionButton = ActionButton(label = 'Connect Google Calendar', action = "connect_google_calendar", style = 'primary')
@@ -329,6 +379,34 @@ TIMEZONE_SELECT = ActionSelector(
   ])
 )
 
+
+AO_TITLE_INPUT = ActionInput(
+    label = "AO Title",
+    action = "ao_location_title",
+    placeholder = "Weasel's Ridge")
+
+AO_SUBTITLE_INPUT = ActionInput(
+            label = "Location (township, park, etc.)",
+            action = "ao_location_subtitle",
+            placeholder = "Oompa Loompa Kingdom",
+            multiline = True,
+            optional = True)
+
+MAP_URL_INPUT = ActionInput(
+    label = "Map URL - link to the location",
+    action = "ao_map_url",
+    placeholder = "https://maps.google.com/maps?hl=en&q=29.986162%2C%20-90.092895")
+
+LATITUDE_INPUT = ActionNumericInput(
+    label = "Latitude",
+    action = "ao_latitude",
+    placeholder = "30.0000")
+
+LONGITUDE_INPUT = ActionNumericInput(
+    label = "Longitude",
+    action = "ao_longitude",
+    placeholder = "-90.0000")
+
 @dataclass
 class BaseBlock:
   label: str
@@ -355,7 +433,7 @@ class BaseBlock:
 class BaseElement():
   placeholder: str = None
   initial: str = None
-  
+
   def make_placeholder_field(self):
     return {
       "placeholder": {
@@ -364,7 +442,7 @@ class BaseElement():
         "emoji": True
       }
     }
-  
+
   def get_selected_value():
     return "Not yet implemented"
 
@@ -386,13 +464,12 @@ class InputBlock(BaseBlock):
     }
     block.update({"element": self.element.as_form_field(action=self.action)})
     return block
-    
+
 @dataclass
 class SectionBlock(BaseBlock):
   element: BaseElement = None
 
   def get_selected_value(self, input_data, **kwargs):
-    # return utilities.safe_get(input_data, self.action, self.action, "value")
     return self.element.get_selected_value(input_data, **kwargs)
 
   def as_form_field(self):
@@ -442,7 +519,7 @@ class SelectorElement(BaseElement):
     }
     if self.placeholder:
       j.update(self.make_placeholder_field())
-    
+
     initial_option = None
     if initial_value:
       initial_option = next((x for x in option_elements if x["value"] == initial_value), None )
@@ -471,7 +548,7 @@ SECTION_SELECTOR = SectionBlock(
   action = "temp",
   element = SelectorElement()
 )
- 
+
 # options = as_selector_options(['brent', 'evan'], ['35', '32'])
 # selector = SelectorElement(options=options, placeholder="Please select a name")
 

@@ -3,7 +3,7 @@ from enum import Enum
 import sqlalchemy
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import *
-from sqlalchemy.types import JSON
+from sqlalchemy.types import JSON, DECIMAL
 from sqlalchemy.dialects.mysql import LONGTEXT
 from sqlalchemy.orm import relationship
 
@@ -62,6 +62,11 @@ class AO(BaseClass, QSignupClass):
   ao_display_name = Column("ao_display_name", String(255))
   ao_location_subtitle = Column("ao_location_subtitle", String(255))
   current_month_weinke = Column("current_month_weinke", LONGTEXT)
+  ao_location_subtitle = Column("ao_location_subtitle", String(255))
+  google_calendar_id = Column("google_calendar_id", String(100))
+  map_url = Column("map_url", String(256))
+  latitude = Column("latitude", DECIMAL(9,6))
+  longitude = Column("longitude", DECIMAL(9,6))
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
 
@@ -81,6 +86,9 @@ class Weekly(BaseClass, QSignupClass):
   event_type = Column("event_type", String(255))
   team_id = Column("team_id", String(100))
   google_calendar_id = Column("google_calendar_id", String(100))
+  map_url = Column("map_url", String(256))
+  latitude = Column("latitude", DECIMAL(9,6))
+  longitude = Column("longitude", DECIMAL(9,6))
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
 
@@ -94,6 +102,7 @@ class Master(BaseClass, QSignupClass):
   __tablename__ = "qsignups_master"
   id = Column("id", Integer, primary_key = True)
   ao_channel_id = Column("ao_channel_id", String(255))
+  weekly_id = Column("weekly_id", Integer, ForeignKey("qsignups_weekly.id"), nullable = True)
   event_date = Column("event_date", Date)
   event_time = Column("event_time", String(255))
   event_end_time = Column("event_end_time", String(255))
@@ -107,6 +116,8 @@ class Master(BaseClass, QSignupClass):
   google_event_id = Column("google_event_id", String(45))
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
+
+  weekly = relationship("qsignups_weekly")
 
   def get_id(self):
     return self.id

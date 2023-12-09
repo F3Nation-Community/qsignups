@@ -32,10 +32,9 @@ def delete(client, user_id, team_id, logger, input_data) -> UpdateResponse:
         logger.error(f"Error deleting: {e}")
         return UpdateResponse(success = False, message = f"Sorry, there was an error of some sort; please try again or contact your local administrator / Weasel Shaker. Errors:\n{e}")
 
-def edit(client, user_id, team_id, logger, body) -> UpdateResponse:
+def edit(client, user_id, team_id, logger,event_id, body) -> UpdateResponse:
 
     input_data = body['view']['state']['values']
-    event_id = int(body['view']['blocks'][-1]['elements'][0]['text'])
 
     # Gather inputs from form
     ao_display_name = inputs.AO_SELECTOR.get_selected_value(input_data)
@@ -48,7 +47,7 @@ def edit(client, user_id, team_id, logger, body) -> UpdateResponse:
     starting_date = inputs.START_DATE_SELECTOR.get_selected_value(input_data) or datetime.now(tz=pytz.timezone('US/Central'))
 
     event_recurring = True
-    
+
     if event_type == 'Custom':
         event_type = inputs.CUSTOM_EVENT_INPUT.get_selected_value(input_data) or 'Custom'
 
@@ -66,7 +65,9 @@ def edit(client, user_id, team_id, logger, body) -> UpdateResponse:
             Weekly.event_time: event_time,
             Weekly.event_end_time: event_end_time,
             Weekly.event_type: event_type,
-            Weekly.team_id: team_id
+            Weekly.team_id: team_id,
+            Weekly.latitude: inputs.LATITUDE_INPUT.get_selected_value(input_data),
+            Weekly.longitude: inputs.LONGITUDE_INPUT.get_selected_value(input_data)
         })
 
         # Support for changing day of week
@@ -103,20 +104,21 @@ def edit(client, user_id, team_id, logger, body) -> UpdateResponse:
 
 def insert(client, user_id, team_id, logger, input_data) -> UpdateResponse:
 
-    ao_display_name = safe_get(input_data, 'ao_display_name_select_action','ao_display_name_select_action','selected_option','value')
-    event_day_of_week = safe_get(input_data, 'event_day_of_week_select_action','event_day_of_week_select_action','selected_option','value')
-    starting_date = safe_get(input_data, 'add_event_datepicker','add_event_datepicker','selected_date')
-    event_time = safe_get(input_data, 'event_start_time_select','event_start_time_select','selected_time').replace(':','')
-    event_end_time = safe_get(input_data, 'event_end_time_select','event_end_time_select','selected_time').replace(':','')
-    event_type_select = safe_get(input_data, 'event_type_select_action','event_type_select_action','selected_option','value')
-    event_type_custom = safe_get(input_data, 'event_type_custom','event_type_custom','value')
+    ao_display_name = inputs.AO_SELECTOR.get_selected_value(input_data)
+    event_day_of_week = inputs.WEEKDAY_SELECTOR.get_selected_value(input_data)
+    event_time = inputs.START_TIME_SELECTOR.get_selected_value(input_data).replace(":", "")
+    event_end_time = inputs.END_TIME_SELECTOR.get_selected_value(input_data)
+    if event_end_time:
+        event_end_time = event_end_time.replace(":", "")
+    event_type = inputs.EVENT_TYPE_SELECTOR.get_selected_value(input_data)
+    starting_date = inputs.START_DATE_SELECTOR.get_selected_value(input_data) or datetime.now(tz=pytz.timezone('US/Central'))
+
+    event_type_custom = inputs.CUSTOM_EVENT_INPUT.get_selected_value(input_data)
     event_recurring = True
 
     # Logic for custom events
-    if event_type_select == 'Custom':
+    if event_type == 'Custom':
         event_type = event_type_custom
-    else:
-        event_type = event_type_select
 
     ao_channel_id = DbManager.find_records(AO, [
         AO.team_id == team_id,
@@ -124,13 +126,15 @@ def insert(client, user_id, team_id, logger, input_data) -> UpdateResponse:
     ])[0].ao_channel_id
 
     try:
-        DbManager.create_record(Weekly(
+        weekly: Weekly = DbManager.create_record(Weekly(
             ao_channel_id = ao_channel_id,
             event_day_of_week = event_day_of_week,
             event_time = event_time,
             event_end_time = event_end_time,
             event_type = event_type,
-            team_id = team_id
+            team_id = team_id,
+            latitude = inputs.LATITUDE_INPUT.get_selected_value(input_data),
+            longitude = inputs.LONGITUDE_INPUT.get_selected_value(input_data)
         ))
 
         record_list = []
@@ -145,7 +149,8 @@ def insert(client, user_id, team_id, logger, input_data) -> UpdateResponse:
                     event_day_of_week = event_day_of_week,
                     event_type = event_type,
                     event_recurring = event_recurring,
-                    team_id = team_id
+                    team_id = team_id,
+                    weekly_id = weekly.id
                 ))
             iterate_date += timedelta(days=1)
 

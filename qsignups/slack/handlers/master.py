@@ -3,10 +3,9 @@ from datetime import datetime
 
 from database import DbManager
 from database.orm import Master, AO, Region, helper
-# from google import calendar
 from . import UpdateResponse
-from utilities import get_user, safe_get, User
-# from google import authenticate, calendar
+from utilities import safe_get, User
+from q_google import authenticate, calendar
 
 def delete(client, user_id, team_id, logger, input_data) -> UpdateResponse:
 
@@ -127,8 +126,8 @@ def update_events(client, user: User, team_id, logger, input_data) -> UpdateResp
         records_to_reschedules = DbManager.find_records(Master, filters = [
             Master.id.in_([x.id for x in google_records])
         ])
-        # for event in records_to_reschedules:
-        #     calendar.schedule_event(team_id, user, region, event, ao)
+        for event in records_to_reschedules:
+           calendar.schedule_event(team_id, user, region, event, ao)
         return UpdateResponse(success = True, message=f"Got it - I've made your updates!")
     except Exception as e:
         logger.error(f"Error inserting: {e}")
@@ -148,7 +147,7 @@ def clear_event_q(client, user: User, team_id, logger, ao_display_name, selected
         })
         if result.event.google_event_id:
             region: Region = DbManager.get_record(Region, team_id)
-            # calendar.schedule_event(team_id, None, region, result.event, result.ao)
+            calendar.schedule_event(team_id, None, region, result.event, result.ao)
 
         return UpdateResponse(success = True, message=f"Got it, {user.name}! I have cleared the Q slot at *{ao_display_name}* on *{selected_dt.strftime('%A, %B %-d @ %H%M')}*")
     except Exception as e:
@@ -166,13 +165,13 @@ def assign_event_q(client, user: User, team_id, logger, selected_dt, ao_display_
         Master.q_pax_id: user.id,
         Master.q_pax_name: user.name
     })
-    # if authenticate.is_connected(team_id):
-    #     new_master = DbManager.get_record(Master, result.event.id)
-    #     region: Region = DbManager.get_record(Region, team_id)
-    #     event = calendar.schedule_event(team_id, user, region, new_master, result.ao)
-    #     if event and event.get('id'):
-    #         DbManager.update_record(Master, result.event.id, {
-    #             Master.google_event_id: event['id'],
-    #         })
+    if authenticate.is_connected(team_id):
+        new_master = DbManager.get_record(Master, result.event.id)
+        region: Region = DbManager.get_record(Region, team_id)
+        event = calendar.schedule_event(team_id, user, region, new_master, result.ao)
+        if event and event.get('id'):
+            DbManager.update_record(Master, result.event.id, {
+                Master.google_event_id: event['id'],
+            })
 
     return UpdateResponse(success = True, message=f"Got it - I've made your updates!")

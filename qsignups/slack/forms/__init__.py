@@ -2,7 +2,7 @@ from slack import inputs
 
 def make_action_button_row(buttons):
   return {
-      "type":"actions",
+      "type": "actions",
       "elements":[ b.as_form_field() for b in buttons ]
   }
 
@@ -31,14 +31,3 @@ def make_divider():
   return  {
       "type": "divider"
   }
-
-def make_context_row(context):
-  return {
-            "type": "context",
-            "elements": [
-                {
-                    "type": "mrkdwn",
-                    "text": context
-                }
-            ]
-        }

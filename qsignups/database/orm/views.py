@@ -14,6 +14,10 @@ class vwWeeklyEvents(BaseClass, QSignupClass):
   event_end_time = Column("event_end_time", String(255))
   event_type = Column("event_type", String(255))
   team_id = Column("team_id", String(100))
+  google_calendar_id = Column("google_calendar_id", String(100))
+  map_url = Column("map_url", String(256))
+  latitude = Column("latitude", DECIMAL(9,6))
+  longitude = Column("longitude", DECIMAL(9,6))
   ao_display_name = Column("ao_display_name", String(255))
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
@@ -23,7 +27,7 @@ class vwWeeklyEvents(BaseClass, QSignupClass):
 
   def get_id():
     return vwWeeklyEvents.id
-  
+
 class vwAOsSort(BaseClass, QSignupClass):
   __tablename__ = "vw_aos_sort"
   id = Column("id", Integer, primary_key = True)
@@ -32,6 +36,10 @@ class vwAOsSort(BaseClass, QSignupClass):
   ao_display_name = Column("ao_display_name", String(255))
   ao_location_subtitle = Column("ao_location_subtitle", String(255))
   current_month_weinke = Column("current_month_weinke", LONGTEXT)
+  google_calendar_id = Column("google_calendar_id", String(100))
+  map_url = Column("map_url", String(256))
+  latitude = Column("latitude", DECIMAL(9,6))
+  longitude = Column("longitude", DECIMAL(9,6))
   created = Column('created', DateTime, default = datetime.utcnow)
   updated = Column('updated', DateTime, default = datetime.utcnow)
 
@@ -40,7 +48,7 @@ class vwAOsSort(BaseClass, QSignupClass):
 
   def get_id():
     return vwAOsSort.id
-  
+
 class vwMasterEvents(BaseClass, QSignupClass):
   __tablename__ = "vw_master_events"
   id = Column("id", Integer, primary_key = True)

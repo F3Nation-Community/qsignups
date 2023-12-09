@@ -170,8 +170,19 @@ def handle_edit_ao_form(ack, body, client, logger, context):
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    ao.edit_form(team_id, user_id, client, logger)
-    
+    ao.make_ao_selector(team_id, user_id, client, logger, label="Please select an AO to edit:", action = actions.EDIT_AO_AO_SELECT)
+
+@app.action(actions.EDIT_AO_AO_SELECT)
+def handle_edit_ao_select(ack, body, client, logger, context):
+    ack()
+    logger.info(body)
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    if not ao.edit_form(team_id, user_id, client, logger, body):
+      #home.refresh(client, get_user(user_id, client), logger, top_message="Unable to find selected channel - PAXMiner may not have added it to the aos table yet", team_id=team_id, context=context)
+      pass
+
+
 @app.action(inputs.DELETE_AO_FORM.action)
 def handle_delete_ao_form(ack, body, client, logger, context):
     ack()
@@ -194,7 +205,7 @@ def handle_edit_event_form(ack, body, client, logger, context):
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    event.edit_single_form(team_id, user_id, client, logger)
+    ao.make_ao_selector(team_id, user_id, client, logger, label="Please select an AO to edit:", action = actions.EDIT_SINGLE_EVENT_AO_SELECT)
 
 @app.action(inputs.DELETE_SINGLE_EVENT_FORM.action)
 def handle_delete_single_event_form(ack, body, client, logger, context):
@@ -218,8 +229,8 @@ def handle_edit_event_form(ack, body, client, logger, context):
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    event.make_ao_section_selector(team_id, user_id, client, logger, label="Please select an AO to edit:", action=actions.EDIT_RECURRING_EVENT_AO_SELECT)
-    
+    ao.make_ao_selector(team_id, user_id, client, logger, label="Please select an AO to edit:", action=actions.EDIT_RECURRING_EVENT_AO_SELECT)
+
 @app.action(actions.EDIT_RECURRING_EVENT_AO_SELECT)
 def handle_edit_event_form(ack, body, client, logger, context):
     ack()
@@ -227,7 +238,7 @@ def handle_edit_event_form(ack, body, client, logger, context):
     user_id = context["user_id"]
     team_id = context["team_id"]
     input_data = body
-    event.select_recurring_form_for_edit(team_id, user_id, client, logger, input_data)
+    event.select_recurring_for_edit_form(team_id, user_id, client, logger, input_data)
 
 @app.action(inputs.DELETE_RECURRING_EVENT_FORM.action)
 def handle_delete_event_form(ack, body, client, logger, context):
@@ -235,7 +246,7 @@ def handle_delete_event_form(ack, body, client, logger, context):
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    event.make_ao_section_selector(team_id, user_id, client, logger, label="Please select an AO to edit:", action=actions.DELETE_RECURRING_EVENT_AO_SELECT)
+    ao.make_ao_selector(team_id, user_id, client, logger, label="Please select an AO to edit:", action=actions.DELETE_RECURRING_EVENT_AO_SELECT)
 
 @app.action(actions.DELETE_RECURRING_EVENT_AO_SELECT)
 def handle_delete_single_event_form(ack, body, client, logger, context):
@@ -283,7 +294,8 @@ def handle_edit_recurring_event(ack, body, client, logger, context):
     user = get_user(user_id, client)
     team_id = context["team_id"]
     input_data = body
-    response = weekly_handler.edit(client, user_id, team_id, logger, input_data)
+    event_id = input_data['view']['private_metadata']
+    response = weekly_handler.edit(client, user_id, team_id, logger, event_id, input_data)
     home.refresh(client, user, logger, response.message, team_id, context)
 
 @app.action("delete_single_event_ao_select")
@@ -380,103 +392,6 @@ def delete_single_event_button(ack, client, body, context):
     response = master_handler.delete(client, user_id, team_id, logger, input_data)
     home.refresh(client, user, logger, response.message, team_id, context)
 
-@app.action("edit_ao_select")
-def handle_edit_ao_select(ack, body, client, logger, context):
-    ack()
-    logger.info(body)
-    print(body)
-    user_id = context["user_id"]
-    user = get_user(user_id, client)
-    team_id = context["team_id"]
-
-    selected_channel = body['view']['state']['values']['edit_ao_select']['edit_ao_select']['selected_option']['value']
-    selected_channel_name = body['view']['state']['values']['edit_ao_select']['edit_ao_select']['selected_option']['text']['text']
-
-    aos: list[vwAOsSort] = DbManager.find_records(vwAOsSort, [vwAOsSort.team_id == team_id])
-
-    if selected_channel not in [ao.ao_channel_id for ao in aos]:
-        home.refresh(client, user, logger, top_message="Selected channel not found - PAXMiner may not have added it to the aos table yet", team_id=team_id, context=context)
-    else:
-        ao_index = [ao.ao_channel_id for ao in aos].index(selected_channel)
-        ao_display_name = aos[ao_index].ao_display_name or ""
-        ao_location_subtitle = aos[ao_index].ao_location_subtitle or ""
-
-        # rebuild blocks
-        ao_options = []
-        for ao in aos:
-            new_option = {
-                "text": {
-                    "type": "plain_text",
-                    "text": ao.ao_display_name,
-                    "emoji": True
-                },
-                "value": ao.ao_channel_id
-            }
-            ao_options.append(new_option)
-
-        blocks = [
-            {
-                "type": "section",
-                "block_id": "page_label",
-                "text": {
-                    "type": "mrkdwn",
-                    "text": f"*Edit AO:*\n*{selected_channel_name}*\n{selected_channel}"
-			    }
-            },
-            {
-                "type": "input",
-                "block_id": "ao_display_name",
-                "element": {
-                    "type": "plain_text_input",
-                    "action_id": "ao_display_name",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Weasel's Ridge"
-                    },
-                    "initial_value": ao_display_name
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "AO Title"
-                }
-            },
-            {
-                "type": "input",
-                "block_id": "ao_location_subtitle",
-                "element": {
-                    "type": "plain_text_input",
-                    "multiline": True,
-                    "action_id": "ao_location_subtitle",
-                    "placeholder": {
-                        "type": "plain_text",
-                        "text": "Oompa Loompa Kingdom"
-                    },
-                    "initial_value": ao_location_subtitle
-                },
-                "label": {
-                    "type": "plain_text",
-                    "text": "Location (township, park, etc.)"
-                }
-            }
-        ]
-        blocks.append(forms.make_action_button_row([
-            inputs.make_submit_button(actions.EDIT_AO_ACTION),
-            inputs.CANCEL_BUTTON
-        ]))
-
-
-        try:
-            client.views_publish(
-                user_id=user_id,
-                view={
-                    "type": "home",
-                    "blocks": blocks
-                }
-            )
-        except Exception as e:
-            logger.error(f"Error publishing home tab: {e}")
-            print(e)
-            
 @app.action(actions.DELETE_AO_SELECT_ACTION)
 def handle_delete_ao_select(ack, body, client, logger, context):
     ack()
@@ -484,7 +399,7 @@ def handle_delete_ao_select(ack, body, client, logger, context):
     print(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    
+
     blocks = [
         {
             "type": "section",
@@ -597,12 +512,11 @@ def submit_edit_ao_button(ack, body, client, logger, context):
     logger.info(body)
     print(body)
     user_id = context["user_id"]
-    user = get_user(user_id, client)
     team_id = context["team_id"]
-    page_label = body['view']['blocks'][0]['text']['text']
     input_data = body['view']['state']['values']
-    response = ao_handler.edit(client, user_id, team_id, logger, page_label, input_data)
-    home.refresh(client, user, logger, response.message, team_id, context)
+    ao_channel_id = body['view']['private_metadata']
+    response = ao_handler.edit(client, user_id, team_id, logger, ao_channel_id, input_data)
+    home.refresh(client, get_user(user_id, client), logger, response.message, team_id, context)
 
 @app.action(actions.DELETE_AO_ACTION)
 def submit_delete_ao_button(ack, body, client, logger, context):
@@ -636,13 +550,12 @@ def handle_submit_general_settings_button(ack, body, client, logger, context):
 @app.action(actions.ADD_AO_ACTION)
 def handle_submit_add_ao_button(ack, body, client, logger, context):
     ack()
-    logger.info(body)
-    print(body)
     user_id = context["user_id"]
-    user = get_user(user_id, client)
     team_id = context["team_id"]
     input_data = body['view']['state']['values']
     response = ao_handler.insert(client, user_id, team_id, logger, input_data)
+
+    user = get_user(user_id, client)
     home.refresh(client, user, logger, response.message, team_id, context)
 
 @app.action(actions.ADD_RECURRING_EVENT_ACTION)
@@ -1010,7 +923,7 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
     }
     if q_pax_id is not None:
         user_select_element['initial_users'] = [q_pax_id]
-        
+
     if not event.event_end_time:
         end_time_default = datetime.strftime(selected_date_dt + timedelta(minutes=45), "%H%M")
 
