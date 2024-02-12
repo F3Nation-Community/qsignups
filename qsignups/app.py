@@ -66,9 +66,20 @@ def handle_refresh_home_button(ack, body, client, logger, context):
 
 
 @app.event("app_mention")
-def handle_app_mentions(body, say, logger):
+def handle_app_mentions(body, logger, client):
     logger.info(f"INFO: {body}")
-    say("Looking for me? Click on my icon to go to the app and sign up to Q!")
+    refresh_home_block = {
+        "type": "section",
+        "block_id": "refresh_home",
+        "text": {"type": "mrkdwn", "text": "Looking for me or having issues? Click the button below to refresh the QSignups home tab"},
+        "accessory": {
+            "type": "button",
+            "action_id": actions.REFRESH_ACTION,
+            "text": {"type": "plain_text", "text": "Refresh QSignups", "emoji": True},
+            "value": "refresh_home",
+        },
+    }
+    client.chat_postMessage(channel=body["event"]["channel"], text="Hello!", blocks=[refresh_home_block])
 
 
 @app.command("/hello")
