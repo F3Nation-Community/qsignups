@@ -159,6 +159,16 @@ def refresh(client, user: User, logger, top_message, team_id, context):
 
     #     for block in weinke_blocks:
     #         blocks.append(block)
+    
+    blocks.append({
+        "type": "context",
+        "elements": [
+            {
+                "type": "mrkdwn",
+                "text": "Looking for the calendar view? Slack broke something and it's not working right now. We're working on it!"
+            }
+        ]
+    })
 
     # add upcoming schedule text block
     if sMsg:
