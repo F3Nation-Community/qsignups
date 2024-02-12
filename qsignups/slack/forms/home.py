@@ -121,44 +121,44 @@ def refresh(client, user: User, logger, top_message, team_id, context):
         }
         blocks.append(new_block)
 
-    if (current_week_weinke_url != None) and (next_week_weinke_url != None):
-        weinke_blocks = [
-            {
-                "type": "image",
-                "title": {
-                    "type": "plain_text",
-                    "text": "This week's schedule",
-                    "emoji": True
-                },
-                "image_url": current_week_weinke_url,
-                "alt_text": "This week's schedule"
-            },
-            {
-                "type": "image",
-                "title": {
-                    "type": "plain_text",
-                    "text": "Next week's schedule",
-                    "emoji": True
-                },
-                "image_url": next_week_weinke_url,
-                "alt_text": "Next week's schedule"
-            },
-            {
-                "type": "context",
-                "elements": [
-                    {
-                        "type": "mrkdwn",
-                        "text": "Weekly schedules updated hourly, and may not reflect the latest changes"
-                    }
-                ]
-            },
-            {
-                "type": "divider"
-            }
-        ]
+    # if (current_week_weinke_url != None) and (next_week_weinke_url != None):
+    #     weinke_blocks = [
+    #         {
+    #             "type": "image",
+    #             "title": {
+    #                 "type": "plain_text",
+    #                 "text": "This week's schedule",
+    #                 "emoji": True
+    #             },
+    #             "image_url": current_week_weinke_url,
+    #             "alt_text": "This week's schedule"
+    #         },
+    #         {
+    #             "type": "image",
+    #             "title": {
+    #                 "type": "plain_text",
+    #                 "text": "Next week's schedule",
+    #                 "emoji": True
+    #             },
+    #             "image_url": next_week_weinke_url,
+    #             "alt_text": "Next week's schedule"
+    #         },
+    #         {
+    #             "type": "context",
+    #             "elements": [
+    #                 {
+    #                     "type": "mrkdwn",
+    #                     "text": "Weekly schedules updated hourly, and may not reflect the latest changes"
+    #                 }
+    #             ]
+    #         },
+    #         {
+    #             "type": "divider"
+    #         }
+    #     ]
 
-        for block in weinke_blocks:
-            blocks.append(block)
+    #     for block in weinke_blocks:
+    #         blocks.append(block)
 
     # add upcoming schedule text block
     if sMsg:
