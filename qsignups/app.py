@@ -973,6 +973,10 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
         "AO Launch",
         "IronPAX",
         "Convergence",
+        "Flag Handoff",
+        "Ghost Q",
+        "Roulette Q",
+        "Q School",
     ]
     special_options = []
     for option in special_list:

@@ -39,7 +39,11 @@ def add_single_form(team_id, user_id, client, logger):
         'Birthday Q',
         'AO Launch',
         'IronPAX',
-        'Convergence'
+        'Convergence',
+        "Flag Handoff",
+        "Ghost Q",
+        "Roulette Q",
+        "Q School",
     ]
     special_selector = inputs.ActionSelector(
         label = "Special Event Tag",
