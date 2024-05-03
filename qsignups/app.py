@@ -977,6 +977,7 @@ def handle_edit_single_event_button(ack, client, body, logger, context):
         "Ghost Q",
         "Roulette Q",
         "Q School",
+        "AOVQ",
     ]
     special_options = []
     for option in special_list:
