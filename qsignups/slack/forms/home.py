@@ -93,7 +93,7 @@ def refresh(client, user: User, logger, top_message, team_id, context):
                 "text": "QSignups screen no longer updates automatically. Please use the refresh button to update the screen. Last updated: " + datetime.now(tz=pytz.timezone('US/Central')).strftime("%m/%d/%Y %I:%M %p CST")
             }
         ]
-    },
+    }
     
     blocks = [
         forms.make_header_row(top_message),
