@@ -84,8 +84,21 @@ def refresh(client, user: User, logger, top_message, team_id, context):
 
     # Build AO options list
     # Build view blocks
+    refresh_button = forms.make_action_button_row([inputs.ActionButton("Refresh Screen", action = actions.REFRESH_ACTION)])
+    refresh_context = {
+        "type": "context",
+        "elements": [
+            {
+                "type": "mrkdwn",
+                "text": "QSignups screen no longer updates automatically. Please use the refresh button to update the screen. Last updated: " + datetime.now(tz=pytz.timezone('US/Central')).strftime("%m/%d/%Y %I:%M %p CST")
+            }
+        ]
+    },
+    
     blocks = [
         forms.make_header_row(top_message),
+        refresh_button,
+        refresh_context,
         forms.make_divider(),
     ]
     if not ao_list:
@@ -180,10 +193,6 @@ def refresh(client, user: User, logger, top_message, team_id, context):
             }
         }
         blocks.append(upcoming_schedule_block)
-
-    # add page refresh button
-    refresh_button = forms.make_action_button_row([inputs.ActionButton("Refresh Schedule", action = actions.REFRESH_ACTION)])
-    blocks.append(refresh_button)
 
     # Optionally add admin button
     user_info_dict = client.users_info(
