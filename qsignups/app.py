@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from datetime import datetime, timedelta, date
@@ -102,13 +103,15 @@ def display_upcoming_schedule(ack):
 
 
 @app.event("app_home_opened")
-def update_home_tab(client, event, logger, context):
+def update_home_tab(client, event, logger, context, body):
     logger.info(event)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    user = get_user(user_id, client)
-    top_message = f"Welcome to QSignups, {user.name}!"
-    home.refresh(client, user, logger, top_message, team_id, context)
+    
+    if not safe_get(body, "event", "view"):
+        user = get_user(user_id, client)
+        top_message = f"Welcome to QSignups, {user.name}!"
+        home.refresh(client, user, logger, top_message, team_id, context)
 
 
 # @app.action(inputs.GOOGLE_DISCONNECT.action)
@@ -1125,13 +1128,13 @@ def cancel_button_select(ack, client, body, logger, context):
 
 SlackRequestHandler.clear_all_log_handlers()
 logger = logging.getLogger()
-logger.setLevel(level=logging.DEBUG)
+logger.setLevel(level=logging.INFO)
 # logging.basicConfig(format="%(asctime)s %(message)s", level=logging.DEBUG)
 
 
 def handler(event, context):
-    print(f"Original event: {event}")
-    print(f"Original context: {context}")
+    # print(f"Original event: {event}")
+    # print(f"Original context: {context}")
     # parsed_event = json.loads(event['body'])
     # team_id = parsed_event['team_id']
     # print(f'Team ID: {team_id}')
