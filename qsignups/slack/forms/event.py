@@ -44,6 +44,7 @@ def add_single_form(team_id, user_id, client, logger):
         "Ghost Q",
         "Roulette Q",
         "Q School",
+        "AOVQ",
     ]
     special_selector = inputs.ActionSelector(
         label = "Special Event Tag",
