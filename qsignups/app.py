@@ -74,13 +74,25 @@ def handle_app_mentions(body, logger, client):
     refresh_home_block = {
         "type": "section",
         "block_id": "refresh_home",
-        "text": {"type": "mrkdwn", "text": f"Looking for me or having issues? Click the button below to refresh the QSignups home tab. Click <slack://app?team={team_id}&id={app_id}&tab=home|here to visit the QSignups home screen>."},
-        "accessory": {
-            "type": "button",
-            "action_id": actions.REFRESH_ACTION,
-            "text": {"type": "plain_text", "text": "Refresh QSignups", "emoji": True},
-            "value": "refresh_home",
-        },
+        "text": {"type": "mrkdwn", "text": f"Looking for me or having issues? Click the button below to go to QSignups! If your screen is blank, click the refresh button."},
+    }
+    actions_block = {
+        "type": "actions",
+        "elements": [
+            {
+                "type": "button",
+                "action_id": "go_to_home",
+                "text": {"type": "plain_text", "text": ":calendar: Go to QSignups", "emoji": True},
+                "value": "go_to_home",
+                "url": f"slack://app?team={team_id}&id={app_id}&tab=home",
+            },
+            {
+                "type": "button",
+                "action_id": actions.REFRESH_ACTION,
+                "text": {"type": "plain_text", "text": ":arrows_clockwise: Refresh QSignups", "emoji": True},
+                "value": "refresh_home",
+            },
+        ]
     }
     client.chat_postMessage(channel=body["event"]["channel"], text="Hello!", blocks=[refresh_home_block])
 
