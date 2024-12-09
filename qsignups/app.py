@@ -113,7 +113,7 @@ def refresh_home_tab(ack, body, client, logger, context, respond):
         client.views_update(view_id=res["view"]["id"], view=view_modal("Home tab refreshed!"))
     # respond("Home tab refreshed!")
 
-app.command("/refresh")(ack= lambda ack: ack(), lazy=refresh_home_tab)
+app.command("/refresh")(ack= lambda ack: ack(), lazy=[refresh_home_tab])
 
 @app.command("/hello")
 def respond_to_slack_within_3_seconds(ack):
