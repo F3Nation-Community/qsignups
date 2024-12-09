@@ -88,10 +88,27 @@ def refresh_home_tab(ack, body, client, logger, context, respond):
     user_id = context["user_id"]
     team_id = context["team_id"]
     user = get_user(user_id, client)
-    respond("Refreshing home tab...")
+    def view_modal(text: str) -> dict:
+        return {
+                "type": "modal",
+                "callback_id": "refreshing-id",
+                "title": {"type": "plain_text", "text": "QSignups Home"},
+                "close": {"type": "plain_text", "text": "Close"},
+                "notify_on_close": False,
+                "blocks": [
+                    {
+                        "type": "section",
+                        "block_id": "refresh_home",
+                        "text": {"type": "mrkdwn", "text": "Refreshing home tab..."},
+                    }
+                ],
+            }
+    res = client.views_open(trigger_id=body["trigger_id"], view=view_modal("Refreshing home tab..."))
+    # respond("Refreshing home tab...")
     top_message = f"Welcome to QSignups, {user.name}!"
     home.refresh(client, user, logger, top_message, team_id, context)
-    respond("Home tab refreshed!")
+    client.views_update(view_id=res["view"]["id"], view=view_modal("Home tab refreshed!"))
+    # respond("Home tab refreshed!")
 
 @app.command("/hello")
 def respond_to_slack_within_3_seconds(ack):
