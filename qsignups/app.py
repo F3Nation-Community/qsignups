@@ -82,6 +82,15 @@ def handle_app_mentions(body, logger, client):
     }
     client.chat_postMessage(channel=body["event"]["channel"], text="Hello!", blocks=[refresh_home_block])
 
+@app.command("/refresh")
+def refresh_home_tab(ack, body, client, logger, context):
+    ack()
+    user_id = context["user_id"]
+    team_id = context["team_id"]
+    user = get_user(user_id, client)
+    top_message = f"Welcome to QSignups, {user.name}!"
+    home.refresh(client, user, logger, top_message, team_id, context)
+    client.chat_postMessage(channel=user_id, text="Home tab refreshed!")
 
 @app.command("/hello")
 def respond_to_slack_within_3_seconds(ack):
