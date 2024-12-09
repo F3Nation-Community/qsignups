@@ -105,9 +105,11 @@ def refresh_home_tab(ack, body, client, logger, context, respond):
             }
     res = client.views_open(trigger_id=body["trigger_id"], view=view_modal("Refreshing home tab..."))
     # respond("Refreshing home tab...")
-    top_message = f"Welcome to QSignups, {user.name}!"
-    home.refresh(client, user, logger, top_message, team_id, context)
-    client.views_update(view_id=res["view"]["id"], view=view_modal("Home tab refreshed!"))
+    try:
+        top_message = f"Welcome to QSignups, {user.name}!"
+        home.refresh(client, user, logger, top_message, team_id, context)
+    finally:
+        client.views_update(view_id=res["view"]["id"], view=view_modal("Home tab refreshed!"))
     # respond("Home tab refreshed!")
 
 @app.command("/hello")
