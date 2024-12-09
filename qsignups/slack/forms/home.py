@@ -195,13 +195,13 @@ def refresh(client, user: User, logger, top_message, team_id, context):
         blocks.append(upcoming_schedule_block)
 
     # Optionally add admin button
-    user_info_dict = client.users_info(
-        user=user.id
-    )
-    if user_info_dict['user']['is_admin']:
-        button = forms.make_action_button_row([inputs.ActionButton("Manage Region Calendar", action = actions.MANAGE_SCHEDULE_ACTION)])
-        blocks.append(button)
-        blocks.append(forms.make_action_button_row([inputs.GENERAL_SETTINGS]))
+    # user_info_dict = client.users_info(
+    #     user=user.id
+    # )
+    # if user_info_dict['user']['is_admin']:
+    button = forms.make_action_button_row([inputs.ActionButton("Manage Region Calendar", action = actions.MANAGE_SCHEDULE_ACTION)])
+    blocks.append(button)
+    blocks.append(forms.make_action_button_row([inputs.GENERAL_SETTINGS]))
 
     # if google.is_available(team_id):
     #     if authenticate.is_connected(team_id):

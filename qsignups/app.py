@@ -205,27 +205,33 @@ def handle_manager_schedule_button(ack, body, client, logger, context):
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
+    user = get_user(user_id, client)
+    
+    user_info = client.users_info(user=user_id)
+    if user_info['user']['is_admin']:
+        blocks = [
+            forms.make_header_row("Choose an option to manage your AOs:"),
+            forms.make_action_button_row([inputs.ADD_AO_FORM, inputs.EDIT_AO_FORM, inputs.DELETE_AO_FORM]),
+            forms.make_header_row("Choose an option to manage your Recurring Events:"),
+            forms.make_action_button_row(
+                [inputs.ADD_RECURRING_EVENT_FORM, inputs.EDIT_RECURRING_EVENT_FORM, inputs.DELETE_RECURRING_EVENT_FORM]
+            ),
+            forms.make_header_row("Choose an option to manage your Single Events:"),
+            forms.make_action_button_row(
+                [inputs.ADD_SINGLE_EVENT_FORM, inputs.EDIT_SINGLE_EVENT_FORM, inputs.DELETE_SINGLE_EVENT_FORM]
+            ),
+            forms.make_header_row("Return to the Home Page:"),
+            forms.make_action_button_row([inputs.CANCEL_BUTTON]),
+        ]
+        try:
+            client.views_publish(user_id=user_id, view={"type": "home", "blocks": blocks})
+        except Exception as e:
+            logger.error(f"Error publishing home tab: {e}")
+            print(e)
+    else:
+        top_message = f'You must be an admin to manage the schedule. <https://slack.com/help/articles/218124397-Change-a-members-role|Request admin status from your local space admin or owner>.'
+        home.refresh(client, user, logger, top_message, team_id, context)
 
-    blocks = [
-        forms.make_header_row("Choose an option to manage your AOs:"),
-        forms.make_action_button_row([inputs.ADD_AO_FORM, inputs.EDIT_AO_FORM, inputs.DELETE_AO_FORM]),
-        forms.make_header_row("Choose an option to manage your Recurring Events:"),
-        forms.make_action_button_row(
-            [inputs.ADD_RECURRING_EVENT_FORM, inputs.EDIT_RECURRING_EVENT_FORM, inputs.DELETE_RECURRING_EVENT_FORM]
-        ),
-        forms.make_header_row("Choose an option to manage your Single Events:"),
-        forms.make_action_button_row(
-            [inputs.ADD_SINGLE_EVENT_FORM, inputs.EDIT_SINGLE_EVENT_FORM, inputs.DELETE_SINGLE_EVENT_FORM]
-        ),
-        forms.make_header_row("Return to the Home Page:"),
-        forms.make_action_button_row([inputs.CANCEL_BUTTON]),
-    ]
-
-    try:
-        client.views_publish(user_id=user_id, view={"type": "home", "blocks": blocks})
-    except Exception as e:
-        logger.error(f"Error publishing home tab: {e}")
-        print(e)
 
 
 @app.action(inputs.ADD_AO_FORM.action)
@@ -349,7 +355,13 @@ def handle_general_settings_form(ack, body, client, logger, context):
     logger.info(body)
     user_id = context["user_id"]
     team_id = context["team_id"]
-    settings.general_form(team_id, user_id, client, logger)
+    user = get_user(user_id, client)
+    user_info = client.users_info(user=user_id)
+    if user_info['user']['is_admin']:
+        settings.general_form(team_id, user_id, client, logger)
+    else:
+        top_message = f'You must be an admin to manage the settings. <https://slack.com/help/articles/218124397-Change-a-members-role|Request admin status from your local space admin or owner>.'
+        home.refresh(client, user, logger, top_message, team_id, context)
 
 
 @app.action(actions.DELETE_RECURRING_SELECT_ACTION)
