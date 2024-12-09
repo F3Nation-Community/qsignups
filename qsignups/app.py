@@ -69,10 +69,12 @@ def handle_refresh_home_button(ack, body, client, logger, context):
 @app.event("app_mention")
 def handle_app_mentions(body, logger, client):
     logger.info(f"INFO: {body}")
+    team_id = body["team_id"]
+    app_id = body["api_app_id"]
     refresh_home_block = {
         "type": "section",
         "block_id": "refresh_home",
-        "text": {"type": "mrkdwn", "text": "Looking for me or having issues? Click the button below to refresh the QSignups home tab"},
+        "text": {"type": "mrkdwn", "text": f"Looking for me or having issues? Click the button below to refresh the QSignups home tab. Click <slack://app?team={team_id}&id={app_id}&tab=home|here to visit the QSignups home screen>."},
         "accessory": {
             "type": "button",
             "action_id": actions.REFRESH_ACTION,
@@ -82,7 +84,6 @@ def handle_app_mentions(body, logger, client):
     }
     client.chat_postMessage(channel=body["event"]["channel"], text="Hello!", blocks=[refresh_home_block])
 
-@app.command("/refresh")
 def refresh_home_tab(ack, body, client, logger, context, respond):
     ack()
     user_id = context["user_id"]
@@ -99,7 +100,7 @@ def refresh_home_tab(ack, body, client, logger, context, respond):
                     {
                         "type": "section",
                         "block_id": "refresh_home",
-                        "text": {"type": "mrkdwn", "text": "Refreshing home tab..."},
+                        "text": {"type": "mrkdwn", "text": text},
                     }
                 ],
             }
@@ -111,6 +112,8 @@ def refresh_home_tab(ack, body, client, logger, context, respond):
     finally:
         client.views_update(view_id=res["view"]["id"], view=view_modal("Home tab refreshed!"))
     # respond("Home tab refreshed!")
+
+app.command("/refresh")(ack= lambda ack: ack(), lazy=refresh_home_tab)
 
 @app.command("/hello")
 def respond_to_slack_within_3_seconds(ack):
