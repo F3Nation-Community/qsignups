@@ -94,7 +94,7 @@ def handle_app_mentions(body, logger, client):
             },
         ]
     }
-    client.chat_postMessage(channel=body["event"]["channel"], text="Hello!", blocks=[refresh_home_block])
+    client.chat_postMessage(channel=body["event"]["channel"], text="Hello!", blocks=[refresh_home_block, actions_block])
 
 def refresh_home_tab(ack, body, client, logger, context, respond):
     ack()
