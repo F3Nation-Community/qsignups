@@ -66,66 +66,50 @@ def handle_refresh_home_button(ack, body, client, logger, context):
     home.refresh(client, user, logger, top_message, team_id, context)
 
 
+def redirect_blocks(team_id: str, app_id: str) -> list[dict]:
+    return [
+        {
+            "type": "section",
+            "block_id": "refresh_home",
+            "text": {"type": "mrkdwn", "text": f"Looking for me or having issues? Click the button below to go to QSignups! If your screen is blank, click the refresh button."},
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "action_id": "go_to_home",
+                    "text": {"type": "plain_text", "text": ":calendar: Go to QSignups", "emoji": True},
+                    "value": "go_to_home",
+                    "url": f"slack://app?team={team_id}&id={app_id}&tab=home",
+                },
+                {
+                    "type": "button",
+                    "action_id": actions.REFRESH_ACTION,
+                    "text": {"type": "plain_text", "text": ":arrows_clockwise: Refresh QSignups", "emoji": True},
+                    "value": "refresh_home",
+                },
+            ]
+        }
+    ]
+
 @app.event("app_mention")
 def handle_app_mentions(body, logger, client):
     logger.info(f"INFO: {body}")
     team_id = body["team_id"]
     app_id = body["api_app_id"]
-    refresh_home_block = {
-        "type": "section",
-        "block_id": "refresh_home",
-        "text": {"type": "mrkdwn", "text": f"Looking for me or having issues? Click the button below to go to QSignups! If your screen is blank, click the refresh button."},
-    }
-    actions_block = {
-        "type": "actions",
-        "elements": [
-            {
-                "type": "button",
-                "action_id": "go_to_home",
-                "text": {"type": "plain_text", "text": ":calendar: Go to QSignups", "emoji": True},
-                "value": "go_to_home",
-                "url": f"slack://app?team={team_id}&id={app_id}&tab=home",
-            },
-            {
-                "type": "button",
-                "action_id": actions.REFRESH_ACTION,
-                "text": {"type": "plain_text", "text": ":arrows_clockwise: Refresh QSignups", "emoji": True},
-                "value": "refresh_home",
-            },
-        ]
-    }
-    client.chat_postMessage(channel=body["event"]["channel"], text="Hello!", blocks=[refresh_home_block, actions_block])
+    blocks = redirect_blocks(team_id, app_id)
+    client.chat_postMessage(channel=body["event"]["channel"], text="Hello!", blocks=blocks)
 
-def refresh_home_tab(ack, body, client, logger, context, respond):
+def qsignups_slash(ack, body, client, logger, context, respond):
     ack()
     user_id = context["user_id"]
     team_id = context["team_id"]
-    user = get_user(user_id, client)
-    def view_modal(text: str) -> dict:
-        return {
-                "type": "modal",
-                "callback_id": "refreshing-id",
-                "title": {"type": "plain_text", "text": "QSignups Home"},
-                "close": {"type": "plain_text", "text": "Close"},
-                "notify_on_close": False,
-                "blocks": [
-                    {
-                        "type": "section",
-                        "block_id": "refresh_home",
-                        "text": {"type": "mrkdwn", "text": text},
-                    }
-                ],
-            }
-    res = client.views_open(trigger_id=body["trigger_id"], view=view_modal("Refreshing home tab..."))
-    # respond("Refreshing home tab...")
-    try:
-        top_message = f"Welcome to QSignups, {user.name}!"
-        home.refresh(client, user, logger, top_message, team_id, context)
-    finally:
-        client.views_update(view_id=res["view"]["id"], view=view_modal("Home tab refreshed!"))
-    # respond("Home tab refreshed!")
+    app_id = body["api_app_id"]
+    blocks = redirect_blocks(team_id, app_id)
+    client.views_open(trigger_id=body["trigger_id"], view={"type": "modal", "callback_id": "redirect", "blocks": blocks, "title": {"type": "plain_text", "text": "QSignups"}})
 
-app.command("/refresh")(ack= lambda ack: ack(), lazy=[refresh_home_tab])
+app.command("/qsignups")(ack= lambda ack: ack(), lazy=[qsignups_slash])
 
 @app.command("/hello")
 def respond_to_slack_within_3_seconds(ack):
