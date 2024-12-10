@@ -66,7 +66,7 @@ def handle_refresh_home_button(ack, body, client, logger, context):
     home.refresh(client, user, logger, top_message, team_id, context)
 
 
-def redirect_blocks(team_id: str, app_id: str) -> list[dict]:
+def redirect_blocks(team_id: str, app_id: str):
     return [
         {
             "type": "section",
