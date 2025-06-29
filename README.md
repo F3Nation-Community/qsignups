@@ -47,8 +47,7 @@ git clone https://github.com/evanpetzoldt/qsignups-lambda.git
     2. Ensure it's running by running `docker ps` and looking for your database
     3. Access the db by running `docker exec -it qsignups-db psql -U local_user postgres`
     4. At the prompt create the database by running `CREATE DATABASE f3stcharles;`
-    5. Quit the psql prompt with `\q`  
-
+    5. Quit the psql prompt with `\q`  <br>
 
     - Small Note: There are other methods to do this as well, this is just a quick cli version for copypasta.
 
