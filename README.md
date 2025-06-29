@@ -48,7 +48,9 @@ git clone https://github.com/evanpetzoldt/qsignups-lambda.git
     3. Access the db by running `docker exec -it qsignups-db psql -U local_user postgres`
     4. At the prompt create the database by running `CREATE DATABASE f3stcharles;`
     5. Quit the psql prompt with `\q`
+
     - Small Note: There are other methods to do this as well, this is just a quick cli version for copypasta.
+    
 4. Create the Slack bot: 
     1. Navigate to [api.slack.com/apps](https://api.slack.com/apps)
     2. Click "Create an app"
