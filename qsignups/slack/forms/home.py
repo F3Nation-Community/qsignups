@@ -10,6 +10,23 @@ import google
 # from google import authenticate
 from utilities import User
 
+def get_timezone_for_team(team_id: str) -> str:
+    """
+    Finds the timezone for a given Slack team_id.
+    Connects to the DB, finds the matching region, and returns its timezone.
+    Defaults to EST if not found.
+    """
+    try:
+        with DbManager.get_session() as session:
+            region = session.query(Region).filter(Region.team_id == team_id).first()
+            if region and region.timezone:
+                return region.timezone
+    except Exception as e:
+        # For now, we'll just fall back without explicit logging here.
+        # In a real scenario, you'd want to log 'e' to understand why it failed.
+        pass
+    return "EST" # A sensible default if no region is found or an error occurs
+
 def refresh(client, user: User, logger, top_message, team_id, context):
     sMsg = ""
     current_week_weinke_url = None
@@ -24,15 +41,20 @@ def refresh(client, user: User, logger, top_message, team_id, context):
         ])
         ao_list.sort( key = lambda x: x.ao_display_name.replace('The ', ''))
 
+        # Get the timezone *once* at the beginning of the function if it's used multiple times
+        region_timezone_str = get_timezone_for_team(team_id)
+        tz = pytz.timezone(region_timezone_str)
+        now_in_region = datetime.now(tz=tz) # Use this variable for all time-based queries
+
         # Event pulls
         upcoming_qs = DbManager.find_records(vwMasterEvents, [
             vwMasterEvents.team_id == team_id,
             vwMasterEvents.q_pax_id == user.id,
-            vwMasterEvents.event_date > datetime.now(tz=pytz.timezone('US/Central'))
+            vwMasterEvents.event_date > now_in_region,
         ])
         upcoming_events = DbManager.find_records(vwMasterEvents, [
             vwMasterEvents.team_id == team_id,
-            vwMasterEvents.event_date > datetime.now(tz=pytz.timezone('US/Central')),
+            vwMasterEvents.event_date > now_in_region,
             vwMasterEvents.event_date <= date.today()+timedelta(days=7),
         ])
 
@@ -82,6 +104,15 @@ def refresh(client, user: User, logger, top_message, team_id, context):
             dt_fmt = q.event_date.strftime("%a %m-%d")
             top_message += f"\n- {q.event_type} on {dt_fmt} @ {q.event_time} at {q.ao_display_name}"
 
+    # First, get the correct timezone using our new helper function
+    region_timezone_str = get_timezone_for_team(team_id) # Use the team_id passed to build_home_tab
+    tz = pytz.timezone(region_timezone_str)
+    now_in_region = datetime.now(tz=tz)
+
+    # Then, format the string using that timezone's information
+    # The %Z will automatically use the correct abbreviation (EST, CST, PST, etc.)
+    last_updated_str = now_in_region.strftime("%m/%d/%Y %I:%M %p %Z")
+
     # Build AO options list
     # Build view blocks
     refresh_button = forms.make_action_button_row([inputs.ActionButton("Refresh Screen", action = actions.REFRESH_ACTION)])
@@ -90,7 +121,7 @@ def refresh(client, user: User, logger, top_message, team_id, context):
         "elements": [
             {
                 "type": "mrkdwn",
-                "text": "QSignups screen no longer updates automatically. Please use the refresh button to update the screen. Last updated: " + datetime.now(tz=pytz.timezone('US/Central')).strftime("%m/%d/%Y %I:%M %p CST")
+                "text": "QSignups screen no longer updates automatically. Please use the refresh button to update the screen. Last updated: " + last_updated_str
             }
         ]
     }
