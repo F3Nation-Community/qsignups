@@ -42,13 +42,20 @@ If you'd like to contribute to QSignups, I highly recommend setting up a local d
 git clone https://github.com/evanpetzoldt/qsignups-lambda.git
 ```
 2. Install the [AWS Serverless Application Model (SAM) CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
-3. Set up a local database 
-    1. Open your terminal and run `docker run --name qsignups-db -e POSTGRES_USER=local_user -e POSTGRES_PASSWORD=local_password -p 5432:5432 -d postgres`
-    2. Ensure it's running by running `docker ps` and looking for your database
-    3. Access the db by running `docker exec -it qsignups-db psql -U local_user postgres`
-    4. At the prompt create the database by running `CREATE DATABASE f3stcharles;`
-    5. Quit the psql prompt with `\q`
-
+3. Set up a local database by opening your terminal and running
+      
+```sh
+   docker run -d \
+     --name qsignups_dev_db \
+     -e MYSQL_ROOT_PASSWORD=your_strong_root_password \
+     -e MYSQL_DATABASE=f3stcharles \
+     -e MYSQL_USER=local_user \
+     -e MYSQL_PASSWORD=local_password \
+     -p 3306:3306 \
+     -v qsignups_db_data:/var/lib/mysql \
+     mysql:8.0
+```
+      
     <br>
     - Small Note: There are other methods to do this as well, this is just a quick cli version for copypasta.
 
