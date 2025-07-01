@@ -54,8 +54,8 @@ git clone https://github.com/evanpetzoldt/qsignups-lambda.git
      -v qsignups_db_data:/var/lib/mysql \
      mysql:8.0
 ```  
- 
-    Make sure you're in the project root directory and run these commands sequentially to initialize the db's
+
+Make sure you're in the project root directory and run these commands sequentially to initialize the db's
 
 ```sh
     docker exec -i qsignups_dev_db mysql -u local_user -p'local_password' f3stcharles < db/tables/qsignups_aos.sql
