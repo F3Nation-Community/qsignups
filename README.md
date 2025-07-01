@@ -54,7 +54,6 @@ git clone https://github.com/evanpetzoldt/qsignups-lambda.git
      -p 3306:3306 \
      -v qsignups_db_data:/var/lib/mysql \
      mysql:8.0
-```
    
     Make sure you're in the project root directory and run these commands sequentially
 
