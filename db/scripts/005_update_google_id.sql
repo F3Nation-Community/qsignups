@@ -5,4 +5,4 @@ ALTER TABLE `qsignup`.`qsignups_regions`
 ADD COLUMN `google_auth_data` JSON NULL AFTER `google_calendar_id`;
 
 ALTER TABLE `qsignup`.`qsignups_regions`
-ADD COLUMN `timezone` VARCHAR(45) NULL DEFAULT 'America/New_York' AFTER `google_auth_data`,
+ADD COLUMN `timezone` VARCHAR(45) NULL DEFAULT 'America/New_York' AFTER `google_auth_data`;
