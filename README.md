@@ -43,7 +43,7 @@ git clone https://github.com/evanpetzoldt/qsignups-lambda.git
 ```
 2. Install the [AWS Serverless Application Model (SAM) CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
 3. Set up a local database by opening your terminal and running
-      
+    1.     
 ```sh
    docker run -d \
      --name qsignups_dev_db \
@@ -54,8 +54,8 @@ git clone https://github.com/evanpetzoldt/qsignups-lambda.git
      -p 3306:3306 \
      -v qsignups_db_data:/var/lib/mysql \
      mysql:8.0
-   
-    Make sure you're in the project root directory and run these commands sequentially
+```   
+   2. Make sure you're in the project root directory and run these commands sequentially
 
  ```sh
     docker exec -i qsignups_dev_db mysql -u local_user -p'local_password' f3stcharles < db/tables/qsignups_aos.sql
@@ -63,10 +63,8 @@ git clone https://github.com/evanpetzoldt/qsignups-lambda.git
     docker exec -i qsignups_dev_db mysql -u local_user -p'local_password' f3stcharles < db/tables/qsignups_regions.sql
     docker exec -i qsignups_dev_db mysql -u local_user -p'local_password' f3stcharles < db/tables/qsignups_weekly.sql
  ```  
-
-
-    <br>
-    - Small Note: There are other methods to do this as well, this is just a quick cli version for copypasta.
+    
+   - Small Note: There are other methods to do this as well, this is just a quick cli version for copypasta.
 
 4. Create the Slack bot: 
     1. Navigate to [api.slack.com/apps](https://api.slack.com/apps)
