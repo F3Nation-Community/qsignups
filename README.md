@@ -42,9 +42,43 @@ If you'd like to contribute to QSignups, I highly recommend setting up a local d
 git clone https://github.com/evanpetzoldt/qsignups-lambda.git
 ```
 2. Install the [AWS Serverless Application Model (SAM) CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
-3. Set up a local database (code & instructions coming)
+3. Set up a local database by opening your terminal and running
+```sh
+   docker run -d \
+     --name qsignups_dev_db \
+     -e MYSQL_ROOT_PASSWORD=your_strong_root_password \
+     -e MYSQL_DATABASE=qsignup \
+     -e MYSQL_USER=local_user \
+     -e MYSQL_PASSWORD=local_password \
+     -p 3306:3306 \
+     -v qsignups_db_data:/var/lib/mysql \
+     mysql:8.0
+```  
+
+Make sure you're in the project root directory and run these commands sequentially to initialize the db's
+
+```sh
+docker exec -i qsignups_dev_db mysql -h 127.0.0.1 -u local_user -p'local_password' qsignup < db/tables/qsignups_aos.sql
+docker exec -i qsignups_dev_db mysql -h 127.0.0.1 -u local_user -p'local_password' qsignup < db/tables/qsignups_master.sql
+docker exec -i qsignups_dev_db mysql -h 127.0.0.1 -u local_user -p'local_password' qsignup < db/tables/qsignups_regions.sql
+docker exec -i qsignups_dev_db mysql -h 127.0.0.1 -u local_user -p'local_password' qsignup < db/tables/qsignups_weekly.sql
+
+docker exec -i qsignups_dev_db mysql -h 127.0.0.1 -u local_user -p'local_password' qsignup < db/scripts/001_add_end_time.sql
+docker exec -i qsignups_dev_db mysql -h 127.0.0.1 -u local_user -p'local_password' qsignup < db/scripts/002_add_google_calendar.sql
+docker exec -i qsignups_dev_db mysql -h 127.0.0.1 -u local_user -p'local_password' qsignup < db/scripts/003_add_created_updated.sql
+docker exec -i qsignups_dev_db mysql -h 127.0.0.1 -u local_user -p'local_password' qsignup < db/scripts/004_add_id_fields.sql
+docker exec -i qsignups_dev_db mysql -h 127.0.0.1 -u local_user -p'local_password' qsignup < db/scripts/005_update_google_id.sql
+docker exec -i qsignups_dev_db mysql -u local_user -p'local_password' qsignup < db/scripts/006_update_weekly_google.sql
+docker exec -i qsignups_dev_db mysql -h 127.0.0.1 -u local_user -p'local_password' qsignup < db/views/vw_aos_sort.sql
+docker exec -i qsignups_dev_db mysql -h 127.0.0.1 -u local_user -p'local_password' qsignup < db/views/vw_master_events.sql
+docker exec -i qsignups_dev_db mysql -h 127.0.0.1 -u local_user -p'local_password' qsignup < db/views/vw_weekly_events.sql
+
+ ```  
+    
+   - Small Note: There are other methods to do this as well, this is just a quick cli version for copypasta.
+
 4. Create the Slack bot: 
-    1. Navigate to [api.slack.com]()
+    1. Navigate to [api.slack.com/apps](https://api.slack.com/apps)
     2. Click "Create an app"
     3. Click "From a manifest", select your workspace
     4. Paste in the manifest below
@@ -121,7 +155,7 @@ settings:
     "DATABASE_HOST": "localhost",
     "ADMIN_DATABASE_USER": "local_user",
     "ADMIN_DATABASE_PASSWORD": "local_password",
-    "ADMIN_DATABASE_SCHEMA": "f3stcharles"
+    "ADMIN_DATABASE_SCHEMA": "qsignup"
   }
 }
 ```
