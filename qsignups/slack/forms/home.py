@@ -12,20 +12,25 @@ from utilities import User
 
 def get_timezone_for_team(team_id: str) -> str:
     """
-    Finds the timezone for a given Slack team_id.
+    Finds the timezone for given Slack team_id.
     Connects to the DB, finds the matching region, and returns its timezone.
-    Defaults to EST if not found.
+    Defaults to America/Los_Angeles if not found. # Corrected default in comment
     """
     try:
-        with DbManager.get_session() as session:
-            region = session.query(Region).filter(Region.team_id == team_id).first()
-            if region and region.timezone:
-                return region.timezone
+        region = DbManager.get_record(Region, team_id) 
+        
+        if region and region.timezone: 
+            return region.timezone    
+        else:                         
+            # If region is None or region.timezone is None/empty, fall through to default
+            pass 
+            
     except Exception as e:
-        # For now, we'll just fall back without explicit logging here.
-        # In a real scenario, you'd want to log 'e' to understand why it failed.
-        pass
-    return "EST" # A sensible default if no region is found or an error occurs
+        # Log the actual exception for debugging, as it's useful to know why we fell back
+        # logger.error(f"Error in get_timezone_for_team for team {team_id}: {e}") # Use this if logger is passed
+        pass # Keep this 'pass' if logger is not available in this function's scope
+        
+    return "America/Los_Angeles" # This is the sensible default fallback
 
 def refresh(client, user: User, logger, top_message, team_id, context):
     sMsg = ""
@@ -106,12 +111,13 @@ def refresh(client, user: User, logger, top_message, team_id, context):
 
     # First, get the correct timezone using our new helper function
     region_timezone_str = get_timezone_for_team(team_id) # Use the team_id passed to build_home_tab
+    
     tz = pytz.timezone(region_timezone_str)
     now_in_region = datetime.now(tz=tz)
 
     # Then, format the string using that timezone's information
-    # The %Z will automatically use the correct abbreviation (EST, CST, PST, etc.)
-    last_updated_str = now_in_region.strftime("%m/%d/%Y %I:%M %p %Z")
+    timezone_abbreviation = now_in_region.tzname()
+    last_updated_str = now_in_region.strftime("%m/%d/%Y %I:%M %p ") + timezone_abbreviation    
 
     # Build AO options list
     # Build view blocks
