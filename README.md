@@ -42,8 +42,7 @@ If you'd like to contribute to QSignups, I highly recommend setting up a local d
 git clone https://github.com/evanpetzoldt/qsignups-lambda.git
 ```
 2. Install the [AWS Serverless Application Model (SAM) CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html)
-3. 
-    1. Set up a local database by opening your terminal and running
+3. Set up a local database by opening your terminal and running
 ```sh
    docker run -d \
      --name qsignups_dev_db \
@@ -55,7 +54,8 @@ git clone https://github.com/evanpetzoldt/qsignups-lambda.git
      -v qsignups_db_data:/var/lib/mysql \
      mysql:8.0
 ```   
-    2. Make sure you're in the project root directory and run these commands sequentially to initialize the db's
+    Make sure you're in the project root directory and run these commands sequentially to initialize the db's
+
 ```sh
     docker exec -i qsignups_dev_db mysql -u local_user -p'local_password' f3stcharles < db/tables/qsignups_aos.sql
     docker exec -i qsignups_dev_db mysql -u local_user -p'local_password' f3stcharles < db/tables/qsignups_master.sql
