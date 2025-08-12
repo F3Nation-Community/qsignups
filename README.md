@@ -1,3 +1,8 @@
+[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
+
+# DEPRECATED
+PAXminer has been serving F3 Nation for a while now. We are standing up a new database and Slackbot. Check out https://github.com/F3-Nation to see what we're working on and to contribute.
+
 # QSignups
 
 Welcome to QSignups! This is a Slack App hosted in AWS Lambda to manage the Q signups and calendar for F3 regions.
